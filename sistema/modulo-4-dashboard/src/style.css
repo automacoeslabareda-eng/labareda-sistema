@@ -825,6 +825,202 @@ body.propriedade-saomiguel .sidebar__select {
 }
 
 /* ================================================================== */
+/*  WHATSAPP                                                          */
+/* ================================================================== */
+
+/* Status badges */
+.wpp-status-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wpp-status-badge--conectado {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.wpp-status-badge--desconectado {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.wpp-status-badge--aguardando {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+/* Conexao info */
+.wpp-conexao-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.wpp-conexao-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wpp-conexao-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  min-width: 80px;
+}
+
+.wpp-conexao-valor {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Acoes */
+.wpp-acoes {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* QR Code */
+.wpp-qr-area {
+  margin: 20px 0;
+  text-align: center;
+}
+
+.wpp-qr-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  background: #fafaf8;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+.wpp-qr-img {
+  max-width: 280px;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+}
+
+.wpp-qr-text {
+  padding: 12px;
+  background: var(--card-bg);
+  border-radius: var(--radius-sm);
+  word-break: break-all;
+  font-size: 11px;
+}
+
+.wpp-error {
+  text-align: center;
+  padding: 20px;
+  color: var(--danger);
+}
+
+/* Sem instancia */
+.wpp-sem-instancia {
+  text-align: center;
+  padding: 12px 0;
+}
+
+/* Disparo */
+.wpp-disparo-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.wpp-disparo-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.wpp-colab-count {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-left: auto;
+}
+
+.wpp-colab-lista {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 0;
+}
+
+.wpp-colab-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background var(--transition);
+  border-bottom: 1px solid var(--border);
+}
+
+.wpp-colab-item:last-child {
+  border-bottom: none;
+}
+
+.wpp-colab-item:hover {
+  background: #fafaf8;
+}
+
+.wpp-colab-item--disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.wpp-colab-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--sidebar-active);
+  flex-shrink: 0;
+}
+
+.wpp-colab-nome {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.wpp-colab-setor {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.wpp-disparo-acoes {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.wpp-disparo-info {
+  font-size: 13px;
+  color: var(--info);
+  font-weight: 500;
+}
+
+/* ================================================================== */
 /*  RESPONSIVE                                                        */
 /* ================================================================== */
 @media (max-width: 768px) {

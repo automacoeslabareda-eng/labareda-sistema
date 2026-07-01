@@ -1079,6 +1079,94 @@
   })();
 
   /* ==========================================================================
+     BOOKING MODAL — reserva de estada
+     ========================================================================== */
+  window.abrirBookingModal = function() {
+    var modal = document.getElementById('booking-modal');
+    modal.classList.add('aberto');
+    document.body.style.overflow = 'hidden';
+    var today = new Date().toISOString().split('T')[0];
+    document.getElementById('booking-checkin').min = today;
+    document.getElementById('booking-checkout').min = today;
+  };
+
+  function fecharBookingModal() {
+    var modal = document.getElementById('booking-modal');
+    modal.classList.remove('aberto');
+    document.body.style.overflow = '';
+  }
+
+  /* Close booking modal on overlay click or close button */
+  document.addEventListener('click', function(e) {
+    if (e.target.id === 'booking-close' || e.target.id === 'booking-modal') {
+      fecharBookingModal();
+    }
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      var modal = document.getElementById('booking-modal');
+      if (modal && modal.classList.contains('aberto')) {
+        fecharBookingModal();
+      }
+    }
+  });
+
+  /* Booking form submit */
+  var bookingForm = document.getElementById('booking-form');
+  if (bookingForm) {
+    bookingForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var btn = document.querySelector('.booking-submit');
+      btn.textContent = currentLang === 'pt' ? 'Enviando...' : 'Sending...';
+      btn.disabled = true;
+
+      var data = {
+        nome: document.getElementById('booking-nome').value,
+        email: document.getElementById('booking-email').value,
+        telefone: document.getElementById('booking-telefone').value || null,
+        checkin: document.getElementById('booking-checkin').value,
+        checkout: document.getElementById('booking-checkout').value,
+        hospedes: parseInt(document.getElementById('booking-hospedes').value),
+        mensagem: document.getElementById('booking-mensagem').value || null,
+      };
+
+      supabaseInsert('reservas', data)
+        .then(function(ok) {
+          if (ok) {
+            fecharBookingModal();
+            bookingForm.reset();
+            showToast(
+              currentLang === 'pt'
+                ? 'Solicitacao enviada! Entraremos em contato em breve.'
+                : 'Request sent! We will contact you soon.',
+              false
+            );
+          } else {
+            showToast(
+              currentLang === 'pt'
+                ? 'Erro ao enviar. Tente novamente.'
+                : 'Error sending. Please try again.',
+              true
+            );
+          }
+        })
+        .catch(function() {
+          showToast(
+            currentLang === 'pt'
+              ? 'Erro ao enviar. Tente novamente.'
+              : 'Error sending. Please try again.',
+            true
+          );
+        })
+        .finally(function() {
+          btn.textContent = currentLang === 'pt' ? 'Solicitar Reserva' : 'Request Booking';
+          btn.disabled = false;
+        });
+    });
+  }
+
+  /* ==========================================================================
      JOURNAL MODAL — abrir post completo
      ========================================================================== */
   window.__abrirJournalPost = function(idx) {

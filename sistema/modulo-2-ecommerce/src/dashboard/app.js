@@ -213,6 +213,7 @@ function carregarPagina(pagina) {
     case 'produtos':       carregarProdutos(); break;
     case 'pedidos':        carregarPedidos(); break;
     case 'journal':        carregarJournal(); break;
+    case 'reservas':       carregarReservas(); break;
     case 'mensagens':      carregarMensagens(); break;
     case 'playlists':      carregarPlaylists(); break;
     case 'conteudo-site':  carregarConteudoSite(); break;
@@ -225,10 +226,11 @@ function carregarPagina(pagina) {
 /* ================================================================== */
 async function carregarVisaoGeral() {
   try {
-    var [totalProdutos, pedidosPendentes, msgNaoLidas, pedidos, estoqueBaixo] = await Promise.all([
+    var [totalProdutos, pedidosPendentes, msgNaoLidas, reservasNovas, pedidos, estoqueBaixo] = await Promise.all([
       supaCount('produtos', 'ativo=eq.true'),
       supaCount('pedidos', 'status=eq.pendente'),
       supaCount('mensagens_contato', 'lida=eq.false'),
+      supaCount('reservas', 'status=eq.nova'),
       supaFetch('pedidos?select=total&status=in.(pago,preparando,enviado,entregue)'),
       supaFetch('produtos?select=id,nome_pt,estoque&ativo=eq.true&estoque=lte.5&order=estoque.asc'),
     ]);
@@ -236,6 +238,9 @@ async function carregarVisaoGeral() {
     $('#stat-produtos').textContent = totalProdutos;
     $('#stat-pedidos-pendentes').textContent = pedidosPendentes;
     $('#stat-mensagens').textContent = msgNaoLidas;
+
+    var statReservas = $('#stat-reservas');
+    if (statReservas) statReservas.textContent = reservasNovas;
 
     var receita = 0;
     if (pedidos && pedidos.length > 0) {
@@ -680,6 +685,106 @@ async function toggleJournal(id, atualmentePublicado) {
     console.error(err);
     mostrarToast('Erro ao alterar status', 'error');
   }
+}
+
+/* ================================================================== */
+/*  RESERVAS                                                          */
+/* ================================================================== */
+async function carregarReservas() {
+  try {
+    var qs = '?select=*&order=created_at.desc';
+    var statusFiltro = $('#filtro-reserva-status');
+    if (statusFiltro && statusFiltro.value) qs += '&status=eq.' + statusFiltro.value;
+
+    var data = await supaFetch('reservas' + qs);
+    var tbody = $('#tbody-reservas');
+
+    if (!data || data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="placeholder">Nenhuma reserva encontrada</td></tr>';
+      return;
+    }
+
+    var statusOptions = ['nova', 'confirmada', 'recusada', 'cancelada'];
+
+    tbody.innerHTML = data.map(function(r) {
+      var status = r.status || 'nova';
+      var badgeClass = {
+        'nova': 'warning',
+        'confirmada': 'ativo',
+        'recusada': 'danger',
+        'cancelada': 'inativo',
+      }[status] || 'warning';
+
+      var selectHtml = '<select class="filtro-select" style="min-width:110px;padding:4px 8px;font-size:12px" onchange="mudarStatusReserva(\'' + r.id + '\', this.value)">';
+      statusOptions.forEach(function(s) {
+        selectHtml += '<option value="' + s + '"' + (s === status ? ' selected' : '') + '>' + s + '</option>';
+      });
+      selectHtml += '</select>';
+
+      return '<tr>' +
+        '<td>' + escapeHtml(r.nome || '--') + '</td>' +
+        '<td>' + formatarData(r.checkin) + '</td>' +
+        '<td>' + formatarData(r.checkout) + '</td>' +
+        '<td>' + (r.hospedes || '--') + '</td>' +
+        '<td><span class="badge badge--' + badgeClass + '">' + status + '</span></td>' +
+        '<td>' + formatarData(r.created_at) + '</td>' +
+        '<td>' +
+          '<button class="btn btn--small btn--secondary" onclick="abrirModalReserva(\'' + r.id + '\')" style="margin-right:4px">Ver</button>' +
+          selectHtml +
+        '</td>' +
+        '</tr>';
+    }).join('');
+
+  } catch (err) {
+    console.error('Erro ao carregar reservas:', err);
+    $('#tbody-reservas').innerHTML = '<tr><td colspan="7" class="placeholder">Erro ao carregar</td></tr>';
+  }
+}
+
+async function mudarStatusReserva(id, novoStatus) {
+  try {
+    await supaUpdate('reservas', id, { status: novoStatus });
+    mostrarToast('Status atualizado para ' + novoStatus);
+    carregarReservas();
+  } catch (err) {
+    console.error(err);
+    mostrarToast('Erro ao mudar status', 'error');
+  }
+}
+
+function abrirModalReserva(id) {
+  modalModo = 'reserva-ver';
+  modalItemId = id;
+
+  $('#modal-titulo').textContent = 'Detalhes da Reserva';
+  $('#modal-body').innerHTML = '<p class="placeholder">Carregando...</p>';
+  $('#modal-btn-salvar').textContent = 'Salvar Observacoes';
+  $('#modal-btn-salvar').style.display = '';
+
+  supaFetch('reservas?id=eq.' + id).then(function(data) {
+    if (data && data.length > 0) {
+      var r = data[0];
+      var status = r.status || 'nova';
+
+      $('#modal-body').innerHTML =
+        '<div style="margin-bottom:16px">' +
+          '<p style="font-weight:600;font-size:1.1rem;margin-bottom:4px">' + escapeHtml(r.nome || '--') + '</p>' +
+          '<p style="color:var(--text-muted);font-size:14px">' + escapeHtml(r.email || '--') + '</p>' +
+          (r.telefone ? '<p style="color:var(--text-muted);font-size:14px">' + escapeHtml(r.telefone) + '</p>' : '') +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;background:var(--bg);padding:16px;border-radius:var(--radius-sm)">' +
+          '<div><p style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px">Check-in</p><p style="font-weight:600">' + formatarData(r.checkin) + '</p></div>' +
+          '<div><p style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px">Check-out</p><p style="font-weight:600">' + formatarData(r.checkout) + '</p></div>' +
+          '<div><p style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px">Hospedes</p><p style="font-weight:600">' + (r.hospedes || '--') + '</p></div>' +
+        '</div>' +
+        '<div style="margin-bottom:16px"><p style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px">Status</p><span class="badge badge--' + ({nova:'warning',confirmada:'ativo',recusada:'danger',cancelada:'inativo'}[status]||'warning') + '">' + status + '</span></div>' +
+        (r.mensagem ? '<div style="margin-bottom:16px"><p style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px">Mensagem do Hospede</p><div style="background:var(--bg);padding:12px;border-radius:var(--radius-sm);white-space:pre-wrap;line-height:1.6;font-size:14px">' + escapeHtml(r.mensagem) + '</div></div>' : '') +
+        '<div style="margin-bottom:16px"><p style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px">Recebido em</p><p>' + formatarData(r.created_at) + '</p></div>' +
+        '<div class="form-group"><label>Observacoes internas</label><textarea id="campo-reserva-obs" rows="3" placeholder="Notas internas sobre esta reserva...">' + escapeHtml(r.observacoes || '') + '</textarea></div>';
+    }
+  });
+
+  $('#modal-overlay').classList.remove('escondido');
 }
 
 /* ================================================================== */
@@ -1413,6 +1518,15 @@ async function salvarModal() {
       mostrarToast('Frete atualizado');
       fecharModal();
       carregarConfiguracoes();
+
+    /* ---- RESERVA OBSERVACOES ---- */
+    } else if (modalModo === 'reserva-ver') {
+      var obs = ($('#campo-reserva-obs') || {}).value || '';
+      await supaUpdate('reservas', modalItemId, { observacoes: obs });
+      mostrarToast('Observacoes salvas');
+      fecharModal();
+      carregarReservas();
+      return;
 
     /* ---- PLAYLISTS ---- */
     } else if (modalModo === 'playlist-nova' || modalModo === 'playlist-editar') {

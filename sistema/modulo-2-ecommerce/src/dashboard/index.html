@@ -46,6 +46,10 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         <span>Mensagens</span>
       </button>
+      <button class="sidebar__link" data-page="reservas" onclick="navegarPara('reservas')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span>Reservas</span>
+      </button>
       <button class="sidebar__link" data-page="playlists" onclick="navegarPara('playlists')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06"/><path d="M12 8V4l8 4-8 4"/></svg>
         <span>Playlists</span>
@@ -116,6 +120,15 @@
           <div class="card-resumo__body">
             <p class="card-resumo__valor" id="stat-receita">--</p>
             <p class="card-resumo__label">Receita Total</p>
+          </div>
+        </div>
+        <div class="card-resumo">
+          <div class="card-resumo__icon card-resumo__icon--warning">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <div class="card-resumo__body">
+            <p class="card-resumo__valor" id="stat-reservas">--</p>
+            <p class="card-resumo__label">Reservas Novas</p>
           </div>
         </div>
       </div>
@@ -214,6 +227,42 @@
             <tr><td colspan="6" class="placeholder">Carregando...</td></tr>
           </tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- RESERVAS -->
+    <section class="page page--hidden" id="page-reservas">
+      <div class="page__header">
+        <h2 class="page__title">Solicitacoes de Estadia</h2>
+      </div>
+      <div class="card" style="padding:20px">
+        <div class="filtros" style="margin-bottom:16px">
+          <select id="filtro-reserva-status" class="filtro-select" onchange="carregarReservas()">
+            <option value="">Todos os status</option>
+            <option value="nova">Novas</option>
+            <option value="confirmada">Confirmadas</option>
+            <option value="recusada">Recusadas</option>
+            <option value="cancelada">Canceladas</option>
+          </select>
+        </div>
+        <div class="table-wrapper" style="border:none;box-shadow:none">
+          <table class="tabela">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Check-in</th>
+                <th>Check-out</th>
+                <th>Hospedes</th>
+                <th>Status</th>
+                <th>Data</th>
+                <th>Acoes</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-reservas">
+              <tr><td colspan="7" class="placeholder">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
 

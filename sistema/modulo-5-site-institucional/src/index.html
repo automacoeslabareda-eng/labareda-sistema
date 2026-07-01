@@ -111,8 +111,7 @@
 
     <!-- ===== HERO ===== -->
     <section class="hero" id="hero" aria-label="Hero">
-      <div class="hero-bg">
-        <div class="hero-video-placeholder" aria-hidden="true"></div>
+      <div class="hero-bg" style="background-image: url('./img/deck-piscina.jpg'); background-size: cover; background-position: center;">
         <div class="hero-overlay"></div>
       </div>
       <div class="hero-content reveal">
@@ -124,7 +123,7 @@
         <p class="hero-headline" data-i18n="hero_headline">Não é um quarto com vista. É uma vida por alguns dias.</p>
         <p class="hero-subheadline" data-i18n="hero_subheadline">Um santuário de roça e arte no coração da Costa do Cacau. Mata viva, lagoas cristalinas, praia logo ali — e o café da manhã que a terra deu de manhã.</p>
         <div class="hero-ctas">
-          <a href="#book" class="btn btn--primary btn--large" data-i18n="hero_cta_book">Reservar sua estada</a>
+          <a href="#" class="btn btn--primary btn--large" data-i18n="hero_cta_book" onclick="abrirBookingModal(); return false;">Reservar sua estada</a>
           <a href="https://wa.me/5573999999999" class="btn btn--whatsapp btn--large" target="_blank" rel="noopener noreferrer" data-i18n="hero_cta_whatsapp">Falar no WhatsApp</a>
         </div>
         <div class="hero-microbar">
@@ -189,9 +188,7 @@
             </p>
           </div>
           <div class="about-visual reveal reveal--delay-1">
-            <div class="about-image-placeholder" aria-label="Imagem do Sítio Labareda">
-              <div class="placeholder-pattern"></div>
-            </div>
+            <img src="./img/lounge-redes.jpg" alt="Lounge com telhado de palha, redes e puffs entre palmeiras no Sítio Labareda" class="about-image" loading="lazy">
             <div class="about-detail">
               <span class="detail-label" data-i18n="about_detail_label">Localização</span>
               <span class="detail-value" data-i18n="about_detail_value">Serra Grande, Uruçuca — BA</span>
@@ -205,20 +202,20 @@
     <section class="section section--book" id="book" aria-labelledby="book-title">
       <div class="book-gallery">
         <div class="book-gallery-track" id="book-gallery-track">
-          <div class="book-slide" aria-label="Imagem 1">
-            <div class="book-slide-placeholder" style="--slide-hue: 15;"></div>
+          <div class="book-slide" aria-label="Quarto com varanda">
+            <img src="./img/quarto-varanda.jpg" alt="Quarto rustico com cortinas brancas e varanda com cadeira no Sitio Labareda" loading="lazy">
           </div>
-          <div class="book-slide" aria-label="Imagem 2">
-            <div class="book-slide-placeholder" style="--slide-hue: 130;"></div>
+          <div class="book-slide" aria-label="Detalhe do quarto">
+            <img src="./img/quarto-detalhe.jpg" alt="Cama com dossel branco, luminaria artesanal e mesa com frutas" loading="lazy">
           </div>
-          <div class="book-slide" aria-label="Imagem 3">
-            <div class="book-slide-placeholder" style="--slide-hue: 35;"></div>
+          <div class="book-slide" aria-label="Rede na varanda">
+            <img src="./img/rede-varanda.jpg" alt="Rede branca na varanda de madeira com vista para a mata" loading="lazy">
           </div>
-          <div class="book-slide" aria-label="Imagem 4">
-            <div class="book-slide-placeholder" style="--slide-hue: 20;"></div>
+          <div class="book-slide" aria-label="Mesa com vista">
+            <img src="./img/mesa-janela.jpg" alt="Mesa de madeira com cadeiras e luminaria artesanal junto a janela com vista para a mata" loading="lazy">
           </div>
-          <div class="book-slide" aria-label="Imagem 5">
-            <div class="book-slide-placeholder" style="--slide-hue: 90;"></div>
+          <div class="book-slide" aria-label="Deck e piscina">
+            <img src="./img/deck-piscina.jpg" alt="Deck de madeira com espreguicadeiras listradas ao lado da piscina" loading="lazy">
           </div>
         </div>
         <div class="book-gallery-dots" role="tablist" aria-label="Galeria de fotos">
@@ -236,7 +233,7 @@
           Escolha quando quer viver a roça e a arte. Poucas unidades, atenção de verdade — os melhores períodos costumam fechar cedo.
         </p>
         <div class="book-ctas">
-          <a href="#airbnb" class="btn btn--primary btn--large" data-i18n="book_cta" target="_blank" rel="noopener noreferrer">
+          <a href="#" class="btn btn--primary btn--large" data-i18n="book_cta" onclick="abrirBookingModal(); return false;">
             Ver disponibilidade e reservar
           </a>
           <a href="https://wa.me/5573999999999" class="btn btn--whatsapp" target="_blank" rel="noopener noreferrer" data-i18n="book_cta_whatsapp">
@@ -481,7 +478,7 @@
         <div class="journal-grid">
           <article class="journal-card journal-card--large reveal">
             <div class="journal-card-image">
-              <div class="journal-image-placeholder" style="--journal-hue: 130; --journal-sat: 35%;"></div>
+              <img src="./img/colheita-acai.jpg" alt="Homem colhendo acai com caixa FRUVELE e chapeu com estrela Labareda" loading="lazy">
             </div>
             <div class="journal-card-content">
               <time class="journal-date" datetime="2026-06-15">15 Jun 2026</time>
@@ -494,7 +491,7 @@
 
           <article class="journal-card reveal reveal--delay-1">
             <div class="journal-card-image">
-              <div class="journal-image-placeholder" style="--journal-hue: 15; --journal-sat: 50%;"></div>
+              <img src="./img/flor-tropical.jpg" alt="Flor alpinia vermelha em meio a folhagem verde tropical" loading="lazy">
             </div>
             <div class="journal-card-content">
               <time class="journal-date" datetime="2026-05-28">28 Mai 2026</time>
@@ -507,7 +504,7 @@
 
           <article class="journal-card reveal reveal--delay-2">
             <div class="journal-card-image">
-              <div class="journal-image-placeholder" style="--journal-hue: 200; --journal-sat: 30%;"></div>
+              <img src="./img/jardim-irrigacao.jpg" alt="Duas pessoas no jardim com irrigacao e mata ao fundo no Sitio Labareda" loading="lazy">
             </div>
             <div class="journal-card-content">
               <time class="journal-date" datetime="2026-05-10">10 Mai 2026</time>
@@ -520,7 +517,7 @@
 
           <article class="journal-card reveal reveal--delay-3">
             <div class="journal-card-image">
-              <div class="journal-image-placeholder" style="--journal-hue: 45; --journal-sat: 40%;"></div>
+              <img src="./img/sao-joao.jpg" alt="Poster Sao Joao Labareda com fogueira em estilo xilogravura" loading="lazy">
             </div>
             <div class="journal-card-content">
               <time class="journal-date" datetime="2026-04-22">22 Abr 2026</time>
@@ -533,7 +530,7 @@
 
           <article class="journal-card journal-card--wide reveal">
             <div class="journal-card-image">
-              <div class="journal-image-placeholder" style="--journal-hue: 100; --journal-sat: 25%;"></div>
+              <img src="./img/vista-mata.jpg" alt="Vista panoramica da Mata Atlantica a partir do Sitio Labareda" loading="lazy">
             </div>
             <div class="journal-card-content">
               <time class="journal-date" datetime="2026-04-05">05 Abr 2026</time>
@@ -546,7 +543,7 @@
 
           <article class="journal-card reveal reveal--delay-1">
             <div class="journal-card-image">
-              <div class="journal-image-placeholder" style="--journal-hue: 350; --journal-sat: 35%;"></div>
+              <img src="./img/area-externa.jpg" alt="Area externa do Sitio Labareda com vegetacao tropical" loading="lazy">
             </div>
             <div class="journal-card-content">
               <time class="journal-date" datetime="2026-03-18">18 Mar 2026</time>
@@ -666,7 +663,11 @@
             </address>
           </div>
 
-          <form class="contact-form reveal reveal--delay-1" id="contact-form" action="mailto:sitiolabareda@gmail.com" method="POST" enctype="text/plain">
+          <div class="contact-visual reveal reveal--delay-1">
+            <img src="./img/flor-tropical.jpg" alt="Flor alpinia vermelha em meio a folhagem verde no Sitio Labareda" class="contact-image" loading="lazy">
+          </div>
+
+          <form class="contact-form reveal reveal--delay-2" id="contact-form" action="mailto:sitiolabareda@gmail.com" method="POST" enctype="text/plain">
             <div class="form-group">
               <label for="contact-name" class="form-label" data-i18n="contact_name_label">Nome</label>
               <input type="text" id="contact-name" name="name" class="form-input" required autocomplete="name" data-i18n-placeholder="contact_name_placeholder" placeholder="Seu nome">
@@ -767,6 +768,53 @@
   <a href="https://wa.me/5573999999999" class="whatsapp-float" target="_blank" rel="noopener noreferrer" aria-label="Falar no WhatsApp">
     <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.613.613l4.458-1.495A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.34 0-4.508-.766-6.258-2.063l-.438-.337-3.156 1.058 1.058-3.156-.337-.438A9.962 9.962 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
   </a>
+
+  <!-- Booking Modal -->
+  <div class="booking-modal-overlay" id="booking-modal">
+    <div class="booking-modal">
+      <button class="booking-modal__close" id="booking-close">&times;</button>
+      <h2>Reservar sua estada</h2>
+      <p>Preencha os dados e entraremos em contato para confirmar.</p>
+      <form id="booking-form">
+        <div class="booking-row">
+          <div class="booking-field">
+            <label>Check-in</label>
+            <input type="date" id="booking-checkin" required>
+          </div>
+          <div class="booking-field">
+            <label>Check-out</label>
+            <input type="date" id="booking-checkout" required>
+          </div>
+        </div>
+        <div class="booking-field">
+          <label>Hóspedes</label>
+          <select id="booking-hospedes">
+            <option value="1">1 hóspede</option>
+            <option value="2" selected>2 hóspedes</option>
+            <option value="3">3 hóspedes</option>
+            <option value="4">4 hóspedes</option>
+          </select>
+        </div>
+        <div class="booking-field">
+          <label>Nome</label>
+          <input type="text" id="booking-nome" placeholder="Seu nome completo" required>
+        </div>
+        <div class="booking-field">
+          <label>E-mail</label>
+          <input type="email" id="booking-email" placeholder="seu@email.com" required>
+        </div>
+        <div class="booking-field">
+          <label>Telefone / WhatsApp</label>
+          <input type="tel" id="booking-telefone" placeholder="+55 11 99999-9999">
+        </div>
+        <div class="booking-field">
+          <label>Mensagem (opcional)</label>
+          <textarea id="booking-mensagem" rows="3" placeholder="Algum pedido especial?"></textarea>
+        </div>
+        <button type="submit" class="btn btn--primary btn--large booking-submit">Solicitar Reserva</button>
+      </form>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

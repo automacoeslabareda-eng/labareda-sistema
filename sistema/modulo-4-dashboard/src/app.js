@@ -190,6 +190,7 @@ function carregarPagina(pagina) {
     case 'tarefas':        carregarTarefas(); break;
     case 'rotinas':        carregarRotinas(); break;
     case 'relatorios':     carregarRelatorios(); break;
+    case 'whatsapp':       carregarWhatsApp(); break;
     case 'configuracoes':  carregarConfiguracoes(); break;
   }
 }
@@ -576,6 +577,406 @@ async function carregarRelatorios() {
 }
 
 /* ================================================================== */
+/*  WHATSAPP — EVOLUTION API                                          */
+/* ================================================================== */
+var wppInstanciaAtual = null;
+var wppStatusInterval = null;
+var wppColaboradoresSelecionados = [];
+
+function getEvolutionConfig() {
+  if (propriedadeFiltro === 'todas') return null;
+  var prop = cachePropriedades.find(function(p) { return String(p.id) === String(propriedadeFiltro); });
+  if (!prop || !prop.evolution_api_url || !prop.evolution_api_key) return null;
+  return {
+    url: prop.evolution_api_url.replace(/\/+$/, ''),
+    key: prop.evolution_api_key,
+    nome: prop.nome || 'Propriedade',
+    slug: prop.slug || prop.nome || '',
+  };
+}
+
+async function evolutionFetch(method, path, body) {
+  var cfg = getEvolutionConfig();
+  if (!cfg) throw new Error('Evolution API nao configurada para esta propriedade');
+  var url = cfg.url + path;
+  var opts = {
+    method: method,
+    headers: {
+      'apikey': cfg.key,
+      'Content-Type': 'application/json',
+    },
+  };
+  if (body) opts.body = JSON.stringify(body);
+  var r = await fetch(url, opts);
+  if (!r.ok) {
+    var txt = await r.text();
+    throw new Error('Evolution API ' + method + ' ' + path + ': ' + r.status + ' ' + txt);
+  }
+  return r.json();
+}
+
+async function carregarWhatsApp() {
+  carregarWppConexao();
+}
+
+async function carregarWppConexao() {
+  var container = $('#wpp-conexao-body');
+  var cfg = getEvolutionConfig();
+
+  if (!cfg) {
+    container.innerHTML = '<p class="placeholder">Selecione uma propriedade e configure a Evolution API nas Configuracoes (URL e Key)</p>';
+    $('#wpp-disparo-body').innerHTML = '<p class="placeholder">Conecte uma instancia primeiro</p>';
+    return;
+  }
+
+  container.innerHTML = '<p class="placeholder">Carregando instancias...</p>';
+
+  try {
+    var instances = await evolutionFetch('GET', '/instance/all');
+    var instanciaSlug = cfg.slug.toLowerCase().replace(/[^a-z0-9]/g, '-');
+
+    // Find instance for this property
+    var instancia = null;
+    if (Array.isArray(instances)) {
+      instancia = instances.find(function(i) {
+        var name = (i.instanceName || i.name || i.instance || '').toLowerCase();
+        return name === instanciaSlug || name.indexOf(instanciaSlug) !== -1;
+      });
+    }
+
+    if (instancia) {
+      wppInstanciaAtual = instancia.instanceName || instancia.name || instancia.instance;
+      renderWppConexaoStatus(instancia);
+    } else {
+      wppInstanciaAtual = null;
+      renderWppSemInstancia(instanciaSlug);
+    }
+
+  } catch (err) {
+    console.error('Erro ao carregar instancias:', err);
+    container.innerHTML = '<div class="wpp-error"><p>Erro ao conectar com a Evolution API</p><p style="font-size:12px;color:var(--text-muted)">' + escapeHtml(err.message) + '</p></div>';
+    $('#wpp-disparo-body').innerHTML = '<p class="placeholder">Erro na conexao com a API</p>';
+  }
+}
+
+function renderWppSemInstancia(sugestedName) {
+  var container = $('#wpp-conexao-body');
+  container.innerHTML =
+    '<div class="wpp-sem-instancia">' +
+      '<div class="wpp-status-badge wpp-status-badge--desconectado">Sem instancia</div>' +
+      '<p style="margin:16px 0 12px;color:var(--text-muted)">Nenhuma instancia encontrada para esta propriedade. Crie uma nova:</p>' +
+      '<div class="form-group"><label>Nome da Instancia</label><input type="text" id="wpp-instance-name" value="' + escapeHtml(sugestedName) + '" placeholder="nome-da-instancia"></div>' +
+      '<button class="btn btn--primary" onclick="criarInstancia()">Criar Instancia</button>' +
+    '</div>';
+
+  $('#wpp-disparo-body').innerHTML = '<p class="placeholder">Crie e conecte uma instancia primeiro</p>';
+}
+
+async function renderWppConexaoStatus(instancia) {
+  var container = $('#wpp-conexao-body');
+  var instanceName = instancia.instanceName || instancia.name || instancia.instance;
+  wppInstanciaAtual = instanceName;
+
+  // Check detailed status
+  try {
+    var statusData = await evolutionFetch('GET', '/instance/status?instanceName=' + encodeURIComponent(instanceName));
+    var status = 'desconectado';
+    if (statusData) {
+      var s = (statusData.state || statusData.status || statusData.connectionStatus || '').toLowerCase();
+      if (s === 'open' || s === 'connected' || s === 'online') {
+        status = 'conectado';
+      } else if (s === 'connecting' || s === 'qr') {
+        status = 'aguardando';
+      }
+    }
+
+    var statusLabel = { conectado: 'Conectado', desconectado: 'Desconectado', aguardando: 'Aguardando QR Code' };
+    var html =
+      '<div class="wpp-conexao-info">' +
+        '<div class="wpp-conexao-row">' +
+          '<span class="wpp-conexao-label">Instancia:</span>' +
+          '<span class="wpp-conexao-valor">' + escapeHtml(instanceName) + '</span>' +
+        '</div>' +
+        '<div class="wpp-conexao-row">' +
+          '<span class="wpp-conexao-label">Status:</span>' +
+          '<span class="wpp-status-badge wpp-status-badge--' + status + '">' + statusLabel[status] + '</span>' +
+        '</div>' +
+      '</div>';
+
+    if (status === 'conectado') {
+      html += '<div class="wpp-acoes">' +
+        '<button class="btn btn--secondary" onclick="desconectarInstancia()">Desconectar</button>' +
+        '<button class="btn btn--danger btn--small" onclick="deletarInstancia()">Deletar Instancia</button>' +
+      '</div>';
+      carregarWppDisparo();
+    } else {
+      html += '<div id="wpp-qr-area" class="wpp-qr-area">' +
+        '<p style="margin-bottom:12px;color:var(--text-muted)">Escaneie o QR Code com o WhatsApp:</p>' +
+        '<div id="wpp-qr-container" class="wpp-qr-container"><p class="placeholder">Carregando QR Code...</p></div>' +
+      '</div>' +
+      '<div class="wpp-acoes">' +
+        '<button class="btn btn--primary" onclick="buscarQrCode()">Gerar QR Code</button>' +
+        '<button class="btn btn--secondary" onclick="carregarWppConexao()">Atualizar Status</button>' +
+        '<button class="btn btn--danger btn--small" onclick="deletarInstancia()">Deletar Instancia</button>' +
+      '</div>';
+      $('#wpp-disparo-body').innerHTML = '<p class="placeholder">Conecte a instancia escaneando o QR Code</p>';
+      buscarQrCode();
+    }
+
+    container.innerHTML = html;
+
+  } catch (err) {
+    console.error('Erro ao checar status:', err);
+    container.innerHTML =
+      '<div class="wpp-conexao-info">' +
+        '<div class="wpp-conexao-row">' +
+          '<span class="wpp-conexao-label">Instancia:</span>' +
+          '<span class="wpp-conexao-valor">' + escapeHtml(instanceName) + '</span>' +
+        '</div>' +
+        '<div class="wpp-conexao-row">' +
+          '<span class="wpp-conexao-label">Status:</span>' +
+          '<span class="wpp-status-badge wpp-status-badge--desconectado">Erro</span>' +
+        '</div>' +
+      '</div>' +
+      '<p style="font-size:12px;color:var(--danger);margin-top:8px">' + escapeHtml(err.message) + '</p>' +
+      '<div class="wpp-acoes"><button class="btn btn--primary" onclick="conectarInstancia()">Tentar Conectar</button></div>';
+  }
+}
+
+async function criarInstancia() {
+  var nome = ($('#wpp-instance-name') || {}).value || '';
+  if (!nome.trim()) {
+    mostrarToast('Informe o nome da instancia', 'error');
+    return;
+  }
+
+  try {
+    mostrarToast('Criando instancia...');
+    await evolutionFetch('POST', '/instance/create', {
+      instanceName: nome.trim(),
+      integration: 'WHATSAPP-BAILEYS',
+    });
+    mostrarToast('Instancia criada com sucesso!');
+    carregarWppConexao();
+  } catch (err) {
+    console.error('Erro ao criar instancia:', err);
+    mostrarToast('Erro ao criar instancia: ' + err.message, 'error');
+  }
+}
+
+async function conectarInstancia() {
+  if (!wppInstanciaAtual) return;
+  try {
+    mostrarToast('Conectando instancia...');
+    await evolutionFetch('POST', '/instance/connect', {
+      instanceName: wppInstanciaAtual,
+    });
+    carregarWppConexao();
+  } catch (err) {
+    console.error('Erro ao conectar:', err);
+    mostrarToast('Erro ao conectar: ' + err.message, 'error');
+  }
+}
+
+async function desconectarInstancia() {
+  if (!wppInstanciaAtual) return;
+  try {
+    await evolutionFetch('POST', '/instance/disconnect?instanceName=' + encodeURIComponent(wppInstanciaAtual));
+    mostrarToast('Instancia desconectada');
+    carregarWppConexao();
+  } catch (err) {
+    console.error('Erro ao desconectar:', err);
+    mostrarToast('Erro: ' + err.message, 'error');
+  }
+}
+
+async function deletarInstancia() {
+  if (!wppInstanciaAtual) return;
+  if (!confirm('Tem certeza que deseja deletar a instancia "' + wppInstanciaAtual + '"? Esta acao nao pode ser desfeita.')) return;
+  try {
+    await evolutionFetch('DELETE', '/instance/delete/' + encodeURIComponent(wppInstanciaAtual));
+    mostrarToast('Instancia deletada');
+    wppInstanciaAtual = null;
+    carregarWppConexao();
+  } catch (err) {
+    console.error('Erro ao deletar:', err);
+    mostrarToast('Erro: ' + err.message, 'error');
+  }
+}
+
+async function buscarQrCode() {
+  if (!wppInstanciaAtual) return;
+  var container = $('#wpp-qr-container');
+  if (!container) return;
+  container.innerHTML = '<p class="placeholder">Gerando QR Code...</p>';
+
+  try {
+    var data = await evolutionFetch('GET', '/instance/qr?instanceName=' + encodeURIComponent(wppInstanciaAtual));
+    if (data && data.qrcode) {
+      // qrcode can be a base64 image or a data URL
+      var src = data.qrcode;
+      if (!src.startsWith('data:')) {
+        src = 'data:image/png;base64,' + src;
+      }
+      container.innerHTML = '<img src="' + src + '" alt="QR Code WhatsApp" class="wpp-qr-img">';
+    } else if (data && data.base64) {
+      var src2 = data.base64;
+      if (!src2.startsWith('data:')) {
+        src2 = 'data:image/png;base64,' + src2;
+      }
+      container.innerHTML = '<img src="' + src2 + '" alt="QR Code WhatsApp" class="wpp-qr-img">';
+    } else if (data && data.code) {
+      container.innerHTML = '<div class="wpp-qr-text"><code>' + escapeHtml(data.code) + '</code></div>';
+    } else {
+      container.innerHTML = '<p class="placeholder">QR Code nao disponivel. Tente conectar a instancia primeiro.</p>' +
+        '<button class="btn btn--secondary btn--small" onclick="conectarInstancia()" style="margin-top:8px">Conectar</button>';
+    }
+  } catch (err) {
+    console.error('Erro ao buscar QR:', err);
+    container.innerHTML = '<p class="placeholder" style="color:var(--danger)">Erro ao gerar QR Code</p>' +
+      '<button class="btn btn--secondary btn--small" onclick="conectarInstancia()" style="margin-top:8px">Tentar Conectar</button>';
+  }
+}
+
+async function carregarWppDisparo() {
+  var container = $('#wpp-disparo-body');
+  if (!wppInstanciaAtual) {
+    container.innerHTML = '<p class="placeholder">Conecte uma instancia primeiro</p>';
+    return;
+  }
+
+  try {
+    var pf = propFiltroParam();
+    var qs = '?select=id,nome,telefone,whatsapp_jid,funcao,setores(nome)&ativo=eq.true&order=nome.asc';
+    if (pf) qs += '&' + pf;
+    var colabs = await supaFetch('colaboradores' + qs);
+
+    if (!colabs || colabs.length === 0) {
+      container.innerHTML = '<p class="placeholder">Nenhum colaborador ativo encontrado</p>';
+      return;
+    }
+
+    var checkboxes = colabs.map(function(c) {
+      var tel = c.whatsapp_jid || c.telefone || '';
+      var setor = (c.setores && c.setores.nome) || '';
+      var disabled = !tel ? ' disabled' : '';
+      var semTel = !tel ? ' <span style="color:var(--danger);font-size:11px">(sem telefone)</span>' : '';
+      return '<label class="wpp-colab-item' + (disabled ? ' wpp-colab-item--disabled' : '') + '">' +
+        '<input type="checkbox" value="' + c.id + '" data-tel="' + escapeHtml(tel) + '" data-nome="' + escapeHtml(c.nome) + '"' + disabled + ' onchange="atualizarContagemWpp()">' +
+        '<span class="wpp-colab-nome">' + escapeHtml(c.nome || '--') + semTel + '</span>' +
+        '<span class="wpp-colab-setor">' + escapeHtml(setor) + '</span>' +
+        '</label>';
+    }).join('');
+
+    container.innerHTML =
+      '<div class="wpp-disparo-form">' +
+        '<div class="wpp-disparo-header">' +
+          '<button class="btn btn--small btn--secondary" onclick="selecionarTodosWpp(true)">Selecionar Todos</button>' +
+          '<button class="btn btn--small btn--secondary" onclick="selecionarTodosWpp(false)">Limpar</button>' +
+          '<span class="wpp-colab-count" id="wpp-colab-count">0 selecionados</span>' +
+        '</div>' +
+        '<div class="wpp-colab-lista">' + checkboxes + '</div>' +
+        '<div class="form-group" style="margin-top:16px">' +
+          '<label>Mensagem</label>' +
+          '<textarea id="wpp-mensagem" rows="4" placeholder="Digite a mensagem para enviar aos colaboradores..."></textarea>' +
+        '</div>' +
+        '<div class="wpp-disparo-acoes">' +
+          '<span class="wpp-disparo-info" id="wpp-disparo-info"></span>' +
+          '<button class="btn btn--primary" onclick="enviarDisparoWpp()" id="btn-enviar-wpp">Enviar Mensagens</button>' +
+        '</div>' +
+      '</div>';
+
+  } catch (err) {
+    console.error('Erro ao carregar disparo:', err);
+    container.innerHTML = '<p class="placeholder">Erro ao carregar colaboradores</p>';
+  }
+}
+
+function atualizarContagemWpp() {
+  var checks = document.querySelectorAll('#wpp-disparo-body input[type="checkbox"]:checked');
+  var count = checks.length;
+  var el = $('#wpp-colab-count');
+  if (el) el.textContent = count + ' selecionado' + (count !== 1 ? 's' : '');
+}
+
+function selecionarTodosWpp(marcar) {
+  var checks = document.querySelectorAll('#wpp-disparo-body input[type="checkbox"]:not(:disabled)');
+  checks.forEach(function(cb) { cb.checked = marcar; });
+  atualizarContagemWpp();
+}
+
+async function enviarDisparoWpp() {
+  var mensagem = ($('#wpp-mensagem') || {}).value || '';
+  if (!mensagem.trim()) {
+    mostrarToast('Digite uma mensagem', 'error');
+    return;
+  }
+
+  var checks = document.querySelectorAll('#wpp-disparo-body input[type="checkbox"]:checked');
+  if (checks.length === 0) {
+    mostrarToast('Selecione pelo menos um colaborador', 'error');
+    return;
+  }
+
+  var destinatarios = [];
+  checks.forEach(function(cb) {
+    destinatarios.push({
+      id: cb.value,
+      tel: cb.dataset.tel,
+      nome: cb.dataset.nome,
+    });
+  });
+
+  var btn = $('#btn-enviar-wpp');
+  var info = $('#wpp-disparo-info');
+  if (btn) btn.disabled = true;
+  if (btn) btn.textContent = 'Enviando...';
+
+  var enviados = 0;
+  var erros = 0;
+
+  for (var i = 0; i < destinatarios.length; i++) {
+    var dest = destinatarios[i];
+    if (info) info.textContent = 'Enviando ' + (i + 1) + '/' + destinatarios.length + ' - ' + dest.nome;
+
+    try {
+      // Format phone number - remove non-digits, ensure country code
+      var numero = dest.tel.replace(/[^0-9]/g, '');
+      if (numero.length === 11 && numero.startsWith('0')) {
+        numero = '55' + numero.substring(1);
+      } else if (numero.length === 11 || numero.length === 10) {
+        numero = '55' + numero;
+      }
+
+      await evolutionFetch('POST', '/send/media', {
+        instanceName: wppInstanciaAtual,
+        number: numero,
+        mediatype: 'text',
+        caption: mensagem.trim(),
+      });
+      enviados++;
+    } catch (err) {
+      console.error('Erro ao enviar para ' + dest.nome + ':', err);
+      erros++;
+    }
+
+    // Small delay between messages to avoid rate limiting
+    if (i < destinatarios.length - 1) {
+      await new Promise(function(resolve) { setTimeout(resolve, 1500); });
+    }
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = 'Enviar Mensagens'; }
+  if (info) info.textContent = '';
+
+  if (erros === 0) {
+    mostrarToast('Todas as ' + enviados + ' mensagens enviadas!');
+  } else {
+    mostrarToast(enviados + ' enviadas, ' + erros + ' com erro', erros > 0 ? 'error' : 'success');
+  }
+}
+
+/* ================================================================== */
 /*  CONFIGURACOES                                                     */
 /* ================================================================== */
 async function carregarConfiguracoes() {
@@ -607,15 +1008,18 @@ async function carregarConfigPropriedade() {
     titulo.textContent = 'Configuracoes — ' + (prop.nome || 'Propriedade');
 
     var campos = [
-      { chave: 'nome', label: 'Nome da Propriedade', valor: prop.nome || '' },
-      { chave: 'slug', label: 'Slug', valor: prop.slug || '' },
-      { chave: 'telegram_bot_token', label: 'Telegram Bot Token', valor: prop.telegram_bot_token || '', sensitive: true },
-      { chave: 'telegram_chat_id', label: 'Telegram Chat ID', valor: prop.telegram_chat_id || '' },
-      { chave: 'evolution_api_url', label: 'Evolution API URL', valor: prop.evolution_api_url || '' },
-      { chave: 'evolution_api_key', label: 'Evolution API Key', valor: prop.evolution_api_key || '', sensitive: true },
-      { chave: 'relatorio_dia_semana', label: 'Dia do Relatorio', valor: prop.relatorio_dia_semana || '' },
-      { chave: 'relatorio_hora', label: 'Hora do Relatorio', valor: prop.relatorio_hora || '' },
-      { chave: 'lembrete_hora', label: 'Hora do Lembrete', valor: prop.lembrete_hora || '' },
+      { chave: 'nome', label: 'Nome da Propriedade', valor: prop.nome || '', section: 'geral' },
+      { chave: 'slug', label: 'Slug', valor: prop.slug || '', section: 'geral' },
+      { chave: 'telegram_bot_token', label: 'Telegram Bot Token', valor: prop.telegram_bot_token || '', sensitive: true, section: 'telegram' },
+      { chave: 'telegram_chat_id', label: 'Telegram Chat ID', valor: prop.telegram_chat_id || '', section: 'telegram' },
+      { chave: 'telegram_grupo_id', label: 'Telegram Grupo ID', valor: prop.telegram_grupo_id || '', section: 'telegram', placeholder: 'Ex: -1001234567890 (ID do grupo)' },
+      { chave: 'evolution_api_url', label: 'Evolution API URL', valor: prop.evolution_api_url || '', section: 'whatsapp', placeholder: 'https://apiwhats.sitiolabareda.com' },
+      { chave: 'evolution_api_key', label: 'Evolution API Key', valor: prop.evolution_api_key || '', sensitive: true, section: 'whatsapp' },
+      { chave: 'evolution_instance_name', label: 'Nome da Instancia WhatsApp', valor: prop.evolution_instance_name || '', section: 'whatsapp', placeholder: 'Ex: labareda' },
+      { chave: 'whatsapp_grupo_id', label: 'WhatsApp Grupo ID', valor: prop.whatsapp_grupo_id || '', section: 'whatsapp', placeholder: 'Ex: 5511999999999-1234567890@g.us' },
+      { chave: 'relatorio_dia_semana', label: 'Dia do Relatorio', valor: prop.relatorio_dia_semana || '', section: 'config' },
+      { chave: 'relatorio_hora', label: 'Hora do Relatorio', valor: prop.relatorio_hora || '', section: 'config' },
+      { chave: 'lembrete_hora', label: 'Hora do Lembrete', valor: prop.lembrete_hora || '', section: 'config' },
     ];
 
     var html = '<form id="form-config-prop" class="config-prop-form">';
