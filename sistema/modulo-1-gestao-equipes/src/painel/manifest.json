@@ -1,0 +1,19 @@
+{
+  "name": "Labareda - Painel do Colaborador",
+  "short_name": "Labareda",
+  "description": "Painel de tarefas para colaboradores do Sitio Labareda",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#fafaf5",
+  "theme_color": "#1a1a1a",
+  "orientation": "portrait",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,5 61,35 95,35 67,55 78,85 50,67 22,85 33,55 5,35 39,35' fill='%23C45D3E'/></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta name="theme-color" content="#1a1a1a">
+  <meta name="description" content="Painel de tarefas - Sitio Labareda">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Labareda">
+
+  <title>Labareda - Painel do Colaborador</title>
+
+  <!-- Favicon: estrela 7 pontas -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,5 61,35 95,35 67,55 78,85 50,67 22,85 33,55 5,35 39,35' fill='%23C45D3E'/></svg>">
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="./manifest.json">
+
+  <!-- Google Font: DM Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif&display=swap">
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+  <!-- ============================================================ -->
+  <!--  TELA: LOGIN                                                  -->
+  <!-- ============================================================ -->
+  <div id="tela-login" class="tela-login escondido" role="main" aria-label="Login do colaborador">
+    <div class="login-card">
+      <div class="login-card__logo" aria-hidden="true">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="50,5 61,35 95,35 67,55 78,85 50,67 22,85 33,55 5,35 39,35" fill="#C45D3E"/>
+        </svg>
+      </div>
+      <h1 class="login-card__titulo">Painel do Colaborador</h1>
+      <p class="login-card__subtitulo">ROCA & ARTE</p>
+
+      <form class="login-card__form" id="form-login" autocomplete="on">
+        <div class="login-card__campo">
+          <label class="login-card__label" for="login-email">Email</label>
+          <input class="login-card__input" type="email" id="login-email" name="email" placeholder="seu@email.com" required autocomplete="email">
+        </div>
+        <div class="login-card__campo">
+          <label class="login-card__label" for="login-senha">Senha</label>
+          <input class="login-card__input" type="password" id="login-senha" name="password" placeholder="Sua senha" required autocomplete="current-password">
+        </div>
+        <p class="login-card__erro escondido" id="login-erro" role="alert"></p>
+        <button class="login-card__btn" type="submit" id="btn-login">Entrar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!--  HEADER                                                       -->
+  <!-- ============================================================ -->
+  <header class="header escondido" id="header-principal" role="banner">
+    <div class="header__logo" aria-hidden="true">
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="50,5 61,35 95,35 67,55 78,85 50,67 22,85 33,55 5,35 39,35" fill="#C45D3E"/>
+      </svg>
+    </div>
+    <div class="header__info">
+      <h1 class="header__saudacao" id="saudacao">Carregando...</h1>
+      <p class="header__meta" id="meta-info"></p>
+      <p class="header__slogan">ROCA & ARTE</p>
+    </div>
+    <button class="header__btn-sair escondido" id="btn-sair" type="button" aria-label="Sair do painel">Sair</button>
+  </header>
+
+  <!-- Banner Offline -->
+  <div class="banner-offline" id="banner-offline" role="status" aria-live="polite">
+    Modo offline - suas acoes serao sincronizadas quando a conexao voltar
+  </div>
+
+  <!-- ============================================================ -->
+  <!--  TELA: LOADING                                                -->
+  <!-- ============================================================ -->
+  <main id="tela-loading" class="loading" role="status" aria-label="Carregando tarefas">
+    <div class="loading__spinner" aria-hidden="true">
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="50,5 61,35 95,35 67,55 78,85 50,67 22,85 33,55 5,35 39,35" fill="#C45D3E"/>
+      </svg>
+    </div>
+    <p class="loading__texto">Carregando suas tarefas...</p>
+  </main>
+
+  <!-- ============================================================ -->
+  <!--  TELA: ERRO                                                   -->
+  <!-- ============================================================ -->
+  <div id="tela-erro" class="tela-erro escondido" role="alert">
+    <div class="tela-erro__icone" aria-hidden="true">&#9888;</div>
+    <h2 class="tela-erro__titulo" id="erro-titulo">Erro</h2>
+    <p class="tela-erro__msg" id="erro-msg">Ocorreu um erro.</p>
+  </div>
+
+  <!-- ============================================================ -->
+  <!--  TELA: PRINCIPAL (Lista de Tarefas)                           -->
+  <!-- ============================================================ -->
+  <div id="tela-principal" class="escondido">
+    <div class="container">
+      <div id="lista-tarefas" role="list" aria-label="Lista de tarefas"></div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!--  MODAL: Detalhe do Item (Bottom Sheet)                        -->
+  <!-- ============================================================ -->
+  <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-label="Detalhes do item">
+    <div class="modal">
+      <div class="modal__handle" aria-hidden="true"></div>
+      <div class="modal__conteudo">
+        <h2 class="modal__titulo" id="modal-titulo"></h2>
+        <div class="modal__setor" id="modal-setor"></div>
+
+        <!-- Checkbox Concluido -->
+        <div class="modal__campo">
+          <div class="modal__checkbox-row">
+            <input type="checkbox" id="modal-checkbox" aria-label="Marcar como concluido">
+            <label for="modal-checkbox">Concluido</label>
+          </div>
+        </div>
+
+        <!-- Observacao -->
+        <div class="modal__campo">
+          <label class="modal__label" for="modal-obs">Observacao (opcional)</label>
+          <textarea class="modal__textarea" id="modal-obs" rows="3" placeholder="Alguma observacao sobre esta tarefa..."></textarea>
+        </div>
+
+        <!-- Foto -->
+        <div class="modal__campo">
+          <label class="modal__label">Foto (opcional)</label>
+          <div class="foto-area">
+            <label class="btn-foto" tabindex="0" role="button" aria-label="Tirar foto ou escolher da galeria">
+              <span aria-hidden="true">&#128247;</span>
+              Tirar foto ou escolher da galeria
+              <input type="file" id="input-foto" accept="image/*" capture="environment" class="sr-only">
+            </label>
+            <div class="foto-preview" id="foto-preview">
+              <img id="foto-img" alt="Preview da foto">
+              <button class="foto-preview__remover" id="btn-remover-foto" type="button" aria-label="Remover foto">&times;</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botao Confirmar -->
+        <button class="btn-confirmar" id="btn-confirmar" type="button" disabled>CONFIRMAR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- App -->
+  <script src="./app.js"></script>
+</body>
+</html>

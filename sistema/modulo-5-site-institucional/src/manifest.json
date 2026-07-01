@@ -1,0 +1,17 @@
+{
+  "name": "Sitio Labareda",
+  "short_name": "Labareda",
+  "description": "Roca & Arte — Hospedagem, arte e cultura em Serra Grande, Costa do Cacau, Sul da Bahia.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#C45D3E",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,5 61,35 95,35 67,55 78,85 50,67 22,85 33,55 5,35 39,35' fill='%23C45D3E'/></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

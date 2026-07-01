@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Sítio Labareda — Roça & Arte. Hospedagem, arte e cultura em Serra Grande, Costa do Cacau, Sul da Bahia.">
+  <meta name="keywords" content="Sítio Labareda, Serra Grande, Costa do Cacau, Bahia, hospedagem, pousada, arte, roça">
+  <meta name="author" content="Sítio Labareda">
+  <meta name="theme-color" content="#1a1a1a">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Sítio Labareda — Roça & Arte">
+  <meta property="og:description" content="Hospedagem, arte e cultura em Serra Grande, Costa do Cacau, Sul da Bahia.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://sitiolabareda.com">
+  <meta property="og:image" content="https://sitiolabareda.com/og-image.jpg">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:locale:alternate" content="en_US">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Sítio Labareda — Roça & Arte">
+  <meta name="twitter:description" content="Hospedagem, arte e cultura em Serra Grande, Costa do Cacau, Sul da Bahia.">
+
+  <title>Sítio Labareda — Roça & Arte</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,5 61,35 95,35 67,55 78,85 50,67 22,85 33,55 5,35 39,35' fill='%23C45D3E'/></svg>">
+</head>
+<body>
+
+  <!-- Skip Link -->
+  <a href="#main-content" class="skip-link" data-i18n="skip">Pular para o conteúdo</a>
+
+  <!-- ========== HEADER / NAV ========== -->
+  <header class="site-header" id="site-header" role="banner">
+    <div class="header-inner">
+      <a href="#hero" class="logo" aria-label="Sítio Labareda - Início">
+        <svg class="logo-star" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <polygon points="50,5 61,35 95,35 67,55 78,85 50,67 22,85 33,55 5,35 39,35" fill="currentColor"/>
+        </svg>
+        <span class="logo-text">LABAREDA</span>
+      </a>
+
+      <nav class="main-nav" id="main-nav" role="navigation" aria-label="Menu principal">
+        <ul class="nav-list">
+          <li><a href="#about" class="nav-link" data-i18n="nav_about">ABOUT</a></li>
+          <li><a href="#book" class="nav-link" data-i18n="nav_book">BOOK</a></li>
+          <li><a href="#radio" class="nav-link" data-i18n="nav_radio">RADIO</a></li>
+          <li><a href="#shop" class="nav-link" data-i18n="nav_shop">SHOP</a></li>
+          <li><a href="#journal" class="nav-link" data-i18n="nav_journal">JOURNAL</a></li>
+          <li><a href="#contact" class="nav-link" data-i18n="nav_contact">CONTACT</a></li>
+        </ul>
+      </nav>
+
+      <div class="header-actions">
+        <button class="lang-toggle" id="lang-toggle" aria-label="Mudar idioma" type="button">
+          <span class="lang-option active" data-lang="pt">PT</span>
+          <span class="lang-divider">|</span>
+          <span class="lang-option" data-lang="en">EN</span>
+        </button>
+
+        <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu" aria-expanded="false" type="button">
+          <span class="hamburger">
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+          </span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile Menu Overlay -->
+  <div class="mobile-menu-overlay" id="mobile-menu" role="dialog" aria-modal="true" aria-label="Menu de navegação">
+    <nav class="mobile-nav">
+      <ul class="mobile-nav-list">
+        <li><a href="#about" class="mobile-nav-link" data-i18n="nav_about">ABOUT</a></li>
+        <li><a href="#book" class="mobile-nav-link" data-i18n="nav_book">BOOK</a></li>
+        <li><a href="#radio" class="mobile-nav-link" data-i18n="nav_radio">RADIO</a></li>
+        <li><a href="#shop" class="mobile-nav-link" data-i18n="nav_shop">SHOP</a></li>
+        <li><a href="#journal" class="mobile-nav-link" data-i18n="nav_journal">JOURNAL</a></li>
+        <li><a href="#contact" class="mobile-nav-link" data-i18n="nav_contact">CONTACT</a></li>
+      </ul>
+      <div class="mobile-menu-footer">
+        <p>Serra Grande &middot; Costa do Cacau &middot; Bahia</p>
+      </div>
+    </nav>
+  </div>
+
+  <!-- ========== MAIN CONTENT ========== -->
+  <main id="main-content">
+
+    <!-- ===== HERO ===== -->
+    <section class="hero" id="hero" aria-label="Hero">
+      <div class="hero-bg">
+        <div class="hero-video-placeholder" aria-hidden="true"></div>
+        <div class="hero-overlay"></div>
+      </div>
+      <div class="hero-content reveal">
+        <svg class="hero-star" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <polygon points="50,5 61,35 95,35 67,55 78,85 50,67 22,85 33,55 5,35 39,35" fill="currentColor"/>
+        </svg>
+        <h1 class="hero-title">LABAREDA</h1>
+        <p class="hero-tagline">ROÇA &amp; ARTE</p>
+        <p class="hero-location" data-i18n="hero_location">Serra Grande &middot; Costa do Cacau &middot; Bahia</p>
+      </div>
+      <a href="#about" class="hero-scroll-indicator" aria-label="Scroll down">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path d="M12 5v14M5 12l7 7 7-7"/>
+        </svg>
+      </a>
+    </section>
+
+    <!-- ===== ABOUT ===== -->
+    <section class="section section--about" id="about" aria-labelledby="about-title">
+      <div class="container">
+        <div class="section-grid section-grid--about">
+          <div class="about-text reveal">
+            <span class="section-label" data-i18n="about_label">Sobre nós</span>
+            <h2 class="section-title" id="about-title" data-i18n="about_title">Uma história que nasce da terra</h2>
+            <p class="about-description" data-i18n="about_p1">
+              Encravado entre a Mata Atlântica e o oceano, o Sítio Labareda é um refúgio onde a arte encontra a roça. Em Serra Grande, no coração da Costa do Cacau, cultivamos cacau, histórias e uma hospitalidade que nasce da simplicidade da vida no campo.
+            </p>
+            <p class="about-description" data-i18n="about_p2">
+              Aqui, o ritmo é ditado pelo canto dos pássaros, pelo cheiro do cacau fermentando e pela brisa que vem do mar. Cada canto do sítio carrega a estética da xilogravura nordestina — rústica, forte, verdadeira. Venha viver a experiência Labareda.
+            </p>
+          </div>
+          <div class="about-visual reveal reveal--delay-1">
+            <div class="about-image-placeholder" aria-label="Imagem do Sítio Labareda">
+              <div class="placeholder-pattern"></div>
+            </div>
+            <div class="about-detail">
+              <span class="detail-label" data-i18n="about_detail_label">Localização</span>
+              <span class="detail-value" data-i18n="about_detail_value">Serra Grande, Uruçuca — BA</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== BOOK ===== -->
+    <section class="section section--book" id="book" aria-labelledby="book-title">
+      <div class="book-gallery">
+        <div class="book-gallery-track" id="book-gallery-track">
+          <div class="book-slide" aria-label="Imagem 1">
+            <div class="book-slide-placeholder" style="--slide-hue: 15;"></div>
+          </div>
+          <div class="book-slide" aria-label="Imagem 2">
+            <div class="book-slide-placeholder" style="--slide-hue: 130;"></div>
+          </div>
+          <div class="book-slide" aria-label="Imagem 3">
+            <div class="book-slide-placeholder" style="--slide-hue: 35;"></div>
+          </div>
+          <div class="book-slide" aria-label="Imagem 4">
+            <div class="book-slide-placeholder" style="--slide-hue: 20;"></div>
+          </div>
+          <div class="book-slide" aria-label="Imagem 5">
+            <div class="book-slide-placeholder" style="--slide-hue: 90;"></div>
+          </div>
+        </div>
+        <div class="book-gallery-dots" role="tablist" aria-label="Galeria de fotos">
+          <button class="gallery-dot active" role="tab" aria-selected="true" aria-label="Foto 1" data-slide="0"></button>
+          <button class="gallery-dot" role="tab" aria-selected="false" aria-label="Foto 2" data-slide="1"></button>
+          <button class="gallery-dot" role="tab" aria-selected="false" aria-label="Foto 3" data-slide="2"></button>
+          <button class="gallery-dot" role="tab" aria-selected="false" aria-label="Foto 4" data-slide="3"></button>
+          <button class="gallery-dot" role="tab" aria-selected="false" aria-label="Foto 5" data-slide="4"></button>
+        </div>
+      </div>
+      <div class="book-content reveal">
+        <span class="section-label" data-i18n="book_label">Hospedagem</span>
+        <h2 class="section-title" id="book-title" data-i18n="book_title">Sua estadia na roça</h2>
+        <p class="book-description" data-i18n="book_description">
+          Quartos rústicos com alma artística, cercados pela Mata Atlântica. Café da manhã com frutas do sítio, cacau fresco e o som do rio ao fundo. Uma experiência sensorial completa.
+        </p>
+        <a href="#airbnb" class="btn btn--primary btn--large" data-i18n="book_cta" target="_blank" rel="noopener noreferrer">
+          BOOK NOW
+        </a>
+      </div>
+    </section>
+
+    <!-- ===== RADIO ===== -->
+    <section class="section section--radio" id="radio" aria-labelledby="radio-title">
+      <div class="container">
+        <div class="section-header reveal">
+          <span class="section-label" data-i18n="radio_label">Rádio</span>
+          <h2 class="section-title" id="radio-title" data-i18n="radio_title">Labareda Radio</h2>
+          <p class="section-subtitle" data-i18n="radio_subtitle">A trilha sonora da roça. Ouça nossas playlists curadas.</p>
+        </div>
+        <div class="radio-grid">
+          <div class="radio-card reveal reveal--delay-1">
+            <div class="radio-vinyl" aria-hidden="true">
+              <div class="vinyl-disc">
+                <div class="vinyl-label" style="--vinyl-color: var(--terracota);">
+                  <span>01</span>
+                </div>
+              </div>
+            </div>
+            <h3 class="radio-card-title" data-i18n="radio_pl1_title">Manhãs na Roça</h3>
+            <p class="radio-card-desc" data-i18n="radio_pl1_desc">MPB, bossa nova e sons da natureza para começar o dia.</p>
+            <div class="radio-embed">
+              <iframe
+                title="Playlist Manhãs na Roça"
+                style="border-radius:12px"
+                src="https://open.spotify.com/embed/playlist/37i9dQZF1DX0FOF1IUWK1W?utm_source=generator&theme=0"
+                width="100%" height="152"
+                frameBorder="0"
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                loading="lazy">
+              </iframe>
+            </div>
+          </div>
+          <div class="radio-card reveal reveal--delay-2">
+            <div class="radio-vinyl" aria-hidden="true">
+              <div class="vinyl-disc">
+                <div class="vinyl-label" style="--vinyl-color: var(--verde);">
+                  <span>02</span>
+                </div>
+              </div>
+            </div>
+            <h3 class="radio-card-title" data-i18n="radio_pl2_title">Tropicália Eterna</h3>
+            <p class="radio-card-desc" data-i18n="radio_pl2_desc">Gil, Caetano, Tom Zé e a revolução sonora brasileira.</p>
+            <div class="radio-embed">
+              <iframe
+                title="Playlist Tropicália Eterna"
+                style="border-radius:12px"
+                src="https://open.spotify.com/embed/playlist/37i9dQZF1DX1MusMBbaPpF?utm_source=generator&theme=0"
+                width="100%" height="152"
+                frameBorder="0"
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                loading="lazy">
+              </iframe>
+            </div>
+          </div>
+          <div class="radio-card reveal reveal--delay-3">
+            <div class="radio-vinyl" aria-hidden="true">
+              <div class="vinyl-disc">
+                <div class="vinyl-label" style="--vinyl-color: var(--dourado);">
+                  <span>03</span>
+                </div>
+              </div>
+            </div>
+            <h3 class="radio-card-title" data-i18n="radio_pl3_title">Noites de Fogueira</h3>
+            <p class="radio-card-desc" data-i18n="radio_pl3_desc">Forró pé-de-serra, viola e cantigas para noites estreladas.</p>
+            <div class="radio-embed">
+              <iframe
+                title="Playlist Noites de Fogueira"
+                style="border-radius:12px"
+                src="https://open.spotify.com/embed/playlist/37i9dQZF1DWTwzVdyRpXm1?utm_source=generator&theme=0"
+                width="100%" height="152"
+                frameBorder="0"
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                loading="lazy">
+              </iframe>
+            </div>
+          </div>
+          <div class="radio-card reveal reveal--delay-4">
+            <div class="radio-vinyl" aria-hidden="true">
+              <div class="vinyl-disc">
+                <div class="vinyl-label" style="--vinyl-color: var(--areia);">
+                  <span>04</span>
+                </div>
+              </div>
+            </div>
+            <h3 class="radio-card-title" data-i18n="radio_pl4_title">Cacau & Jazz</h3>
+            <p class="radio-card-desc" data-i18n="radio_pl4_desc">Jazz brasileiro, instrumental e o ritmo calmo do entardecer.</p>
+            <div class="radio-embed">
+              <iframe
+                title="Playlist Cacau & Jazz"
+                style="border-radius:12px"
+                src="https://open.spotify.com/embed/playlist/37i9dQZF1DX4wta20PHgwo?utm_source=generator&theme=0"
+                width="100%" height="152"
+                frameBorder="0"
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                loading="lazy">
+              </iframe>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== SHOP ===== -->
+    <section class="section section--shop" id="shop" aria-labelledby="shop-title">
+      <div class="container">
+        <div class="section-header reveal">
+          <span class="section-label" data-i18n="shop_label">Loja</span>
+          <h2 class="section-title" id="shop-title" data-i18n="shop_title">Da roça pra você</h2>
+          <p class="section-subtitle" data-i18n="shop_subtitle">Produtos artesanais feitos com amor e matéria-prima local.</p>
+        </div>
+
+        <div class="shop-categories" role="tablist" aria-label="Categorias de produtos">
+          <button class="shop-cat-btn active" role="tab" aria-selected="true" data-category="all" data-i18n="shop_cat_all">Todos</button>
+          <button class="shop-cat-btn" role="tab" aria-selected="false" data-category="vestuario" data-i18n="shop_cat_clothing">Vestuário</button>
+          <button class="shop-cat-btn" role="tab" aria-selected="false" data-category="artes" data-i18n="shop_cat_art">Artes</button>
+          <button class="shop-cat-btn" role="tab" aria-selected="false" data-category="cosmeticos" data-i18n="shop_cat_cosmetics">Cosméticos</button>
+          <button class="shop-cat-btn" role="tab" aria-selected="false" data-category="alimentos" data-i18n="shop_cat_food">Alimentos</button>
+        </div>
+
+        <div class="shop-grid" id="shop-grid">
+          <!-- Vestuário -->
+          <article class="product-card reveal" data-category="vestuario">
+            <div class="product-image">
+              <div class="product-image-placeholder" style="--product-hue: 15;"></div>
+              <span class="product-badge" data-i18n="shop_badge_new">Novo</span>
+            </div>
+            <div class="product-info">
+              <span class="product-category" data-i18n="shop_cat_clothing">Vestuário</span>
+              <h3 class="product-name">Camiseta Tropicália</h3>
+              <p class="product-price">R$ 89,90</p>
+              <a href="#" class="product-link" data-i18n="shop_view">Ver produto</a>
+            </div>
+          </article>
+
+          <article class="product-card reveal reveal--delay-1" data-category="vestuario">
+            <div class="product-image">
+              <div class="product-image-placeholder" style="--product-hue: 25;"></div>
+            </div>
+            <div class="product-info">
+              <span class="product-category" data-i18n="shop_cat_clothing">Vestuário</span>
+              <h3 class="product-name">Bucket Hat Labareda</h3>
+              <p class="product-price">R$ 69,90</p>
+              <a href="#" class="product-link" data-i18n="shop_view">Ver produto</a>
+            </div>
+          </article>
+
+          <!-- Artes -->
+          <article class="product-card reveal reveal--delay-2" data-category="artes">
+            <div class="product-image">
+              <div class="product-image-placeholder" style="--product-hue: 40;"></div>
+            </div>
+            <div class="product-info">
+              <span class="product-category" data-i18n="shop_cat_art">Artes</span>
+              <h3 class="product-name" data-i18n="shop_xilo_name">Xilogravura "Mata Viva"</h3>
+              <p class="product-price">R$ 220,00</p>
+              <a href="#" class="product-link" data-i18n="shop_view">Ver produto</a>
+            </div>
+          </article>
+
+          <article class="product-card reveal reveal--delay-3" data-category="artes">
+            <div class="product-image">
+              <div class="product-image-placeholder" style="--product-hue: 200;"></div>
+            </div>
+            <div class="product-info">
+              <span class="product-category" data-i18n="shop_cat_art">Artes</span>
+              <h3 class="product-name" data-i18n="shop_ceramic_name">Cerâmica Mangue</h3>
+              <p class="product-price">R$ 180,00</p>
+              <a href="#" class="product-link" data-i18n="shop_view">Ver produto</a>
+            </div>
+          </article>
+
+          <!-- Cosméticos -->
+          <article class="product-card reveal" data-category="cosmeticos">
+            <div class="product-image">
+              <div class="product-image-placeholder" style="--product-hue: 130;"></div>
+            </div>
+            <div class="product-info">
+              <span class="product-category" data-i18n="shop_cat_cosmetics">Cosméticos</span>
+              <h3 class="product-name" data-i18n="shop_soap_name">Sabonete Serra Grande</h3>
+              <p class="product-price">R$ 32,00</p>
+              <a href="#" class="product-link" data-i18n="shop_view">Ver produto</a>
+            </div>
+          </article>
+
+          <article class="product-card reveal reveal--delay-1" data-category="cosmeticos">
+            <div class="product-image">
+              <div class="product-image-placeholder" style="--product-hue: 50;"></div>
+            </div>
+            <div class="product-info">
+              <span class="product-category" data-i18n="shop_cat_cosmetics">Cosméticos</span>
+              <h3 class="product-name" data-i18n="shop_oil_name">Óleo de Cacau Puro</h3>
+              <p class="product-price">R$ 48,00</p>
+              <a href="#" class="product-link" data-i18n="shop_view">Ver produto</a>
+            </div>
+          </article>
+
+          <!-- Alimentos -->
+          <article class="product-card reveal reveal--delay-2" data-category="alimentos">
+            <div class="product-image">
+              <div class="product-image-placeholder" style="--product-hue: 20;"></div>
+            </div>
+            <div class="product-info">
+              <span class="product-category" data-i18n="shop_cat_food">Alimentos</span>
+              <h3 class="product-name" data-i18n="shop_choc_name">Chocolate Cacau 70%</h3>
+              <p class="product-price">R$ 28,00</p>
+              <a href="#" class="product-link" data-i18n="shop_view">Ver produto</a>
+            </div>
+          </article>
+
+          <article class="product-card reveal reveal--delay-3" data-category="alimentos">
+            <div class="product-image">
+              <div class="product-image-placeholder" style="--product-hue: 45;"></div>
+            </div>
+            <div class="product-info">
+              <span class="product-category" data-i18n="shop_cat_food">Alimentos</span>
+              <h3 class="product-name" data-i18n="shop_honey_name">Mel da Mata Atlântica</h3>
+              <p class="product-price">R$ 45,00</p>
+              <a href="#" class="product-link" data-i18n="shop_view">Ver produto</a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== JOURNAL ===== -->
+    <section class="section section--journal" id="journal" aria-labelledby="journal-title">
+      <div class="container">
+        <div class="section-header reveal">
+          <span class="section-label" data-i18n="journal_label">Diário</span>
+          <h2 class="section-title" id="journal-title" data-i18n="journal_title">Journal</h2>
+          <p class="section-subtitle" data-i18n="journal_subtitle">Histórias, imagens e crônicas da vida na roça.</p>
+        </div>
+
+        <div class="journal-grid">
+          <article class="journal-card journal-card--large reveal">
+            <div class="journal-card-image">
+              <div class="journal-image-placeholder" style="--journal-hue: 130; --journal-sat: 35%;"></div>
+            </div>
+            <div class="journal-card-content">
+              <time class="journal-date" datetime="2026-06-15">15 Jun 2026</time>
+              <h3 class="journal-card-title" data-i18n="journal_1_title">A colheita do cacau: ritual e tradição</h3>
+              <p class="journal-card-excerpt" data-i18n="journal_1_excerpt">
+                Quando o fruto do cacaueiro atinge a cor dourada, começa um ritual que conecta gerações. Cada etapa — da quebra à fermentação — carrega o saber ancestral dos trabalhadores da terra.
+              </p>
+            </div>
+          </article>
+
+          <article class="journal-card reveal reveal--delay-1">
+            <div class="journal-card-image">
+              <div class="journal-image-placeholder" style="--journal-hue: 15; --journal-sat: 50%;"></div>
+            </div>
+            <div class="journal-card-content">
+              <time class="journal-date" datetime="2026-05-28">28 Mai 2026</time>
+              <h3 class="journal-card-title" data-i18n="journal_2_title">Xilogravura: a arte que pulsa</h3>
+              <p class="journal-card-excerpt" data-i18n="journal_2_excerpt">
+                Das mãos do artesão ao papel artesanal, cada entalhe conta uma história da cultura nordestina.
+              </p>
+            </div>
+          </article>
+
+          <article class="journal-card reveal reveal--delay-2">
+            <div class="journal-card-image">
+              <div class="journal-image-placeholder" style="--journal-hue: 200; --journal-sat: 30%;"></div>
+            </div>
+            <div class="journal-card-content">
+              <time class="journal-date" datetime="2026-05-10">10 Mai 2026</time>
+              <h3 class="journal-card-title" data-i18n="journal_3_title">Receitas da roça: bolo de aipim</h3>
+              <p class="journal-card-excerpt" data-i18n="journal_3_excerpt">
+                Uma receita passada de geração em geração, com aipim fresco colhido no terreiro.
+              </p>
+            </div>
+          </article>
+
+          <article class="journal-card reveal reveal--delay-3">
+            <div class="journal-card-image">
+              <div class="journal-image-placeholder" style="--journal-hue: 45; --journal-sat: 40%;"></div>
+            </div>
+            <div class="journal-card-content">
+              <time class="journal-date" datetime="2026-04-22">22 Abr 2026</time>
+              <h3 class="journal-card-title" data-i18n="journal_4_title">Pôr do sol em Serra Grande</h3>
+              <p class="journal-card-excerpt" data-i18n="journal_4_excerpt">
+                Do mirante do sítio, o horizonte se incendeia todas as tardes — uma labareda no céu.
+              </p>
+            </div>
+          </article>
+
+          <article class="journal-card journal-card--wide reveal">
+            <div class="journal-card-image">
+              <div class="journal-image-placeholder" style="--journal-hue: 100; --journal-sat: 25%;"></div>
+            </div>
+            <div class="journal-card-content">
+              <time class="journal-date" datetime="2026-04-05">05 Abr 2026</time>
+              <h3 class="journal-card-title" data-i18n="journal_5_title">Caminhos da Mata Atlântica</h3>
+              <p class="journal-card-excerpt" data-i18n="journal_5_excerpt">
+                Trilhas que serpenteiam entre árvores centenárias, bromélias e o murmúrio dos riachos. Um convite para desacelerar.
+              </p>
+            </div>
+          </article>
+
+          <article class="journal-card reveal reveal--delay-1">
+            <div class="journal-card-image">
+              <div class="journal-image-placeholder" style="--journal-hue: 350; --journal-sat: 35%;"></div>
+            </div>
+            <div class="journal-card-content">
+              <time class="journal-date" datetime="2026-03-18">18 Mar 2026</time>
+              <h3 class="journal-card-title" data-i18n="journal_6_title">Música ao redor da fogueira</h3>
+              <p class="journal-card-excerpt" data-i18n="journal_6_excerpt">
+                Violão, estrelas e histórias. A fogueira reúne hóspedes e moradores numa roda que não tem hora pra acabar.
+              </p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CONTACT ===== -->
+    <section class="section section--contact" id="contact" aria-labelledby="contact-title">
+      <div class="container">
+        <div class="contact-grid">
+          <div class="contact-info reveal">
+            <span class="section-label" data-i18n="contact_label">Contato</span>
+            <h2 class="section-title" id="contact-title" data-i18n="contact_title">Fale conosco</h2>
+            <p class="contact-description" data-i18n="contact_description">
+              Tem perguntas, quer reservar ou simplesmente dizer olá? Escreva pra gente.
+            </p>
+            <address class="contact-details">
+              <div class="contact-detail">
+                <span class="contact-detail-label" data-i18n="contact_address_label">Endereço</span>
+                <span class="contact-detail-value" data-i18n="contact_address_value">
+                  Rodovia BA-001, KM 39,5<br>
+                  Serra Grande, Uruçuca/BA<br>
+                  Brasil
+                </span>
+              </div>
+              <div class="contact-detail">
+                <span class="contact-detail-label">E-mail</span>
+                <a href="mailto:sitiolabareda@gmail.com" class="contact-detail-value contact-email">
+                  sitiolabareda@gmail.com
+                </a>
+              </div>
+              <div class="contact-detail">
+                <span class="contact-detail-label" data-i18n="contact_social_label">Social</span>
+                <a href="https://instagram.com/sitiolabareda" target="_blank" rel="noopener noreferrer" class="contact-detail-value contact-social">
+                  @sitiolabareda
+                </a>
+              </div>
+            </address>
+          </div>
+
+          <form class="contact-form reveal reveal--delay-1" id="contact-form" action="mailto:sitiolabareda@gmail.com" method="POST" enctype="text/plain">
+            <div class="form-group">
+              <label for="contact-name" class="form-label" data-i18n="contact_name_label">Nome</label>
+              <input type="text" id="contact-name" name="name" class="form-input" required autocomplete="name" data-i18n-placeholder="contact_name_placeholder" placeholder="Seu nome">
+            </div>
+            <div class="form-group">
+              <label for="contact-email" class="form-label" data-i18n="contact_email_label">E-mail</label>
+              <input type="email" id="contact-email" name="email" class="form-input" required autocomplete="email" data-i18n-placeholder="contact_email_placeholder" placeholder="seu@email.com">
+            </div>
+            <div class="form-group">
+              <label for="contact-message" class="form-label" data-i18n="contact_message_label">Mensagem</label>
+              <textarea id="contact-message" name="message" class="form-input form-textarea" rows="5" required data-i18n-placeholder="contact_message_placeholder" placeholder="Sua mensagem..."></textarea>
+            </div>
+            <button type="submit" class="btn btn--primary btn--full" data-i18n="contact_submit">Enviar mensagem</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========== FOOTER ========== -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="#hero" class="footer-logo" aria-label="Sítio Labareda">
+            <svg class="footer-star" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <polygon points="50,5 61,35 95,35 67,55 78,85 50,67 22,85 33,55 5,35 39,35" fill="currentColor"/>
+            </svg>
+            <span class="footer-logo-text">LABAREDA</span>
+          </a>
+          <p class="footer-tagline">ROÇA &amp; ARTE</p>
+          <p class="footer-location" data-i18n="footer_location">Serra Grande, Costa do Cacau, Bahia, Brasil</p>
+        </div>
+
+        <nav class="footer-nav" aria-label="Links do footer">
+          <h3 class="footer-nav-title" data-i18n="footer_nav_title">Navegação</h3>
+          <ul class="footer-nav-list">
+            <li><a href="#about" data-i18n="nav_about">ABOUT</a></li>
+            <li><a href="#book" data-i18n="nav_book">BOOK</a></li>
+            <li><a href="#radio" data-i18n="nav_radio">RADIO</a></li>
+            <li><a href="#shop" data-i18n="nav_shop">SHOP</a></li>
+            <li><a href="#journal" data-i18n="nav_journal">JOURNAL</a></li>
+            <li><a href="#contact" data-i18n="nav_contact">CONTACT</a></li>
+          </ul>
+        </nav>
+
+        <div class="footer-contact">
+          <h3 class="footer-nav-title" data-i18n="footer_contact_title">Contato</h3>
+          <a href="mailto:sitiolabareda@gmail.com" class="footer-email">sitiolabareda@gmail.com</a>
+          <a href="https://instagram.com/sitiolabareda" target="_blank" rel="noopener noreferrer" class="footer-social">
+            Instagram @sitiolabareda
+          </a>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p class="footer-copyright">&copy; 2026 Sítio Labareda. <span data-i18n="footer_rights">Todos os direitos reservados.</span></p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ========== COOKIE BANNER ========== -->
+  <div class="cookie-banner" id="cookie-banner" role="dialog" aria-label="Aviso de cookies" aria-describedby="cookie-text">
+    <div class="cookie-inner">
+      <p class="cookie-text" id="cookie-text" data-i18n="cookie_text">
+        Usamos cookies para melhorar sua experiência. Ao continuar navegando, você concorda com nossa política de privacidade.
+      </p>
+      <button class="btn btn--primary cookie-accept" id="cookie-accept" data-i18n="cookie_accept" type="button">
+        Aceitar
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal Journal Post -->
+  <div class="journal-modal-overlay" id="journal-modal" role="dialog" aria-modal="true" aria-label="Post do Journal">
+    <div class="journal-modal">
+      <button class="journal-modal__close" id="journal-modal-close" type="button" aria-label="Fechar">&times;</button>
+      <div class="journal-modal__image" id="journal-modal-image"></div>
+      <div class="journal-modal__body">
+        <time class="journal-modal__date" id="journal-modal-date"></time>
+        <h2 class="journal-modal__title" id="journal-modal-title"></h2>
+        <div class="journal-modal__content" id="journal-modal-content"></div>
+        <div class="journal-modal__tags" id="journal-modal-tags"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

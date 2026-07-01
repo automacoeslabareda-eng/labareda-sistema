@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a1a1a">
+  <title>Labareda Gestao - Dashboard</title>
+
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,5 61,35 95,35 67,55 78,85 50,67 22,85 33,55 5,35 39,35' fill='%23C45D3E'/></svg>">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar__header">
+      <svg class="sidebar__logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="50,5 61,35 95,35 67,55 78,85 50,67 22,85 33,55 5,35 39,35" fill="#C45D3E"/>
+      </svg>
+      <span class="sidebar__brand">LABAREDA GESTAO</span>
+    </div>
+
+    <!-- Seletor de propriedade -->
+    <div class="sidebar__propriedade">
+      <label class="sidebar__filter-label">Propriedade</label>
+      <select id="filtro-propriedade" class="sidebar__select" onchange="filtrarPropriedade()">
+        <option value="todas">Todas</option>
+      </select>
+    </div>
+
+    <div class="propriedade-banner" id="propriedade-banner"></div>
+
+    <nav class="sidebar__nav">
+      <button class="sidebar__link sidebar__link--active" data-page="visao-geral" onclick="navegarPara('visao-geral')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Visao Geral</span>
+      </button>
+      <button class="sidebar__link" data-page="colaboradores" onclick="navegarPara('colaboradores')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Colaboradores</span>
+      </button>
+      <button class="sidebar__link" data-page="tarefas" onclick="navegarPara('tarefas')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <span>Tarefas</span>
+      </button>
+      <button class="sidebar__link" data-page="rotinas" onclick="navegarPara('rotinas')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>Rotinas</span>
+      </button>
+      <button class="sidebar__link" data-page="relatorios" onclick="navegarPara('relatorios')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <span>Relatorios</span>
+      </button>
+      <button class="sidebar__link" data-page="configuracoes" onclick="navegarPara('configuracoes')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Configuracoes</span>
+      </button>
+    </nav>
+
+    <div class="sidebar__footer">
+      <p class="sidebar__version">Gestao v2.0</p>
+    </div>
+  </aside>
+
+  <!-- MOBILE HEADER -->
+  <header class="topbar" id="topbar">
+    <button class="topbar__hamburger" id="btn-menu" onclick="toggleSidebar()" aria-label="Abrir menu">
+      <span></span><span></span><span></span>
+    </button>
+    <span class="topbar__title" id="topbar-title">Visao Geral</span>
+  </header>
+
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <!-- CONTEUDO PRINCIPAL -->
+  <main class="main" id="main-content">
+
+    <!-- VISAO GERAL -->
+    <section class="page" id="page-visao-geral">
+      <h2 class="page__title">Visao Geral</h2>
+      <div class="cards-resumo" id="cards-resumo">
+        <div class="card-resumo">
+          <div class="card-resumo__icon card-resumo__icon--info">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          </div>
+          <div class="card-resumo__body">
+            <p class="card-resumo__valor" id="stat-colaboradores">--</p>
+            <p class="card-resumo__label">Colaboradores</p>
+          </div>
+        </div>
+        <div class="card-resumo">
+          <div class="card-resumo__icon card-resumo__icon--warning">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          </div>
+          <div class="card-resumo__body">
+            <p class="card-resumo__valor" id="stat-tarefas-ativas">--</p>
+            <p class="card-resumo__label">Tarefas Ativas</p>
+          </div>
+        </div>
+        <div class="card-resumo">
+          <div class="card-resumo__icon card-resumo__icon--success">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div class="card-resumo__body">
+            <p class="card-resumo__valor" id="stat-tarefas-concluidas">--</p>
+            <p class="card-resumo__label">Tarefas Concluidas</p>
+          </div>
+        </div>
+        <div class="card-resumo">
+          <div class="card-resumo__icon card-resumo__icon--danger">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </div>
+          <div class="card-resumo__body">
+            <p class="card-resumo__valor" id="stat-conclusao">--%</p>
+            <p class="card-resumo__label">% Conclusao</p>
+          </div>
+        </div>
+      </div>
+      <div class="section-card">
+        <h3 class="section-card__title">Ultimas 5 Tarefas</h3>
+        <div id="ultimas-tarefas" class="lista-simples">
+          <p class="placeholder">Carregando...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- COLABORADORES -->
+    <section class="page page--hidden" id="page-colaboradores">
+      <div class="page__header">
+        <h2 class="page__title">Colaboradores</h2>
+        <button class="btn btn--primary" onclick="abrirModalColaborador()">+ Novo Colaborador</button>
+      </div>
+      <div class="filtros">
+        <select id="filtro-colab-setor" class="filtro-select" onchange="carregarColaboradores()">
+          <option value="">Todos os setores</option>
+        </select>
+      </div>
+      <div class="table-wrapper">
+        <table class="tabela" id="tabela-colaboradores">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Email</th>
+              <th>Telefone</th>
+              <th>Funcao</th>
+              <th>Setor</th>
+              <th>Login</th>
+              <th>Status</th>
+              <th>Acoes</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-colaboradores">
+            <tr><td colspan="8" class="placeholder">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAREFAS -->
+    <section class="page page--hidden" id="page-tarefas">
+      <div class="page__header">
+        <h2 class="page__title">Tarefas</h2>
+      </div>
+      <div class="filtros">
+        <select id="filtro-tarefa-status" class="filtro-select" onchange="carregarTarefas()">
+          <option value="">Todos os status</option>
+          <option value="pendente">Pendente</option>
+          <option value="em_andamento">Em Andamento</option>
+          <option value="concluida">Concluida</option>
+          <option value="cancelada">Cancelada</option>
+        </select>
+      </div>
+      <div class="table-wrapper">
+        <table class="tabela" id="tabela-tarefas">
+          <thead>
+            <tr>
+              <th>Comando</th>
+              <th>Setor</th>
+              <th>Status</th>
+              <th>Prioridade</th>
+              <th>Data</th>
+              <th>Conclusao</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-tarefas">
+            <tr><td colspan="6" class="placeholder">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="section-card escondido" id="tarefa-detalhe">
+        <h3 class="section-card__title" id="tarefa-detalhe-titulo">Checklist</h3>
+        <div id="tarefa-checklist"></div>
+      </div>
+    </section>
+
+    <!-- ROTINAS -->
+    <section class="page page--hidden" id="page-rotinas">
+      <div class="page__header">
+        <h2 class="page__title">Rotinas Semanais</h2>
+      </div>
+      <div class="table-wrapper">
+        <table class="tabela" id="tabela-rotinas">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Setor</th>
+              <th>Dia</th>
+              <th>Hora</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-rotinas">
+            <tr><td colspan="5" class="placeholder">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="section-card escondido" id="rotina-detalhe">
+        <h3 class="section-card__title" id="rotina-detalhe-titulo">Itens da Rotina</h3>
+        <div id="rotina-items"></div>
+      </div>
+    </section>
+
+    <!-- RELATORIOS -->
+    <section class="page page--hidden" id="page-relatorios">
+      <div class="page__header">
+        <h2 class="page__title">Relatorios Semanais</h2>
+      </div>
+      <div class="table-wrapper">
+        <table class="tabela" id="tabela-relatorios">
+          <thead>
+            <tr>
+              <th>Periodo</th>
+              <th>% Conclusao</th>
+              <th>PDF</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-relatorios">
+            <tr><td colspan="3" class="placeholder">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- CONFIGURACOES -->
+    <section class="page page--hidden" id="page-configuracoes">
+      <h2 class="page__title">Configuracoes</h2>
+
+      <!-- Configuracoes da propriedade selecionada -->
+      <div class="section-card" id="config-propriedade-card">
+        <h3 class="section-card__title" id="config-prop-titulo">Configuracoes da Propriedade</h3>
+        <div id="config-propriedade-body">
+          <p class="placeholder">Selecione uma propriedade no filtro lateral</p>
+        </div>
+      </div>
+
+      <!-- Configuracoes extras (tabela configuracoes) -->
+      <div class="section-card">
+        <h3 class="section-card__title">Configuracoes Extras</h3>
+        <div class="table-wrapper" style="border:none;box-shadow:none">
+          <table class="tabela" id="tabela-config">
+            <thead>
+              <tr>
+                <th>Chave</th>
+                <th>Valor</th>
+                <th>Acoes</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-config">
+              <tr><td colspan="3" class="placeholder">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL -->
+  <div class="modal-overlay escondido" id="modal-overlay" onclick="fecharModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal__header">
+        <h3 class="modal__title" id="modal-titulo">Titulo</h3>
+        <button class="modal__close" onclick="fecharModal()">&times;</button>
+      </div>
+      <div class="modal__body" id="modal-body"></div>
+      <div class="modal__footer">
+        <button class="btn btn--secondary" onclick="fecharModal()">Cancelar</button>
+        <button class="btn btn--primary" id="modal-btn-salvar" onclick="salvarModal()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast escondido" id="toast"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
