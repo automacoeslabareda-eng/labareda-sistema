@@ -92,6 +92,8 @@
       radio_label: 'Radio',
       radio_title: 'Labareda Radio',
       radio_subtitle: 'A trilha sonora da roca. Ouca nossas playlists curadas.',
+      radio_aviso: 'Para ouvir as playlists completas, faca login no seu Spotify. Sem login, apenas previews de 30 segundos estao disponiveis.',
+      radio_abrir_spotify: 'Abrir Spotify',
       shop_label: 'Loja',
       shop_title: 'Da roca pra voce',
       shop_subtitle: 'Produtos artesanais feitos com amor e materia-prima local.',
@@ -142,6 +144,8 @@
       radio_label: 'Radio',
       radio_title: 'Labareda Radio',
       radio_subtitle: 'The soundtrack of the countryside. Listen to our curated playlists.',
+      radio_aviso: 'To listen to full playlists, log in to your Spotify. Without login, only 30-second previews are available.',
+      radio_abrir_spotify: 'Open Spotify',
       shop_label: 'Shop',
       shop_title: 'From the farm to you',
       shop_subtitle: 'Handcrafted products made with love and local ingredients.',
@@ -913,6 +917,59 @@
     loadJournal();
     loadRadio();
   }
+
+  /* ==========================================================================
+     MINI PLAYER — barra fixa no topo quando na seção Radio
+     ========================================================================== */
+  (function initMiniPlayer() {
+    var miniPlayer = document.getElementById('mini-player');
+    var miniTexto = document.getElementById('mini-player-texto');
+    var btnIr = document.getElementById('mini-player-ir');
+    var btnClose = document.getElementById('mini-player-close');
+    if (!miniPlayer) return;
+
+    var playerVisivel = false;
+    var playerFechado = false;
+
+    // Mostrar mini player quando o usuário sai da seção Radio
+    var radioSection = document.getElementById('radio');
+    if (radioSection) {
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            // Usuário está vendo a seção Radio
+            miniPlayer.classList.remove('visivel');
+            playerVisivel = false;
+            // Atualizar texto com primeira playlist
+            if (loadedPlaylists.length > 0) {
+              miniTexto.textContent = 'Tocando: ' + (loadedPlaylists[0].nome || 'Labareda Radio');
+            }
+          } else if (!playerFechado && loadedPlaylists.length > 0) {
+            // Usuário saiu da seção Radio — mostrar mini player
+            miniPlayer.style.display = '';
+            setTimeout(function() {
+              miniPlayer.classList.add('visivel');
+              playerVisivel = true;
+            }, 100);
+          }
+        });
+      }, { threshold: 0.1 });
+      observer.observe(radioSection);
+    }
+
+    if (btnIr) {
+      btnIr.addEventListener('click', function() {
+        document.getElementById('radio').scrollIntoView({ behavior: 'smooth' });
+      });
+    }
+
+    if (btnClose) {
+      btnClose.addEventListener('click', function() {
+        miniPlayer.classList.remove('visivel');
+        playerFechado = true;
+      });
+    }
+  })();
 
   /* ==========================================================================
      JOURNAL MODAL — abrir post completo

@@ -1513,6 +1513,146 @@ address {
 }
 
 /* ==========================================================================
+   MINI PLAYER (fixo no topo, abaixo do header)
+   ========================================================================== */
+.mini-player {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1500;
+  background: var(--preto, #1a1a1a);
+  color: #fff;
+  transform: translateY(-100%);
+  transition: transform .4s ease;
+}
+
+.mini-player.visivel {
+  transform: translateY(0);
+}
+
+.mini-player__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 8px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mini-player__eq {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 16px;
+}
+
+.mini-player__eq span {
+  width: 3px;
+  background: var(--terracota, #C45D3E);
+  border-radius: 1px;
+  animation: eqBounce .6s ease infinite alternate;
+}
+
+.mini-player__eq span:nth-child(1) { height: 6px; animation-delay: 0s; }
+.mini-player__eq span:nth-child(2) { height: 12px; animation-delay: .15s; }
+.mini-player__eq span:nth-child(3) { height: 8px; animation-delay: .3s; }
+.mini-player__eq span:nth-child(4) { height: 14px; animation-delay: .45s; }
+
+@keyframes eqBounce {
+  0% { height: 4px; }
+  100% { height: 16px; }
+}
+
+.mini-player__texto {
+  flex: 1;
+  font-size: .8rem;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-player__btn {
+  background: var(--terracota, #C45D3E);
+  color: #fff;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: .75rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .2s;
+}
+
+.mini-player__btn:hover { background: var(--terracota-escuro, #a94d33); }
+
+.mini-player__close {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+
+.mini-player__close:hover { color: #fff; }
+
+/* ==========================================================================
+   RADIO AVISO
+   ========================================================================== */
+.radio-aviso {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--areia, #E8DCC8);
+  border-radius: 12px;
+  padding: 16px 24px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+
+.radio-aviso__icone {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.radio-aviso__texto {
+  flex: 1;
+  min-width: 200px;
+  font-size: .9rem;
+  line-height: 1.5;
+  color: var(--preto, #1a1a1a);
+  margin: 0;
+}
+
+.radio-aviso__link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #1DB954;
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 24px;
+  text-decoration: none;
+  font-size: .85rem;
+  font-weight: 600;
+  transition: background .2s;
+  flex-shrink: 0;
+}
+
+.radio-aviso__link:hover { background: #1aa34a; }
+
+.radio-aviso__link svg { flex-shrink: 0; }
+
+@media (max-width: 600px) {
+  .radio-aviso { flex-direction: column; text-align: center; }
+  .mini-player__btn { display: none; }
+}
+
+/* ==========================================================================
    JOURNAL MODAL
    ========================================================================== */
 .journal-modal-overlay {
