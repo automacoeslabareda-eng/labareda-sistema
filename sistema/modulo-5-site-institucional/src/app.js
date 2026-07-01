@@ -110,7 +110,7 @@
       radio_label: 'R\u00e1dio',
       radio_title: 'Labareda Radio',
       radio_subtitle: 'A trilha sonora da ro\u00e7a. Ou\u00e7a nossas playlists curadas.',
-      radio_aviso: 'Para ouvir as playlists completas, fa\u00e7a login no seu Spotify. Sem login, apenas previews de 30 segundos est\u00e3o dispon\u00edveis.',
+      radio_aviso: 'Ou\u00e7a nossas playlists completas! Acesse o Spotify, salve na sua biblioteca e leve a trilha sonora da Labareda para onde quiser.',
       radio_abrir_spotify: 'Abrir Spotify',
       shop_label: 'Loja',
       shop_title: 'Leve um peda\u00e7o para casa',
@@ -207,7 +207,7 @@
       radio_label: 'Radio',
       radio_title: 'Labareda Radio',
       radio_subtitle: 'The soundtrack of the countryside. Listen to our curated playlists.',
-      radio_aviso: 'To listen to full playlists, log in to your Spotify. Without login, only 30-second previews are available.',
+      radio_aviso: 'Listen to our full playlists! Open Spotify, save to your library and take the Labareda soundtrack wherever you go.',
       radio_abrir_spotify: 'Open Spotify',
       shop_label: 'Shop',
       shop_title: 'Take a piece home',
@@ -731,24 +731,40 @@
       var vinylColor = vinylColors[idx % vinylColors.length];
       var delayClass = delays[idx % delays.length];
 
-      var embedHTML = '';
+      /* Build embed URL */
+      var embedSrc = '';
+      var spotifyOpenUrl = '';
       if (pl.spotify_embed_url || pl.spotify_url) {
-        var embedSrc = pl.spotify_embed_url || pl.spotify_url;
-        /* Convert regular Spotify URL to embed URL if needed */
+        embedSrc = pl.spotify_embed_url || pl.spotify_url;
+        /* Get the open.spotify URL for the "Ouvir" button */
+        spotifyOpenUrl = embedSrc.replace('/embed/', '/');
+        /* Ensure embed format */
         if (embedSrc.indexOf('/embed/') === -1 && embedSrc.indexOf('open.spotify.com') !== -1) {
           embedSrc = embedSrc.replace('open.spotify.com/', 'open.spotify.com/embed/');
         }
         if (embedSrc.indexOf('?') === -1) {
           embedSrc += '?utm_source=generator&theme=0';
         }
-        embedHTML = '<div class="radio-embed">'
+      }
+
+      var embedHTML = embedSrc
+        ? '<div class="radio-embed">'
           + '<iframe title="' + title + '" style="border-radius:12px" '
           + 'src="' + embedSrc + '" '
-          + 'width="100%" height="480" frameBorder="0" '
+          + 'width="100%" height="152" frameBorder="0" '
           + 'allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" '
           + 'loading="lazy"></iframe>'
-          + '</div>';
-      }
+          + '</div>'
+        : '';
+
+      var openBtnPt = currentLang === 'pt' ? 'Ouvir playlist completa no Spotify' : 'Listen full playlist on Spotify';
+
+      var openBtnHTML = spotifyOpenUrl
+        ? '<a href="' + spotifyOpenUrl + '" target="_blank" rel="noopener noreferrer" class="radio-open-btn">'
+          + '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>'
+          + '<span>' + openBtnPt + '</span>'
+          + '</a>'
+        : '';
 
       gridHTML += '<div class="radio-card reveal' + delayClass + '">'
         + '<div class="radio-vinyl" aria-hidden="true">'
@@ -758,6 +774,7 @@
         + '</div>'
         + '<h3 class="radio-card-title">' + title + '</h3>'
         + '<p class="radio-card-desc">' + (desc || '') + '</p>'
+        + openBtnHTML
         + embedHTML
         + '</div>';
     });

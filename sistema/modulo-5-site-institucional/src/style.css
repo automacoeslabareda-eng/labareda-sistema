@@ -1703,6 +1703,29 @@ address {
 
 .radio-aviso__link svg { flex-shrink: 0; }
 
+.radio-open-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #1DB954;
+  color: #fff;
+  padding: 14px 24px;
+  border-radius: 32px;
+  text-decoration: none;
+  font-size: .9rem;
+  font-weight: 600;
+  margin: 16px 0;
+  transition: background .2s, transform .2s;
+}
+
+.radio-open-btn:hover {
+  background: #1aa34a;
+  transform: scale(1.03);
+}
+
+.radio-open-btn svg { flex-shrink: 0; }
+
 @media (max-width: 600px) {
   .radio-aviso { flex-direction: column; text-align: center; }
   .mini-player__btn { display: none; }
