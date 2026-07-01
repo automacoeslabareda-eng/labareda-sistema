@@ -523,6 +523,62 @@ address {
   color: var(--areia);
 }
 
+.hero-headline {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  font-weight: 400;
+  font-style: italic;
+  line-height: 1.2;
+  margin-bottom: 16px;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.hero-subheadline {
+  font-size: clamp(0.9rem, 1.8vw, 1.1rem);
+  font-weight: 300;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.7);
+  max-width: 600px;
+  margin: 0 auto 32px;
+}
+
+.hero-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.btn--whatsapp {
+  background-color: #25D366;
+  color: #fff;
+}
+
+.btn--whatsapp:hover,
+.btn--whatsapp:focus-visible {
+  background-color: #1da851;
+  transform: translateY(-1px);
+}
+
+.hero-microbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.hero-microbar-dot {
+  color: rgba(255, 255, 255, 0.25);
+}
+
 .hero-location {
   font-size: 0.8rem;
   font-weight: 300;
@@ -1785,6 +1841,301 @@ address {
 }
 
 /* ==========================================================================
+   EXPERIENCE PILLARS
+   ========================================================================== */
+.section--experience {
+  background-color: var(--creme);
+}
+
+.pillars-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 32px;
+}
+
+.pillar-card {
+  text-align: center;
+  padding: 40px 24px;
+  background: var(--branco);
+  border-radius: 2px;
+  transition: transform var(--transition-medium), box-shadow var(--transition-medium);
+}
+
+.pillar-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(26, 26, 26, 0.06);
+}
+
+.pillar-icon {
+  display: block;
+  font-size: 2.5rem;
+  margin-bottom: 16px;
+  line-height: 1;
+}
+
+.pillar-title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 400;
+  margin-bottom: 10px;
+  line-height: 1.2;
+}
+
+.pillar-text {
+  font-size: 0.95rem;
+  color: var(--cinza);
+  line-height: 1.6;
+}
+
+@media (min-width: 768px) {
+  .pillars-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+}
+
+/* ==========================================================================
+   TESTIMONIALS
+   ========================================================================== */
+.section--testimonials {
+  background-color: var(--preto);
+  color: var(--branco);
+}
+
+.section--testimonials .section-label {
+  color: var(--dourado);
+}
+
+.section--testimonials .section-title {
+  color: var(--branco);
+}
+
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+}
+
+.testimonial-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  padding: 40px 32px;
+  position: relative;
+}
+
+.testimonial-card::before {
+  content: '\201C';
+  font-family: var(--font-display);
+  font-size: 4rem;
+  color: var(--terracota);
+  position: absolute;
+  top: 12px;
+  left: 24px;
+  line-height: 1;
+  opacity: 0.6;
+}
+
+.testimonial-quote {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-style: italic;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 24px;
+  padding-top: 16px;
+}
+
+.testimonial-author {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.testimonial-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--branco);
+}
+
+.testimonial-origin {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.1em;
+}
+
+@media (min-width: 768px) {
+  .testimonials-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ==========================================================================
+   FAQ ACCORDION
+   ========================================================================== */
+.section--faq {
+  background-color: var(--branco);
+}
+
+.faq-accordion {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.faq-item {
+  border-bottom: 1px solid var(--areia);
+}
+
+.faq-item:first-child {
+  border-top: 1px solid var(--areia);
+}
+
+.faq-question {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 24px 0;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 400;
+  color: var(--preto);
+  cursor: pointer;
+  list-style: none;
+  transition: color var(--transition-fast);
+}
+
+.faq-question::-webkit-details-marker {
+  display: none;
+}
+
+.faq-question::after {
+  content: '+';
+  font-family: var(--font-body);
+  font-size: 1.5rem;
+  font-weight: 300;
+  color: var(--terracota);
+  flex-shrink: 0;
+  margin-left: 16px;
+  transition: transform var(--transition-medium);
+}
+
+details[open] .faq-question::after {
+  content: '\2212';
+  transform: rotate(180deg);
+}
+
+.faq-question:hover {
+  color: var(--terracota);
+}
+
+.faq-answer {
+  padding: 0 0 24px;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--cinza);
+  max-width: 700px;
+}
+
+/* ==========================================================================
+   BOOK DUAL CTA
+   ========================================================================== */
+.book-ctas {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.book-ctas .btn--whatsapp {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+  padding: 12px 24px;
+}
+
+.book-ctas .btn--whatsapp:hover {
+  background-color: #25D366;
+  border-color: #25D366;
+  color: #fff;
+}
+
+/* ==========================================================================
+   CONTACT WHATSAPP BUTTON
+   ========================================================================== */
+.contact-whatsapp-btn {
+  margin-bottom: 32px;
+  display: inline-flex;
+}
+
+/* ==========================================================================
+   WHATSAPP FLOATING BUTTON
+   ========================================================================== */
+.whatsapp-float {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 9998;
+  width: 56px;
+  height: 56px;
+  background-color: #25D366;
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(37, 211, 102, 0.4);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.whatsapp-float:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 24px rgba(37, 211, 102, 0.5);
+}
+
+.whatsapp-float svg {
+  display: block;
+}
+
+/* ==========================================================================
+   FOOTER BADGE & WHATSAPP
+   ========================================================================== */
+.footer-badge {
+  text-align: center;
+  padding: 20px 0;
+  margin-top: 32px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.footer-badge span {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--dourado);
+}
+
+.footer-whatsapp {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: #25D366;
+  transition: color var(--transition-fast);
+  margin-top: 4px;
+}
+
+.footer-whatsapp:hover {
+  color: #1da851;
+}
+
+.footer-whatsapp svg {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* ==========================================================================
    PRINT
    ========================================================================== */
 @media print {
@@ -1792,7 +2143,8 @@ address {
   .hero-scroll-indicator,
   .cookie-banner,
   .mobile-menu-overlay,
-  .radio-embed iframe {
+  .radio-embed iframe,
+  .whatsapp-float {
     display: none !important;
   }
 
