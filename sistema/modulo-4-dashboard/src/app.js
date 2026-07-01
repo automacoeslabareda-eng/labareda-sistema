@@ -845,31 +845,60 @@ async function carregarWppDisparo() {
     return;
   }
 
+  // Check if property has a WhatsApp group configured
+  var prop = cachePropriedades.find(function(p) { return String(p.id) === String(propriedadeFiltro); });
+  var grupoId = (prop && prop.whatsapp_grupo_id) || '';
+
   try {
     var pf = propFiltroParam();
     var qs = '?select=id,nome,telefone,whatsapp_jid,funcao,setores(nome)&ativo=eq.true&order=nome.asc';
     if (pf) qs += '&' + pf;
     var colabs = await supaFetch('colaboradores' + qs);
 
-    if (!colabs || colabs.length === 0) {
-      container.innerHTML = '<p class="placeholder">Nenhum colaborador ativo encontrado</p>';
-      return;
+    // Group dispatch section
+    var grupoHtml = '';
+    if (grupoId) {
+      grupoHtml =
+        '<div class="wpp-grupo-section">' +
+          '<h4 class="wpp-subtitulo">Enviar para Grupo</h4>' +
+          '<p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Grupo configurado: <strong>' + escapeHtml(grupoId) + '</strong></p>' +
+          '<div class="form-group">' +
+            '<label>Mensagem para o Grupo</label>' +
+            '<textarea id="wpp-mensagem-grupo" rows="3" placeholder="Digite a mensagem para o grupo..."></textarea>' +
+          '</div>' +
+          '<div style="display:flex;justify-content:flex-end">' +
+            '<button class="btn btn--primary" onclick="enviarParaGrupoWpp()" id="btn-enviar-grupo">Enviar para Grupo</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="wpp-divider"></div>';
+    } else {
+      grupoHtml =
+        '<div class="wpp-grupo-section">' +
+          '<h4 class="wpp-subtitulo">Enviar para Grupo</h4>' +
+          '<p style="font-size:13px;color:var(--text-muted)">Nenhum grupo configurado. Va em <strong>Configuracoes > WhatsApp Grupo ID</strong> para adicionar.</p>' +
+        '</div>' +
+        '<div class="wpp-divider"></div>';
     }
 
-    var checkboxes = colabs.map(function(c) {
-      var tel = c.whatsapp_jid || c.telefone || '';
-      var setor = (c.setores && c.setores.nome) || '';
-      var disabled = !tel ? ' disabled' : '';
-      var semTel = !tel ? ' <span style="color:var(--danger);font-size:11px">(sem telefone)</span>' : '';
-      return '<label class="wpp-colab-item' + (disabled ? ' wpp-colab-item--disabled' : '') + '">' +
-        '<input type="checkbox" value="' + c.id + '" data-tel="' + escapeHtml(tel) + '" data-nome="' + escapeHtml(c.nome) + '"' + disabled + ' onchange="atualizarContagemWpp()">' +
-        '<span class="wpp-colab-nome">' + escapeHtml(c.nome || '--') + semTel + '</span>' +
-        '<span class="wpp-colab-setor">' + escapeHtml(setor) + '</span>' +
-        '</label>';
-    }).join('');
+    // Individual dispatch section
+    var colabHtml = '';
+    if (!colabs || colabs.length === 0) {
+      colabHtml = '<p class="placeholder">Nenhum colaborador ativo encontrado</p>';
+    } else {
+      var checkboxes = colabs.map(function(c) {
+        var tel = c.whatsapp_jid || c.telefone || '';
+        var setor = (c.setores && c.setores.nome) || '';
+        var disabled = !tel ? ' disabled' : '';
+        var semTel = !tel ? ' <span style="color:var(--danger);font-size:11px">(sem telefone)</span>' : '';
+        return '<label class="wpp-colab-item' + (disabled ? ' wpp-colab-item--disabled' : '') + '">' +
+          '<input type="checkbox" value="' + c.id + '" data-tel="' + escapeHtml(tel) + '" data-nome="' + escapeHtml(c.nome) + '"' + disabled + ' onchange="atualizarContagemWpp()">' +
+          '<span class="wpp-colab-nome">' + escapeHtml(c.nome || '--') + semTel + '</span>' +
+          '<span class="wpp-colab-setor">' + escapeHtml(setor) + '</span>' +
+          '</label>';
+      }).join('');
 
-    container.innerHTML =
-      '<div class="wpp-disparo-form">' +
+      colabHtml =
+        '<h4 class="wpp-subtitulo">Enviar Individual</h4>' +
         '<div class="wpp-disparo-header">' +
           '<button class="btn btn--small btn--secondary" onclick="selecionarTodosWpp(true)">Selecionar Todos</button>' +
           '<button class="btn btn--small btn--secondary" onclick="selecionarTodosWpp(false)">Limpar</button>' +
@@ -877,19 +906,56 @@ async function carregarWppDisparo() {
         '</div>' +
         '<div class="wpp-colab-lista">' + checkboxes + '</div>' +
         '<div class="form-group" style="margin-top:16px">' +
-          '<label>Mensagem</label>' +
-          '<textarea id="wpp-mensagem" rows="4" placeholder="Digite a mensagem para enviar aos colaboradores..."></textarea>' +
+          '<label>Mensagem Individual</label>' +
+          '<textarea id="wpp-mensagem" rows="4" placeholder="Digite a mensagem para enviar individualmente..."></textarea>' +
         '</div>' +
         '<div class="wpp-disparo-acoes">' +
           '<span class="wpp-disparo-info" id="wpp-disparo-info"></span>' +
           '<button class="btn btn--primary" onclick="enviarDisparoWpp()" id="btn-enviar-wpp">Enviar Mensagens</button>' +
-        '</div>' +
-      '</div>';
+        '</div>';
+    }
+
+    container.innerHTML =
+      '<div class="wpp-disparo-form">' + grupoHtml + colabHtml + '</div>';
 
   } catch (err) {
     console.error('Erro ao carregar disparo:', err);
     container.innerHTML = '<p class="placeholder">Erro ao carregar colaboradores</p>';
   }
+}
+
+async function enviarParaGrupoWpp() {
+  var mensagem = ($('#wpp-mensagem-grupo') || {}).value || '';
+  if (!mensagem.trim()) {
+    mostrarToast('Digite uma mensagem para o grupo', 'error');
+    return;
+  }
+
+  var prop = cachePropriedades.find(function(p) { return String(p.id) === String(propriedadeFiltro); });
+  var grupoId = (prop && prop.whatsapp_grupo_id) || '';
+  if (!grupoId) {
+    mostrarToast('Grupo WhatsApp nao configurado', 'error');
+    return;
+  }
+
+  var btn = $('#btn-enviar-grupo');
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
+
+  try {
+    await evolutionFetch('POST', '/send/media', {
+      instanceName: wppInstanciaAtual,
+      number: grupoId,
+      mediatype: 'text',
+      caption: mensagem.trim(),
+    });
+    mostrarToast('Mensagem enviada para o grupo!');
+    if ($('#wpp-mensagem-grupo')) $('#wpp-mensagem-grupo').value = '';
+  } catch (err) {
+    console.error('Erro ao enviar para grupo:', err);
+    mostrarToast('Erro ao enviar: ' + err.message, 'error');
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = 'Enviar para Grupo'; }
 }
 
 function atualizarContagemWpp() {
@@ -1022,12 +1088,24 @@ async function carregarConfigPropriedade() {
       { chave: 'lembrete_hora', label: 'Hora do Lembrete', valor: prop.lembrete_hora || '', section: 'config' },
     ];
 
+    var sections = {
+      geral: 'Dados Gerais',
+      telegram: 'Telegram Bot',
+      whatsapp: 'WhatsApp (Evolution API)',
+      config: 'Agendamentos',
+    };
+
     var html = '<form id="form-config-prop" class="config-prop-form">';
+    var currentSection = '';
     campos.forEach(function(c) {
-      var displayVal = c.sensitive && c.valor ? c.valor.substring(0, 8) + '...' : c.valor;
+      if (c.section !== currentSection) {
+        currentSection = c.section;
+        html += '<h4 class="config-section-title">' + sections[currentSection] + '</h4>';
+      }
+      var placeholder = c.placeholder ? ' placeholder="' + escapeHtml(c.placeholder) + '"' : '';
       html += '<div class="form-group">' +
         '<label>' + escapeHtml(c.label) + '</label>' +
-        '<input type="text" id="config-prop-' + c.chave + '" value="' + escapeHtml(c.valor) + '" data-campo="' + c.chave + '">' +
+        '<input type="text" id="config-prop-' + c.chave + '" value="' + escapeHtml(c.valor) + '" data-campo="' + c.chave + '"' + placeholder + '>' +
         '</div>';
     });
     html += '<div style="display:flex;justify-content:flex-end;padding-top:8px">' +

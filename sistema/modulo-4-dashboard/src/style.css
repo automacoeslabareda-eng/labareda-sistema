@@ -824,6 +824,22 @@ body.propriedade-saomiguel .sidebar__select {
   margin-bottom: 12px;
 }
 
+.config-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--sidebar-active);
+  margin-top: 20px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--sidebar-active);
+}
+
+.config-section-title:first-child {
+  margin-top: 0;
+}
+
 /* ================================================================== */
 /*  WHATSAPP                                                          */
 /* ================================================================== */
@@ -1018,6 +1034,24 @@ body.propriedade-saomiguel .sidebar__select {
   font-size: 13px;
   color: var(--info);
   font-weight: 500;
+}
+
+/* Grupo section */
+.wpp-grupo-section {
+  margin-bottom: 16px;
+}
+
+.wpp-subtitulo {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.wpp-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 20px 0;
 }
 
 /* ================================================================== */
