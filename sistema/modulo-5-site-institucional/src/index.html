@@ -60,6 +60,15 @@
       </nav>
 
       <div class="header-actions">
+        <button class="cart-toggle" id="cart-toggle" aria-label="Abrir carrinho" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22" aria-hidden="true">
+            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <path d="M16 10a4 4 0 01-8 0"/>
+          </svg>
+          <span class="cart-badge" id="cart-badge" style="display:none;">0</span>
+        </button>
+
         <button class="lang-toggle" id="lang-toggle" aria-label="Mudar idioma" type="button">
           <span class="lang-option active" data-lang="pt">PT</span>
           <span class="lang-divider">|</span>
@@ -188,7 +197,10 @@
             </p>
           </div>
           <div class="about-visual reveal reveal--delay-1">
-            <img src="./img/lounge-redes.jpg" alt="Lounge com telhado de palha, redes e puffs entre palmeiras no Sítio Labareda" class="about-image" loading="lazy">
+            <!-- Video embed (carregado do Supabase Storage via site_config.about_video_url) -->
+            <div class="about-video" id="about-video-container">
+              <img src="./img/lounge-redes.jpg" alt="Lounge com telhado de palha, redes e puffs entre palmeiras no Sítio Labareda" class="about-image" loading="lazy" id="about-fallback-img">
+            </div>
             <div class="about-detail">
               <span class="detail-label" data-i18n="about_detail_label">Localização</span>
               <span class="detail-value" data-i18n="about_detail_value">Serra Grande, Uruçuca — BA</span>
@@ -813,6 +825,170 @@
         </div>
         <button type="submit" class="btn btn--primary btn--large booking-submit">Solicitar Reserva</button>
       </form>
+    </div>
+  </div>
+
+  <!-- Cart Drawer -->
+  <div class="cart-overlay" id="cart-overlay" role="dialog" aria-modal="true" aria-label="Carrinho de compras">
+    <div class="cart-drawer" id="cart-drawer">
+      <div class="cart-drawer__header">
+        <h2 class="cart-drawer__title" data-i18n="cart_title">Carrinho</h2>
+        <button class="cart-drawer__close" id="cart-drawer-close" type="button" aria-label="Fechar carrinho">&times;</button>
+      </div>
+      <div class="cart-drawer__body" id="cart-drawer-body">
+        <p class="cart-empty" id="cart-empty" data-i18n="cart_empty">Seu carrinho está vazio.</p>
+        <div class="cart-items" id="cart-items"></div>
+      </div>
+      <div class="cart-drawer__footer" id="cart-drawer-footer" style="display:none;">
+        <div class="cart-subtotal">
+          <span data-i18n="cart_subtotal">Subtotal</span>
+          <span class="cart-subtotal__value" id="cart-subtotal-value">R$ 0,00</span>
+        </div>
+        <button class="btn btn--primary btn--full cart-checkout-btn" id="cart-checkout-btn" type="button" data-i18n="cart_checkout">Finalizar Compra</button>
+        <button class="btn btn--outline btn--full cart-continue-btn" id="cart-continue-btn" type="button" data-i18n="cart_continue">Continuar Comprando</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Product Detail Modal -->
+  <div class="product-modal-overlay" id="product-modal" role="dialog" aria-modal="true" aria-label="Detalhe do produto">
+    <div class="product-modal">
+      <button class="product-modal__close" id="product-modal-close" type="button" aria-label="Fechar">&times;</button>
+      <div class="product-modal__gallery" id="product-modal-gallery"></div>
+      <div class="product-modal__info">
+        <span class="product-modal__category" id="product-modal-category"></span>
+        <h2 class="product-modal__name" id="product-modal-name"></h2>
+        <p class="product-modal__description" id="product-modal-description"></p>
+        <div class="product-modal__pricing" id="product-modal-pricing"></div>
+        <p class="product-modal__stock" id="product-modal-stock"></p>
+        <div class="product-modal__qty">
+          <label for="product-modal-qty-input" data-i18n="product_qty">Quantidade</label>
+          <div class="qty-selector">
+            <button class="qty-btn qty-btn--minus" id="qty-minus" type="button" aria-label="Diminuir quantidade">-</button>
+            <input type="number" id="product-modal-qty-input" class="qty-input" value="1" min="1" max="10" readonly>
+            <button class="qty-btn qty-btn--plus" id="qty-plus" type="button" aria-label="Aumentar quantidade">+</button>
+          </div>
+        </div>
+        <button class="btn btn--primary btn--full product-modal__add" id="product-modal-add" type="button" data-i18n="product_add_cart">Adicionar ao Carrinho</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Checkout Modal -->
+  <div class="checkout-overlay" id="checkout-modal" role="dialog" aria-modal="true" aria-label="Finalizar compra">
+    <div class="checkout-modal">
+      <button class="checkout-modal__close" id="checkout-close" type="button" aria-label="Fechar">&times;</button>
+      <div class="checkout-steps" id="checkout-steps">
+        <div class="checkout-step-indicators">
+          <span class="checkout-step-dot active" data-step="1">1</span>
+          <span class="checkout-step-line"></span>
+          <span class="checkout-step-dot" data-step="2">2</span>
+          <span class="checkout-step-line"></span>
+          <span class="checkout-step-dot" data-step="3">3</span>
+        </div>
+      </div>
+
+      <!-- Step 1: Dados Pessoais -->
+      <div class="checkout-step" id="checkout-step-1">
+        <h2 data-i18n="checkout_step1_title">Dados Pessoais</h2>
+        <div class="checkout-field">
+          <label for="checkout-nome" data-i18n="checkout_name">Nome completo</label>
+          <input type="text" id="checkout-nome" required autocomplete="name">
+        </div>
+        <div class="checkout-field">
+          <label for="checkout-email" data-i18n="checkout_email">E-mail</label>
+          <input type="email" id="checkout-email" required autocomplete="email">
+        </div>
+        <div class="checkout-field">
+          <label for="checkout-telefone" data-i18n="checkout_phone">Telefone</label>
+          <input type="tel" id="checkout-telefone" required autocomplete="tel">
+        </div>
+        <div class="checkout-field">
+          <label for="checkout-cpf">CPF <small data-i18n="checkout_optional">(opcional)</small></label>
+          <input type="text" id="checkout-cpf" autocomplete="off" maxlength="14">
+        </div>
+        <button class="btn btn--primary btn--full" id="checkout-next-1" type="button" data-i18n="checkout_next">Continuar</button>
+      </div>
+
+      <!-- Step 2: Endereco & Frete -->
+      <div class="checkout-step" id="checkout-step-2" style="display:none;">
+        <h2 data-i18n="checkout_step2_title">Endereço de Entrega</h2>
+        <div class="checkout-row">
+          <div class="checkout-field checkout-field--small">
+            <label for="checkout-cep">CEP</label>
+            <input type="text" id="checkout-cep" maxlength="9" autocomplete="postal-code">
+          </div>
+          <div class="checkout-field checkout-field--large">
+            <label for="checkout-rua" data-i18n="checkout_street">Rua</label>
+            <input type="text" id="checkout-rua" required autocomplete="street-address">
+          </div>
+        </div>
+        <div class="checkout-row">
+          <div class="checkout-field checkout-field--small">
+            <label for="checkout-numero" data-i18n="checkout_number">Número</label>
+            <input type="text" id="checkout-numero" required>
+          </div>
+          <div class="checkout-field checkout-field--large">
+            <label for="checkout-complemento" data-i18n="checkout_complement">Complemento</label>
+            <input type="text" id="checkout-complemento">
+          </div>
+        </div>
+        <div class="checkout-field">
+          <label for="checkout-bairro" data-i18n="checkout_neighborhood">Bairro</label>
+          <input type="text" id="checkout-bairro" required>
+        </div>
+        <div class="checkout-row">
+          <div class="checkout-field checkout-field--large">
+            <label for="checkout-cidade" data-i18n="checkout_city">Cidade</label>
+            <input type="text" id="checkout-cidade" required>
+          </div>
+          <div class="checkout-field checkout-field--small">
+            <label for="checkout-estado" data-i18n="checkout_state">Estado</label>
+            <select id="checkout-estado" required>
+              <option value="">--</option>
+              <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option>
+              <option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option>
+              <option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
+              <option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
+              <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option>
+              <option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option>
+              <option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option>
+              <option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
+              <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
+            </select>
+          </div>
+        </div>
+        <div class="checkout-frete" id="checkout-frete">
+          <h3 data-i18n="checkout_shipping">Frete</h3>
+          <div class="checkout-frete-options" id="checkout-frete-options">
+            <p class="checkout-frete-hint" data-i18n="checkout_select_state">Selecione o estado para calcular o frete.</p>
+          </div>
+        </div>
+        <div class="checkout-nav-row">
+          <button class="btn btn--outline" id="checkout-back-2" type="button" data-i18n="checkout_back">Voltar</button>
+          <button class="btn btn--primary" id="checkout-next-2" type="button" data-i18n="checkout_next">Continuar</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Resumo & Pagamento -->
+      <div class="checkout-step" id="checkout-step-3" style="display:none;">
+        <h2 data-i18n="checkout_step3_title">Resumo do Pedido</h2>
+        <div class="checkout-summary" id="checkout-summary"></div>
+        <div class="checkout-totals" id="checkout-totals"></div>
+        <div class="checkout-nav-row">
+          <button class="btn btn--outline" id="checkout-back-3" type="button" data-i18n="checkout_back">Voltar</button>
+          <button class="btn btn--primary btn--large" id="checkout-confirm" type="button" data-i18n="checkout_confirm">Confirmar Pedido</button>
+        </div>
+      </div>
+
+      <!-- Success -->
+      <div class="checkout-step checkout-success" id="checkout-success" style="display:none;">
+        <div class="checkout-success__icon">&#10003;</div>
+        <h2 data-i18n="checkout_success_title">Pedido Confirmado!</h2>
+        <p class="checkout-success__number" id="checkout-success-number"></p>
+        <p class="checkout-success__msg" data-i18n="checkout_success_msg">Você receberá um e-mail com os detalhes do pedido. O pagamento será processado em breve.</p>
+        <button class="btn btn--primary" id="checkout-success-close" type="button" data-i18n="checkout_success_close">Fechar</button>
+      </div>
     </div>
   </div>
 

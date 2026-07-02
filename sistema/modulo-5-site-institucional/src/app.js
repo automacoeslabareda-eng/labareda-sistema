@@ -41,6 +41,38 @@
     });
   }
 
+  function supabaseInsertReturning(tabela, data) {
+    return fetch(SUPABASE_URL + '/rest/v1/' + tabela, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation',
+      },
+      body: JSON.stringify(data),
+    }).then(function (resp) {
+      if (!resp.ok) throw new Error('Supabase insert error: ' + resp.status);
+      return resp.json();
+    });
+  }
+
+  function supabaseUpsert(tabela, data, onConflict) {
+    return fetch(SUPABASE_URL + '/rest/v1/' + tabela, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation,resolution=merge-duplicates',
+      },
+      body: JSON.stringify(data),
+    }).then(function (resp) {
+      if (!resp.ok) throw new Error('Supabase upsert error: ' + resp.status);
+      return resp.json();
+    });
+  }
+
   /* ---------- DOM References ---------- */
   var header = document.getElementById('site-header');
   var menuToggle = document.getElementById('menu-toggle');
@@ -72,12 +104,12 @@
   var translations = {
     pt: {
       skip: 'Pular para o conteudo',
-      nav_about: 'ABOUT',
-      nav_book: 'BOOK',
-      nav_radio: 'RADIO',
-      nav_shop: 'SHOP',
-      nav_journal: 'JOURNAL',
-      nav_contact: 'CONTACT',
+      nav_about: 'SOBRE',
+      nav_book: 'RESERVAR',
+      nav_radio: 'R\u00c1DIO',
+      nav_shop: 'LOJA',
+      nav_journal: 'DI\u00c1RIO',
+      nav_contact: 'CONTATO',
       hero_location: 'Serra Grande \u00b7 Costa do Cacau \u00b7 Bahia',
       hero_headline: 'N\u00e3o \u00e9 um quarto com vista. \u00c9 uma vida por alguns dias.',
       hero_subheadline: 'Um santu\u00e1rio de ro\u00e7a e arte no cora\u00e7\u00e3o da Costa do Cacau. Mata viva, lagoas cristalinas, praia logo ali \u2014 e o caf\u00e9 da manh\u00e3 que a terra deu de manh\u00e3.',
@@ -166,6 +198,48 @@
       footer_rights: 'Todos os direitos reservados.',
       cookie_text: 'Usamos cookies para melhorar sua experi\u00eancia. Ao continuar navegando, voc\u00ea concorda com nossa pol\u00edtica de privacidade.',
       cookie_accept: 'Aceitar',
+      cart_title: 'Carrinho',
+      cart_empty: 'Seu carrinho est\u00e1 vazio.',
+      cart_subtotal: 'Subtotal',
+      cart_checkout: 'Finalizar Compra',
+      cart_continue: 'Continuar Comprando',
+      cart_remove: 'Remover',
+      product_qty: 'Quantidade',
+      product_add_cart: 'Adicionar ao Carrinho',
+      product_added: 'Produto adicionado ao carrinho!',
+      product_out_of_stock: 'Produto esgotado',
+      product_in_stock: 'Em estoque',
+      product_low_stock: 'Restam poucas unidades',
+      checkout_step1_title: 'Dados Pessoais',
+      checkout_step2_title: 'Endere\u00e7o de Entrega',
+      checkout_step3_title: 'Resumo do Pedido',
+      checkout_name: 'Nome completo',
+      checkout_email: 'E-mail',
+      checkout_phone: 'Telefone',
+      checkout_optional: '(opcional)',
+      checkout_street: 'Rua',
+      checkout_number: 'N\u00famero',
+      checkout_complement: 'Complemento',
+      checkout_neighborhood: 'Bairro',
+      checkout_city: 'Cidade',
+      checkout_state: 'Estado',
+      checkout_shipping: 'Frete',
+      checkout_select_state: 'Selecione o estado para calcular o frete.',
+      checkout_next: 'Continuar',
+      checkout_back: 'Voltar',
+      checkout_confirm: 'Confirmar Pedido',
+      checkout_success_title: 'Pedido Confirmado!',
+      checkout_success_msg: 'Voc\u00ea receber\u00e1 um e-mail com os detalhes do pedido. O pagamento ser\u00e1 processado em breve.',
+      checkout_success_close: 'Fechar',
+      checkout_subtotal: 'Subtotal',
+      checkout_shipping_label: 'Frete',
+      checkout_total: 'Total',
+      checkout_order_number: 'Pedido #',
+      checkout_fill_fields: 'Preencha todos os campos obrigat\u00f3rios.',
+      checkout_select_shipping: 'Selecione uma op\u00e7\u00e3o de frete.',
+      checkout_error: 'Erro ao processar pedido. Tente novamente.',
+      checkout_sending: 'Processando...',
+      checkout_days: 'dias \u00fateis',
     },
     en: {
       skip: 'Skip to content',
@@ -263,6 +337,48 @@
       footer_rights: 'All rights reserved.',
       cookie_text: 'We use cookies to improve your experience. By continuing to browse, you agree to our privacy policy.',
       cookie_accept: 'Accept',
+      cart_title: 'Cart',
+      cart_empty: 'Your cart is empty.',
+      cart_subtotal: 'Subtotal',
+      cart_checkout: 'Checkout',
+      cart_continue: 'Continue Shopping',
+      cart_remove: 'Remove',
+      product_qty: 'Quantity',
+      product_add_cart: 'Add to Cart',
+      product_added: 'Product added to cart!',
+      product_out_of_stock: 'Out of stock',
+      product_in_stock: 'In stock',
+      product_low_stock: 'Few units left',
+      checkout_step1_title: 'Personal Info',
+      checkout_step2_title: 'Shipping Address',
+      checkout_step3_title: 'Order Summary',
+      checkout_name: 'Full name',
+      checkout_email: 'Email',
+      checkout_phone: 'Phone',
+      checkout_optional: '(optional)',
+      checkout_street: 'Street',
+      checkout_number: 'Number',
+      checkout_complement: 'Complement',
+      checkout_neighborhood: 'Neighborhood',
+      checkout_city: 'City',
+      checkout_state: 'State',
+      checkout_shipping: 'Shipping',
+      checkout_select_state: 'Select state to calculate shipping.',
+      checkout_next: 'Continue',
+      checkout_back: 'Back',
+      checkout_confirm: 'Confirm Order',
+      checkout_success_title: 'Order Confirmed!',
+      checkout_success_msg: 'You will receive an email with the order details. Payment will be processed soon.',
+      checkout_success_close: 'Close',
+      checkout_subtotal: 'Subtotal',
+      checkout_shipping_label: 'Shipping',
+      checkout_total: 'Total',
+      checkout_order_number: 'Order #',
+      checkout_fill_fields: 'Please fill all required fields.',
+      checkout_select_shipping: 'Please select a shipping option.',
+      checkout_error: 'Error processing order. Please try again.',
+      checkout_sending: 'Processing...',
+      checkout_days: 'business days',
     },
   };
 
@@ -573,13 +689,23 @@
       var viewLabel = currentLang === 'pt' ? 'Ver produto' : 'View product';
 
       var imageHTML;
-      if (p.imagem_url) {
-        imageHTML = '<img src="' + p.imagem_url + '" alt="' + productName + '" class="product-img" loading="lazy">';
+      var firstImage = (p.imagens && p.imagens.length > 0) ? p.imagens[0] : p.imagem_url;
+      if (firstImage) {
+        imageHTML = '<img src="' + firstImage + '" alt="' + productName + '" class="product-img" loading="lazy">';
       } else {
         imageHTML = '<div class="product-image-placeholder" style="--product-hue: ' + hue + ';"></div>';
       }
 
-      gridHTML += '<article class="product-card reveal' + delayClass + '" data-category="' + catSlug + '">'
+      var promoPrice = '';
+      if (p.preco_promocional && parseFloat(p.preco_promocional) > 0 && parseFloat(p.preco_promocional) < parseFloat(p.preco)) {
+        promoPrice = 'R$ ' + parseFloat(p.preco_promocional).toFixed(2).replace('.', ',');
+      }
+
+      var priceDisplay = promoPrice
+        ? '<span class="product-price-promo">' + promoPrice + '</span> <span class="product-price-original">' + price + '</span>'
+        : price;
+
+      gridHTML += '<article class="product-card product-card--clickable reveal' + delayClass + '" data-category="' + catSlug + '" data-product-idx="' + idx + '" role="button" tabindex="0" aria-label="' + productName + '">'
         + '<div class="product-image">'
         + imageHTML
         + (p.destaque ? '<span class="product-badge">' + badgeLabel + '</span>' : '')
@@ -587,13 +713,29 @@
         + '<div class="product-info">'
         + '<span class="product-category">' + catName + '</span>'
         + '<h3 class="product-name">' + productName + '</h3>'
-        + (price ? '<p class="product-price">' + price + '</p>' : '')
-        + '<a href="' + (p.link_compra || '#') + '" class="product-link" ' + (p.link_compra ? 'target="_blank" rel="noopener noreferrer"' : '') + '>' + viewLabel + '</a>'
+        + (price ? '<p class="product-price">' + priceDisplay + '</p>' : '')
+        + '<span class="product-link">' + viewLabel + '</span>'
         + '</div>'
         + '</article>';
     });
 
     shopGrid.innerHTML = gridHTML;
+
+    /* Add click handlers to product cards */
+    shopGrid.querySelectorAll('.product-card--clickable').forEach(function (card) {
+      function openProduct() {
+        var idx = parseInt(card.dataset.productIdx, 10);
+        if (!isNaN(idx)) openProductModal(loadedProducts[idx]);
+      }
+      card.addEventListener('click', openProduct);
+      card.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openProduct();
+        }
+      });
+    });
+
     refreshScrollReveal();
   }
 
@@ -825,18 +967,49 @@
           });
         }
 
-        /* Apply about_video_url if present (for future hero video) */
+        /* Apply about_video_url — embed video from Supabase Storage */
         if (siteConfig.about_video_url) {
-          var heroPlaceholder = document.querySelector('.hero-video-placeholder');
-          if (heroPlaceholder && siteConfig.about_video_url) {
-            var video = document.createElement('video');
-            video.autoplay = true;
-            video.muted = true;
-            video.loop = true;
-            video.playsInline = true;
-            video.style.cssText = 'width:100%;height:100%;object-fit:cover;';
-            video.src = siteConfig.about_video_url;
-            heroPlaceholder.parentNode.replaceChild(video, heroPlaceholder);
+          var videoContainer = document.getElementById('about-video-container');
+          var fallbackImg = document.getElementById('about-fallback-img');
+          if (videoContainer && fallbackImg) {
+            var videoUrl = siteConfig.about_video_url;
+            var isYouTube = videoUrl.indexOf('youtube.com') !== -1 || videoUrl.indexOf('youtu.be') !== -1;
+            var isVimeo = videoUrl.indexOf('vimeo.com') !== -1;
+
+            if (isYouTube || isVimeo) {
+              /* External embed (YouTube/Vimeo) */
+              var embedUrl = videoUrl;
+              if (isYouTube) {
+                var ytId = videoUrl.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+                if (ytId) embedUrl = 'https://www.youtube.com/embed/' + ytId[1] + '?rel=0&modestbranding=1';
+              } else if (isVimeo) {
+                var vimeoId = videoUrl.match(/vimeo\.com\/(\d+)/);
+                if (vimeoId) embedUrl = 'https://player.vimeo.com/video/' + vimeoId[1];
+              }
+              var iframe = document.createElement('iframe');
+              iframe.src = embedUrl;
+              iframe.className = 'about-video__iframe';
+              iframe.setAttribute('allowfullscreen', '');
+              iframe.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
+              iframe.setAttribute('loading', 'lazy');
+              iframe.title = 'Video institucional Sitio Labareda';
+              fallbackImg.style.display = 'none';
+              videoContainer.insertBefore(iframe, fallbackImg);
+            } else {
+              /* Direct video file (Supabase Storage / S3) */
+              var video = document.createElement('video');
+              video.className = 'about-video__player';
+              video.controls = true;
+              video.playsInline = true;
+              video.preload = 'metadata';
+              video.poster = fallbackImg.src;
+              var source = document.createElement('source');
+              source.src = videoUrl;
+              source.type = videoUrl.indexOf('.webm') !== -1 ? 'video/webm' : 'video/mp4';
+              video.appendChild(source);
+              fallbackImg.style.display = 'none';
+              videoContainer.insertBefore(video, fallbackImg);
+            }
           }
         }
       })
@@ -985,6 +1158,680 @@
   }
 
   /* ==========================================================================
+     14. CART SYSTEM
+     ========================================================================== */
+  var CART_KEY = 'labareda-cart';
+  var SESSION_KEY = 'labareda-session-id';
+
+  function getSessionId() {
+    var sid = localStorage.getItem(SESSION_KEY);
+    if (!sid) {
+      sid = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
+      localStorage.setItem(SESSION_KEY, sid);
+    }
+    return sid;
+  }
+
+  function getCart() {
+    try {
+      return JSON.parse(localStorage.getItem(CART_KEY)) || [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveCart(cart) {
+    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    updateCartBadge();
+  }
+
+  function updateCartBadge() {
+    var cart = getCart();
+    var badge = document.getElementById('cart-badge');
+    var totalItems = cart.reduce(function (sum, item) { return sum + item.quantidade; }, 0);
+    if (badge) {
+      badge.textContent = totalItems;
+      badge.style.display = totalItems > 0 ? 'flex' : 'none';
+    }
+  }
+
+  function addToCart(product, qty) {
+    var cart = getCart();
+    var existing = null;
+    for (var i = 0; i < cart.length; i++) {
+      if (cart[i].produto_id === product.id) {
+        existing = cart[i];
+        break;
+      }
+    }
+
+    var imgUrl = '';
+    if (product.imagens && product.imagens.length > 0) {
+      imgUrl = product.imagens[0];
+    } else if (product.imagem_url) {
+      imgUrl = product.imagem_url;
+    }
+
+    var nome = currentLang === 'pt' ? (product.nome_pt || product.nome) : (product.nome_en || product.nome_pt || product.nome);
+    var preco = product.preco_promocional && parseFloat(product.preco_promocional) > 0 && parseFloat(product.preco_promocional) < parseFloat(product.preco)
+      ? parseFloat(product.preco_promocional)
+      : parseFloat(product.preco);
+
+    if (existing) {
+      existing.quantidade = Math.min(existing.quantidade + qty, product.estoque || 99);
+      existing.nome = nome;
+    } else {
+      cart.push({
+        produto_id: product.id,
+        nome: nome,
+        preco: preco,
+        quantidade: qty,
+        imagem_url: imgUrl,
+      });
+    }
+
+    saveCart(cart);
+    showToast(translations[currentLang].product_added, false);
+  }
+
+  function removeFromCart(produtoId) {
+    var cart = getCart().filter(function (item) { return item.produto_id !== produtoId; });
+    saveCart(cart);
+    renderCartDrawer();
+  }
+
+  function updateCartItemQty(produtoId, delta) {
+    var cart = getCart();
+    for (var i = 0; i < cart.length; i++) {
+      if (cart[i].produto_id === produtoId) {
+        cart[i].quantidade = Math.max(1, Math.min(cart[i].quantidade + delta, 99));
+        break;
+      }
+    }
+    saveCart(cart);
+    renderCartDrawer();
+  }
+
+  function formatPrice(value) {
+    return 'R$ ' + parseFloat(value).toFixed(2).replace('.', ',');
+  }
+
+  /* ---------- Cart Drawer ---------- */
+  function openCartDrawer() {
+    renderCartDrawer();
+    document.getElementById('cart-overlay').classList.add('aberto');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeCartDrawer() {
+    document.getElementById('cart-overlay').classList.remove('aberto');
+    document.body.style.overflow = '';
+  }
+
+  function renderCartDrawer() {
+    var cart = getCart();
+    var emptyEl = document.getElementById('cart-empty');
+    var itemsEl = document.getElementById('cart-items');
+    var footerEl = document.getElementById('cart-drawer-footer');
+    var subtotalEl = document.getElementById('cart-subtotal-value');
+
+    if (cart.length === 0) {
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = translations[currentLang].cart_empty;
+      itemsEl.innerHTML = '';
+      footerEl.style.display = 'none';
+      return;
+    }
+
+    emptyEl.style.display = 'none';
+    footerEl.style.display = 'flex';
+
+    var removeLabel = translations[currentLang].cart_remove;
+    var html = '';
+    var subtotal = 0;
+
+    cart.forEach(function (item) {
+      subtotal += item.preco * item.quantidade;
+      var imgHTML = item.imagem_url
+        ? '<img src="' + item.imagem_url + '" alt="' + item.nome + '" loading="lazy">'
+        : '<div class="cart-item__image-placeholder"></div>';
+
+      html += '<div class="cart-item" data-cart-id="' + item.produto_id + '">'
+        + '<div class="cart-item__image">' + imgHTML + '</div>'
+        + '<div class="cart-item__details">'
+        + '<span class="cart-item__name">' + item.nome + '</span>'
+        + '<span class="cart-item__price">' + formatPrice(item.preco) + '</span>'
+        + '<div class="cart-item__controls">'
+        + '<button class="cart-item__qty-btn" data-action="minus" data-id="' + item.produto_id + '" type="button" aria-label="Diminuir">-</button>'
+        + '<span class="cart-item__qty">' + item.quantidade + '</span>'
+        + '<button class="cart-item__qty-btn" data-action="plus" data-id="' + item.produto_id + '" type="button" aria-label="Aumentar">+</button>'
+        + '<button class="cart-item__remove" data-action="remove" data-id="' + item.produto_id + '" type="button">' + removeLabel + '</button>'
+        + '</div>'
+        + '</div>'
+        + '</div>';
+    });
+
+    itemsEl.innerHTML = html;
+    subtotalEl.textContent = formatPrice(subtotal);
+
+    /* Bind cart item actions */
+    itemsEl.querySelectorAll('[data-action]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var action = this.dataset.action;
+        var id = this.dataset.id;
+        if (action === 'minus') updateCartItemQty(id, -1);
+        else if (action === 'plus') updateCartItemQty(id, 1);
+        else if (action === 'remove') removeFromCart(id);
+      });
+    });
+  }
+
+  /* Cart drawer event bindings */
+  document.getElementById('cart-toggle').addEventListener('click', openCartDrawer);
+
+  document.getElementById('cart-drawer-close').addEventListener('click', closeCartDrawer);
+
+  document.getElementById('cart-continue-btn').addEventListener('click', closeCartDrawer);
+
+  document.getElementById('cart-overlay').addEventListener('click', function (e) {
+    if (e.target === this) closeCartDrawer();
+  });
+
+  document.getElementById('cart-checkout-btn').addEventListener('click', function () {
+    closeCartDrawer();
+    openCheckout();
+  });
+
+  /* ==========================================================================
+     15. PRODUCT DETAIL MODAL
+     ========================================================================== */
+  var currentProductForModal = null;
+
+  function openProductModal(product) {
+    if (!product) return;
+    currentProductForModal = product;
+
+    var modal = document.getElementById('product-modal');
+    var galleryEl = document.getElementById('product-modal-gallery');
+    var categoryEl = document.getElementById('product-modal-category');
+    var nameEl = document.getElementById('product-modal-name');
+    var descEl = document.getElementById('product-modal-description');
+    var pricingEl = document.getElementById('product-modal-pricing');
+    var stockEl = document.getElementById('product-modal-stock');
+    var qtyInput = document.getElementById('product-modal-qty-input');
+    var addBtn = document.getElementById('product-modal-add');
+
+    var nome = currentLang === 'pt' ? (product.nome_pt || product.nome) : (product.nome_en || product.nome_pt || product.nome);
+    var desc = currentLang === 'pt' ? (product.descricao_pt || '') : (product.descricao_en || product.descricao_pt || '');
+    var catName = product.categorias
+      ? (currentLang === 'pt' ? product.categorias.nome_pt : product.categorias.nome_en)
+      : '';
+
+    nameEl.textContent = nome;
+    categoryEl.textContent = catName;
+    descEl.textContent = desc;
+
+    /* Images */
+    var images = [];
+    if (product.imagens && product.imagens.length > 0) {
+      images = product.imagens;
+    } else if (product.imagem_url) {
+      images = [product.imagem_url];
+    }
+
+    if (images.length > 0) {
+      var mainImg = '<img src="' + images[0] + '" alt="' + nome + '" id="product-modal-main-img">';
+      var thumbsHTML = '';
+      if (images.length > 1) {
+        thumbsHTML = '<div class="product-modal__gallery-thumbs">';
+        images.forEach(function (img, i) {
+          thumbsHTML += '<div class="product-modal__thumb' + (i === 0 ? ' active' : '') + '" data-img-idx="' + i + '">'
+            + '<img src="' + img + '" alt="' + nome + ' ' + (i + 1) + '">'
+            + '</div>';
+        });
+        thumbsHTML += '</div>';
+      }
+      galleryEl.innerHTML = mainImg + thumbsHTML;
+
+      /* Thumb click handlers */
+      galleryEl.querySelectorAll('.product-modal__thumb').forEach(function (thumb) {
+        thumb.addEventListener('click', function () {
+          var idx = parseInt(this.dataset.imgIdx, 10);
+          document.getElementById('product-modal-main-img').src = images[idx];
+          galleryEl.querySelectorAll('.product-modal__thumb').forEach(function (t) { t.classList.remove('active'); });
+          this.classList.add('active');
+        });
+      });
+    } else {
+      galleryEl.innerHTML = '<div class="product-modal__gallery-placeholder"></div>';
+    }
+
+    /* Pricing */
+    var preco = product.preco ? parseFloat(product.preco) : 0;
+    var promoPreco = product.preco_promocional ? parseFloat(product.preco_promocional) : 0;
+    var hasPromo = promoPreco > 0 && promoPreco < preco;
+
+    if (hasPromo) {
+      pricingEl.innerHTML = '<span class="product-modal__price-promo">' + formatPrice(promoPreco) + '</span>'
+        + '<span class="product-modal__price-original">' + formatPrice(preco) + '</span>';
+    } else {
+      pricingEl.innerHTML = '<span class="product-modal__price">' + formatPrice(preco) + '</span>';
+    }
+
+    /* Stock */
+    var estoque = product.estoque != null ? product.estoque : 99;
+    if (estoque <= 0) {
+      stockEl.textContent = translations[currentLang].product_out_of_stock;
+      stockEl.className = 'product-modal__stock product-modal__stock--out';
+      addBtn.disabled = true;
+      addBtn.style.opacity = '0.5';
+    } else if (estoque <= (product.estoque_minimo || 5)) {
+      stockEl.textContent = translations[currentLang].product_low_stock + ' (' + estoque + ')';
+      stockEl.className = 'product-modal__stock product-modal__stock--low';
+      addBtn.disabled = false;
+      addBtn.style.opacity = '';
+    } else {
+      stockEl.textContent = translations[currentLang].product_in_stock;
+      stockEl.className = 'product-modal__stock';
+      addBtn.disabled = false;
+      addBtn.style.opacity = '';
+    }
+
+    /* Quantity */
+    var maxQty = Math.min(estoque, 10);
+    qtyInput.value = 1;
+    qtyInput.max = maxQty;
+
+    modal.classList.add('aberto');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeProductModal() {
+    document.getElementById('product-modal').classList.remove('aberto');
+    document.body.style.overflow = '';
+    currentProductForModal = null;
+  }
+
+  /* Product modal event bindings */
+  document.getElementById('product-modal-close').addEventListener('click', closeProductModal);
+
+  document.getElementById('product-modal').addEventListener('click', function (e) {
+    if (e.target === this) closeProductModal();
+  });
+
+  document.getElementById('qty-minus').addEventListener('click', function () {
+    var input = document.getElementById('product-modal-qty-input');
+    var val = parseInt(input.value, 10);
+    if (val > 1) input.value = val - 1;
+  });
+
+  document.getElementById('qty-plus').addEventListener('click', function () {
+    var input = document.getElementById('product-modal-qty-input');
+    var val = parseInt(input.value, 10);
+    var max = parseInt(input.max, 10) || 10;
+    if (val < max) input.value = val + 1;
+  });
+
+  document.getElementById('product-modal-add').addEventListener('click', function () {
+    if (!currentProductForModal) return;
+    var qty = parseInt(document.getElementById('product-modal-qty-input').value, 10) || 1;
+    addToCart(currentProductForModal, qty);
+    closeProductModal();
+  });
+
+  /* ==========================================================================
+     16. CHECKOUT SYSTEM
+     ========================================================================== */
+  var checkoutStep = 1;
+  var selectedFrete = null;
+  var freteTabela = [];
+
+  function openCheckout() {
+    var cart = getCart();
+    if (cart.length === 0) return;
+
+    checkoutStep = 1;
+    selectedFrete = null;
+    showCheckoutStep(1);
+
+    /* Load frete tabela */
+    if (freteTabela.length === 0) {
+      supabaseFetch('frete_tabela', '?select=*')
+        .then(function (data) {
+          if (data) freteTabela = data;
+        })
+        .catch(function () { /* noop */ });
+    }
+
+    document.getElementById('checkout-modal').classList.add('aberto');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeCheckout() {
+    document.getElementById('checkout-modal').classList.remove('aberto');
+    document.body.style.overflow = '';
+  }
+
+  function showCheckoutStep(step) {
+    checkoutStep = step;
+    for (var i = 1; i <= 3; i++) {
+      var el = document.getElementById('checkout-step-' + i);
+      if (el) el.style.display = i === step ? 'block' : 'none';
+    }
+    document.getElementById('checkout-success').style.display = 'none';
+    document.getElementById('checkout-steps').style.display = '';
+
+    /* Update step indicators */
+    document.querySelectorAll('.checkout-step-dot').forEach(function (dot) {
+      var s = parseInt(dot.dataset.step, 10);
+      dot.classList.remove('active', 'done');
+      if (s === step) dot.classList.add('active');
+      else if (s < step) dot.classList.add('done');
+    });
+  }
+
+  function getFreteRegion(estado) {
+    if (estado === 'BA') return 'BA';
+    var ne = ['MA', 'PI', 'CE', 'RN', 'PB', 'PE', 'AL', 'SE'];
+    if (ne.indexOf(estado) !== -1) return 'NE';
+    var seSul = ['SP', 'RJ', 'MG', 'ES', 'PR', 'SC', 'RS'];
+    if (seSul.indexOf(estado) !== -1) return 'SE_SUL';
+    return 'OUTROS';
+  }
+
+  function renderFreteOptions(estado) {
+    var container = document.getElementById('checkout-frete-options');
+    if (!estado || freteTabela.length === 0) {
+      container.innerHTML = '<p class="checkout-frete-hint">' + translations[currentLang].checkout_select_state + '</p>';
+      selectedFrete = null;
+      return;
+    }
+
+    var region = getFreteRegion(estado);
+    var html = '';
+    var daysLabel = translations[currentLang].checkout_days;
+
+    freteTabela.forEach(function (ft) {
+      var regionName = ft.regiao || ft.nome || '';
+      var isMatch = regionName.toUpperCase() === region;
+      var selected = isMatch ? ' selected' : '';
+
+      html += '<label class="frete-option' + selected + '">'
+        + '<input type="radio" name="frete" value="' + (ft.id || ft.regiao) + '" ' + (isMatch ? 'checked' : '') + '>'
+        + '<div class="frete-option__info">'
+        + '<span class="frete-option__region">' + regionName + '</span>'
+        + '<span class="frete-option__prazo">' + (ft.prazo_dias || ft.prazo || '') + ' ' + daysLabel + '</span>'
+        + '</div>'
+        + '<span class="frete-option__price">' + formatPrice(ft.valor || ft.preco || 0) + '</span>'
+        + '</label>';
+
+      if (isMatch) {
+        selectedFrete = {
+          regiao: regionName,
+          valor: parseFloat(ft.valor || ft.preco || 0),
+          prazo: ft.prazo_dias || ft.prazo || '',
+        };
+      }
+    });
+
+    container.innerHTML = html;
+
+    /* Bind frete radio change */
+    container.querySelectorAll('input[name="frete"]').forEach(function (radio) {
+      radio.addEventListener('change', function () {
+        var freteId = this.value;
+        container.querySelectorAll('.frete-option').forEach(function (opt) { opt.classList.remove('selected'); });
+        this.closest('.frete-option').classList.add('selected');
+
+        for (var i = 0; i < freteTabela.length; i++) {
+          var ft = freteTabela[i];
+          if ((ft.id || ft.regiao) === freteId) {
+            selectedFrete = {
+              regiao: ft.regiao || ft.nome || '',
+              valor: parseFloat(ft.valor || ft.preco || 0),
+              prazo: ft.prazo_dias || ft.prazo || '',
+            };
+            break;
+          }
+        }
+      });
+    });
+  }
+
+  function renderCheckoutSummary() {
+    var cart = getCart();
+    var summaryEl = document.getElementById('checkout-summary');
+    var totalsEl = document.getElementById('checkout-totals');
+
+    var subtotal = 0;
+    var html = '';
+    cart.forEach(function (item) {
+      var lineTotal = item.preco * item.quantidade;
+      subtotal += lineTotal;
+      html += '<div class="checkout-summary-item">'
+        + '<span class="checkout-summary-item__name">' + item.nome + '</span>'
+        + '<span class="checkout-summary-item__qty">x' + item.quantidade + '</span>'
+        + '<span class="checkout-summary-item__price">' + formatPrice(lineTotal) + '</span>'
+        + '</div>';
+    });
+    summaryEl.innerHTML = html;
+
+    var freteVal = selectedFrete ? selectedFrete.valor : 0;
+    var total = subtotal + freteVal;
+
+    var t = translations[currentLang];
+    totalsEl.innerHTML = '<div class="checkout-total-line">'
+      + '<span>' + t.checkout_subtotal + '</span>'
+      + '<span>' + formatPrice(subtotal) + '</span>'
+      + '</div>'
+      + '<div class="checkout-total-line">'
+      + '<span>' + t.checkout_shipping_label + (selectedFrete ? ' (' + selectedFrete.regiao + ')' : '') + '</span>'
+      + '<span>' + formatPrice(freteVal) + '</span>'
+      + '</div>'
+      + '<div class="checkout-total-line checkout-total-line--grand">'
+      + '<span>' + t.checkout_total + '</span>'
+      + '<span>' + formatPrice(total) + '</span>'
+      + '</div>';
+  }
+
+  /* Checkout event bindings */
+  document.getElementById('checkout-close').addEventListener('click', closeCheckout);
+
+  document.getElementById('checkout-modal').addEventListener('click', function (e) {
+    if (e.target === this) closeCheckout();
+  });
+
+  /* Step 1 -> Step 2 */
+  document.getElementById('checkout-next-1').addEventListener('click', function () {
+    var nome = document.getElementById('checkout-nome').value.trim();
+    var email = document.getElementById('checkout-email').value.trim();
+    var telefone = document.getElementById('checkout-telefone').value.trim();
+
+    if (!nome || !email || !telefone) {
+      showToast(translations[currentLang].checkout_fill_fields, true);
+      return;
+    }
+
+    showCheckoutStep(2);
+  });
+
+  /* Step 2 -> Step 3 */
+  document.getElementById('checkout-next-2').addEventListener('click', function () {
+    var rua = document.getElementById('checkout-rua').value.trim();
+    var numero = document.getElementById('checkout-numero').value.trim();
+    var bairro = document.getElementById('checkout-bairro').value.trim();
+    var cidade = document.getElementById('checkout-cidade').value.trim();
+    var estado = document.getElementById('checkout-estado').value;
+
+    if (!rua || !numero || !bairro || !cidade || !estado) {
+      showToast(translations[currentLang].checkout_fill_fields, true);
+      return;
+    }
+
+    if (!selectedFrete) {
+      showToast(translations[currentLang].checkout_select_shipping, true);
+      return;
+    }
+
+    renderCheckoutSummary();
+    showCheckoutStep(3);
+  });
+
+  /* Back buttons */
+  document.getElementById('checkout-back-2').addEventListener('click', function () {
+    showCheckoutStep(1);
+  });
+
+  document.getElementById('checkout-back-3').addEventListener('click', function () {
+    showCheckoutStep(2);
+  });
+
+  /* Auto-calculate frete on estado change */
+  document.getElementById('checkout-estado').addEventListener('change', function () {
+    renderFreteOptions(this.value);
+  });
+
+  /* Confirm Order */
+  document.getElementById('checkout-confirm').addEventListener('click', function () {
+    var btn = this;
+    var origText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = translations[currentLang].checkout_sending;
+
+    var cart = getCart();
+    if (cart.length === 0) return;
+
+    var nome = document.getElementById('checkout-nome').value.trim();
+    var email = document.getElementById('checkout-email').value.trim();
+    var telefone = document.getElementById('checkout-telefone').value.trim();
+    var cpf = document.getElementById('checkout-cpf').value.trim() || null;
+
+    var endereco = {
+      rua: document.getElementById('checkout-rua').value.trim(),
+      numero: document.getElementById('checkout-numero').value.trim(),
+      complemento: document.getElementById('checkout-complemento').value.trim(),
+      bairro: document.getElementById('checkout-bairro').value.trim(),
+      cidade: document.getElementById('checkout-cidade').value.trim(),
+      estado: document.getElementById('checkout-estado').value,
+      cep: document.getElementById('checkout-cep').value.trim(),
+    };
+
+    var subtotal = cart.reduce(function (sum, item) { return sum + item.preco * item.quantidade; }, 0);
+    var freteVal = selectedFrete ? selectedFrete.valor : 0;
+    var total = subtotal + freteVal;
+
+    /* Step 1: Upsert cliente */
+    supabaseUpsert('clientes', {
+      nome: nome,
+      email: email,
+      telefone: telefone,
+      cpf: cpf,
+      endereco_rua: endereco.rua,
+      endereco_numero: endereco.numero,
+      endereco_complemento: endereco.complemento,
+      endereco_bairro: endereco.bairro,
+      endereco_cidade: endereco.cidade,
+      endereco_estado: endereco.estado,
+      endereco_cep: endereco.cep,
+    })
+      .then(function (clienteData) {
+        var clienteId = clienteData && clienteData.length > 0 ? clienteData[0].id : null;
+
+        /* Step 2: Create pedido */
+        return supabaseInsertReturning('pedidos', {
+          cliente_id: clienteId,
+          status: 'pendente',
+          subtotal: subtotal,
+          frete: freteVal,
+          total: total,
+          metodo_pagamento: 'mercadopago_pendente',
+          endereco_entrega: endereco,
+        });
+      })
+      .then(function (pedidoData) {
+        var pedido = pedidoData[0];
+
+        /* Step 3: Create pedido_itens */
+        var itens = cart.map(function (item) {
+          return {
+            pedido_id: pedido.id,
+            produto_id: item.produto_id,
+            nome_produto: item.nome,
+            quantidade: item.quantidade,
+            preco_unitario: item.preco,
+            subtotal: item.preco * item.quantidade,
+          };
+        });
+
+        return supabaseInsert('pedido_itens', itens).then(function () {
+          return pedido;
+        });
+      })
+      .then(function (pedido) {
+        /* Success */
+        saveCart([]);
+        updateCartBadge();
+
+        /* Show success step */
+        for (var i = 1; i <= 3; i++) {
+          var el = document.getElementById('checkout-step-' + i);
+          if (el) el.style.display = 'none';
+        }
+        document.getElementById('checkout-steps').style.display = 'none';
+
+        var successEl = document.getElementById('checkout-success');
+        var numberEl = document.getElementById('checkout-success-number');
+        numberEl.textContent = translations[currentLang].checkout_order_number + (pedido.numero || pedido.id.substring(0, 8));
+        successEl.style.display = 'block';
+
+        /* Reset form */
+        document.getElementById('checkout-nome').value = '';
+        document.getElementById('checkout-email').value = '';
+        document.getElementById('checkout-telefone').value = '';
+        document.getElementById('checkout-cpf').value = '';
+        document.getElementById('checkout-rua').value = '';
+        document.getElementById('checkout-numero').value = '';
+        document.getElementById('checkout-complemento').value = '';
+        document.getElementById('checkout-bairro').value = '';
+        document.getElementById('checkout-cidade').value = '';
+        document.getElementById('checkout-estado').value = '';
+        document.getElementById('checkout-cep').value = '';
+      })
+      .catch(function (err) {
+        console.error('Checkout error:', err);
+        showToast(translations[currentLang].checkout_error, true);
+      })
+      .finally(function () {
+        btn.disabled = false;
+        btn.textContent = origText;
+      });
+  });
+
+  /* Success close */
+  document.getElementById('checkout-success-close').addEventListener('click', closeCheckout);
+
+  /* Escape key for all modals */
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      var productModal = document.getElementById('product-modal');
+      if (productModal && productModal.classList.contains('aberto')) {
+        closeProductModal();
+        return;
+      }
+      var cartOverlay = document.getElementById('cart-overlay');
+      if (cartOverlay && cartOverlay.classList.contains('aberto')) {
+        closeCartDrawer();
+        return;
+      }
+      var checkoutModal = document.getElementById('checkout-modal');
+      if (checkoutModal && checkoutModal.classList.contains('aberto')) {
+        closeCheckout();
+        return;
+      }
+    }
+  });
+
+  /* ==========================================================================
      INITIALIZATION
      ========================================================================== */
   function init() {
@@ -1017,6 +1864,10 @@
 
     /* Cookie banner */
     initCookieBanner();
+
+    /* Cart badge init */
+    getSessionId();
+    updateCartBadge();
 
     /* ===== Load Supabase data ===== */
     loadSiteConfig();

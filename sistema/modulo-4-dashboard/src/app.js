@@ -21,6 +21,131 @@ var modalItemId = null;
 
 var cacheSetores = [];
 var cachePropriedades = [];
+var usuarioLogado = null;
+
+/* ================================================================== */
+/*  LOGIN / LOGOUT                                                    */
+/* ================================================================== */
+function verificarSessao() {
+  try {
+    var dados = sessionStorage.getItem('labareda_usuario');
+    if (dados) {
+      usuarioLogado = JSON.parse(dados);
+      return true;
+    }
+  } catch (e) {
+    console.error('Erro ao verificar sessao:', e);
+  }
+  return false;
+}
+
+function mostrarApp() {
+  document.getElementById('login-screen').classList.add('escondido');
+  document.getElementById('app-wrapper').classList.remove('escondido');
+
+  // Show user name in sidebar
+  var el = document.getElementById('sidebar-user-name');
+  if (el && usuarioLogado) {
+    el.textContent = usuarioLogado.nome || usuarioLogado.email;
+  }
+}
+
+function mostrarLogin() {
+  document.getElementById('login-screen').classList.remove('escondido');
+  document.getElementById('app-wrapper').classList.add('escondido');
+}
+
+async function realizarLogin(event) {
+  event.preventDefault();
+
+  var email = (document.getElementById('login-email').value || '').trim();
+  var senha = (document.getElementById('login-senha').value || '').trim();
+  var errorEl = document.getElementById('login-error');
+  var btnEl = document.getElementById('login-btn');
+
+  if (!email || !senha) {
+    errorEl.textContent = 'Preencha email e senha';
+    errorEl.classList.remove('escondido');
+    return;
+  }
+
+  errorEl.classList.add('escondido');
+  btnEl.disabled = true;
+  btnEl.textContent = 'Entrando...';
+
+  try {
+    var qs = 'usuarios_admin?email=eq.' + encodeURIComponent(email) +
+             '&senha_hash=eq.' + encodeURIComponent(senha) +
+             '&ativo=eq.true&select=*';
+    var data = await supaFetch(qs);
+
+    if (!data || data.length === 0) {
+      errorEl.textContent = 'Email ou senha incorretos';
+      errorEl.classList.remove('escondido');
+      btnEl.disabled = false;
+      btnEl.textContent = 'Entrar';
+      return;
+    }
+
+    var user = data[0];
+    usuarioLogado = {
+      id: user.id,
+      nome: user.nome,
+      email: user.email,
+      role: user.role,
+      propriedade_id: user.propriedade_id || null,
+    };
+
+    sessionStorage.setItem('labareda_usuario', JSON.stringify(usuarioLogado));
+    mostrarApp();
+    aplicarRestricaoRole();
+    initDashboard();
+
+  } catch (err) {
+    console.error('Erro no login:', err);
+    errorEl.textContent = 'Erro ao conectar. Tente novamente.';
+    errorEl.classList.remove('escondido');
+  }
+
+  btnEl.disabled = false;
+  btnEl.textContent = 'Entrar';
+}
+
+function realizarLogout() {
+  sessionStorage.removeItem('labareda_usuario');
+  usuarioLogado = null;
+
+  // Reset form
+  var emailEl = document.getElementById('login-email');
+  var senhaEl = document.getElementById('login-senha');
+  var errorEl = document.getElementById('login-error');
+  if (emailEl) emailEl.value = '';
+  if (senhaEl) senhaEl.value = '';
+  if (errorEl) errorEl.classList.add('escondido');
+
+  mostrarLogin();
+}
+
+function aplicarRestricaoRole() {
+  if (!usuarioLogado) return;
+
+  var selectProp = document.getElementById('filtro-propriedade');
+
+  if (usuarioLogado.role === 'admin' && usuarioLogado.propriedade_id) {
+    // Admin with specific propriedade: force filter and disable selector
+    propriedadeFiltro = usuarioLogado.propriedade_id;
+    if (selectProp) {
+      selectProp.value = usuarioLogado.propriedade_id;
+      selectProp.disabled = true;
+    }
+    filtrarPropriedade();
+  } else {
+    // Master: full access
+    if (selectProp) {
+      selectProp.disabled = false;
+    }
+  }
+}
 
 /* ================================================================== */
 /*  SUPABASE REST HELPERS                                             */
@@ -322,14 +447,14 @@ function abrirModalColaborador(id) {
     : '<div class="form-group"><label>Alterar Senha (opcional)</label><input type="password" id="campo-senha" placeholder="Deixe vazio para manter a senha atual"></div>';
 
   $('#modal-body').innerHTML =
-    '<div class="form-group"><label>Nome</label><input type="text" id="campo-nome" placeholder="Nome completo"></div>' +
+    '<div class="form-group"><label>Nome *</label><input type="text" id="campo-nome" placeholder="Nome completo" required></div>' +
     '<div class="form-group"><label>Email</label><input type="email" id="campo-email" placeholder="email@exemplo.com"></div>' +
     senhaHtml +
-    '<div class="form-group"><label>Telefone</label><input type="tel" id="campo-telefone" placeholder="+5511999999999"></div>' +
+    '<div class="form-group"><label>Telefone *</label><input type="tel" id="campo-telefone" placeholder="+5573999999999" required></div>' +
     '<div class="form-group"><label>WhatsApp</label><input type="tel" id="campo-whatsapp" placeholder="+5511999999999 (se diferente do telefone)"></div>' +
-    '<div class="form-group"><label>Funcao</label><input type="text" id="campo-funcao" placeholder="Ex: Auxiliar de cozinha"></div>' +
-    '<div class="form-group"><label>Setor</label><select id="campo-setor"><option value="">Selecione</option>' + setorOptions + '</select></div>' +
-    '<div class="form-group"><label>Propriedade</label><select id="campo-propriedade"><option value="">Selecione</option>' + propOptions + '</select></div>';
+    '<div class="form-group"><label>Funcao *</label><input type="text" id="campo-funcao" placeholder="Ex: Auxiliar de cozinha" required></div>' +
+    '<div class="form-group"><label>Setor *</label><select id="campo-setor" required><option value="">Selecione</option>' + setorOptions + '</select></div>' +
+    '<div class="form-group"><label>Propriedade *</label><select id="campo-propriedade" required><option value="">Selecione</option>' + propOptions + '</select></div>';
 
   // Pre-select current propriedade if filtered
   if (!id && propriedadeFiltro !== 'todas') {
@@ -1203,36 +1328,54 @@ function editarConfig(id, chave) {
 async function salvarModal() {
   try {
     if (modalModo === 'colaborador-novo' || modalModo === 'colaborador-editar') {
+      var nome = (($('#campo-nome') || {}).value || '').trim();
+      var email = (($('#campo-email') || {}).value || '').trim();
+      var telefoneRaw = (($('#campo-telefone') || {}).value || '').trim();
+      var funcao = (($('#campo-funcao') || {}).value || '').trim();
+
+      var setorId = ($('#campo-setor') || {}).value || '';
+      var propriedadeId = ($('#campo-propriedade') || {}).value || '';
+
+      // Validacoes — campos obrigatorios no banco
+      if (!nome) { mostrarToast('Nome e obrigatorio', 'error'); return; }
+      if (!telefoneRaw) { mostrarToast('Telefone e obrigatorio', 'error'); return; }
+      if (!funcao) { mostrarToast('Funcao e obrigatoria', 'error'); return; }
+      if (!setorId) { mostrarToast('Setor e obrigatorio', 'error'); return; }
+      if (!propriedadeId) { mostrarToast('Propriedade e obrigatoria', 'error'); return; }
+
+      // Formatar telefone: garantir formato +XXXXXXXXXXX
+      var digits = telefoneRaw.replace(/[^0-9]/g, '');
+      if (!telefoneRaw.startsWith('+')) {
+        if (digits.length === 11 || digits.length === 10) {
+          digits = '55' + digits;
+        }
+      }
+      if (digits.length < 10 || digits.length > 15) {
+        mostrarToast('Telefone invalido. Use formato: +5511999999999', 'error');
+        return;
+      }
+      var telefone = '+' + digits;
+
       var body = {
-        nome: ($('#campo-nome') || {}).value || '',
-        email: ($('#campo-email') || {}).value || '',
-        telefone: ($('#campo-telefone') || {}).value || '',
-        funcao: ($('#campo-funcao') || {}).value || '',
-        setor_id: ($('#campo-setor') || {}).value || null,
-        propriedade_id: ($('#campo-propriedade') || {}).value || null,
+        nome: nome,
+        email: email || null,
+        telefone: telefone,
+        funcao: funcao,
+        setor_id: setorId,
+        propriedade_id: propriedadeId,
       };
 
-      // Handle email — set null if empty
-      if (!body.email.trim()) body.email = null;
-
       // Handle WhatsApp
-      var wpp = ($('#campo-whatsapp') || {}).value || '';
-      if (wpp.trim()) {
-        body.whatsapp_jid = wpp.trim();
+      var wpp = (($('#campo-whatsapp') || {}).value || '').trim();
+      if (wpp) {
+        body.whatsapp_jid = wpp;
       }
 
       // Handle password
-      var senha = ($('#campo-senha') || {}).value || '';
-      if (senha.trim()) {
-        body.senha_hash = senha; // Will be hashed by backend later
+      var senha = (($('#campo-senha') || {}).value || '').trim();
+      if (senha) {
+        body.senha_hash = senha;
       }
-
-      if (!body.nome.trim()) {
-        mostrarToast('Nome e obrigatorio', 'error');
-        return;
-      }
-      if (!body.setor_id) body.setor_id = null;
-      if (!body.propriedade_id) body.propriedade_id = null;
 
       if (modalModo === 'colaborador-novo') {
         body.ativo = true;
@@ -1270,10 +1413,16 @@ function fecharModal(event) {
 /* ================================================================== */
 /*  INICIALIZACAO                                                     */
 /* ================================================================== */
-async function init() {
+async function initDashboard() {
   try {
     cachePropriedades = await supaFetch('propriedades?select=*');
     var selectProp = $('#filtro-propriedade');
+
+    // Clear existing options (except "Todas")
+    while (selectProp.options.length > 1) {
+      selectProp.remove(1);
+    }
+
     cachePropriedades.forEach(function(p) {
       var opt = document.createElement('option');
       opt.value = p.id;
@@ -1281,12 +1430,22 @@ async function init() {
       selectProp.appendChild(opt);
     });
 
+    aplicarRestricaoRole();
     navegarPara('visao-geral');
 
   } catch (err) {
     console.error('Erro na inicializacao:', err);
     mostrarToast('Erro ao conectar com o banco de dados', 'error');
     navegarPara('visao-geral');
+  }
+}
+
+function init() {
+  if (verificarSessao()) {
+    mostrarApp();
+    initDashboard();
+  } else {
+    mostrarLogin();
   }
 }
 

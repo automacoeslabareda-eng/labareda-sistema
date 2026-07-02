@@ -48,6 +48,126 @@ body {
 .escondido { display: none !important; }
 
 /* ================================================================== */
+/*  LOGIN SCREEN                                                      */
+/* ================================================================== */
+.login-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--sidebar-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.login-card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 8px 40px rgba(0,0,0,.4);
+  overflow: hidden;
+}
+
+.login-card__header {
+  background: var(--sidebar-bg);
+  padding: 36px 32px 28px;
+  text-align: center;
+}
+
+.login-card__logo {
+  width: 56px;
+  height: 56px;
+  margin-bottom: 16px;
+}
+
+.login-card__brand {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.login-card__subtitle {
+  font-size: 13px;
+  color: rgba(255,255,255,.5);
+  letter-spacing: 1px;
+}
+
+.login-card__form {
+  padding: 32px;
+}
+
+.login-card__form .form-group {
+  margin-bottom: 18px;
+}
+
+.login-card__form .form-group label {
+  color: var(--text);
+}
+
+.login-card__form .form-group input {
+  padding: 12px 14px;
+  font-size: 15px;
+}
+
+.login-card__error {
+  background: var(--danger-light);
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.login-card__btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 15px;
+  justify-content: center;
+}
+
+.login-card__btn:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+/* Sidebar logout button */
+.sidebar__logout {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 0;
+  border: none;
+  background: none;
+  color: rgba(255,255,255,.5);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color var(--transition);
+}
+
+.sidebar__logout:hover {
+  color: var(--danger);
+}
+
+.sidebar__user-name {
+  font-size: 11px;
+  color: rgba(255,255,255,.35);
+  margin-top: 6px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ================================================================== */
 /*  SIDEBAR                                                           */
 /* ================================================================== */
 .sidebar {

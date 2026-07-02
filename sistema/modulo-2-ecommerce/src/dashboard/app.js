@@ -22,6 +22,80 @@ var modalModo = null;
 var modalItemId = null;
 var cacheCategorias = [];
 var bucketPronto = false;
+var usuarioLogado = null;
+
+// Banco de gestao (para login - tabela usuarios_admin)
+var GESTAO_SUPABASE_URL = 'https://tidngxclgaspltzqoemi.supabase.co';
+var GESTAO_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE';
+
+/* ================================================================== */
+/*  LOGIN / LOGOUT                                                    */
+/* ================================================================== */
+function verificarSessao() {
+  try {
+    var dados = sessionStorage.getItem('labareda_shop_usuario');
+    if (dados) { usuarioLogado = JSON.parse(dados); return true; }
+  } catch (e) { console.error(e); }
+  return false;
+}
+
+function mostrarApp() {
+  document.getElementById('login-screen').classList.add('escondido');
+  document.getElementById('app-wrapper').classList.remove('escondido');
+  var el = document.getElementById('sidebar-user-name');
+  if (el && usuarioLogado) el.textContent = usuarioLogado.nome || usuarioLogado.email;
+}
+
+function mostrarLogin() {
+  document.getElementById('login-screen').classList.remove('escondido');
+  document.getElementById('app-wrapper').classList.add('escondido');
+}
+
+async function realizarLogin(event) {
+  event.preventDefault();
+  var email = (document.getElementById('login-email').value || '').trim();
+  var senha = (document.getElementById('login-senha').value || '').trim();
+  var errorEl = document.getElementById('login-error');
+  var btnEl = document.getElementById('login-btn');
+
+  if (!email || !senha) { errorEl.textContent = 'Preencha email e senha'; errorEl.classList.remove('escondido'); return; }
+
+  errorEl.classList.add('escondido');
+  btnEl.disabled = true;
+  btnEl.textContent = 'Entrando...';
+
+  try {
+    var url = GESTAO_SUPABASE_URL + '/rest/v1/usuarios_admin?email=eq.' + encodeURIComponent(email) + '&senha_hash=eq.' + encodeURIComponent(senha) + '&ativo=eq.true&select=*';
+    var r = await fetch(url, { headers: { 'apikey': GESTAO_SUPABASE_KEY, 'Authorization': 'Bearer ' + GESTAO_SUPABASE_KEY } });
+    if (!r.ok) throw new Error('Erro de conexao');
+    var data = await r.json();
+
+    if (!data || data.length === 0) {
+      errorEl.textContent = 'Email ou senha incorretos';
+      errorEl.classList.remove('escondido');
+      btnEl.disabled = false; btnEl.textContent = 'Entrar';
+      return;
+    }
+
+    usuarioLogado = { id: data[0].id, nome: data[0].nome, email: data[0].email, role: data[0].role };
+    sessionStorage.setItem('labareda_shop_usuario', JSON.stringify(usuarioLogado));
+    mostrarApp();
+    initDashboard();
+  } catch (err) {
+    errorEl.textContent = 'Erro ao conectar. Tente novamente.';
+    errorEl.classList.remove('escondido');
+  }
+  btnEl.disabled = false; btnEl.textContent = 'Entrar';
+}
+
+function realizarLogout() {
+  sessionStorage.removeItem('labareda_shop_usuario');
+  usuarioLogado = null;
+  var e = document.getElementById('login-email'); if (e) e.value = '';
+  var s = document.getElementById('login-senha'); if (s) s.value = '';
+  var err = document.getElementById('login-error'); if (err) err.classList.add('escondido');
+  mostrarLogin();
+}
 
 /* ================================================================== */
 /*  SUPABASE REST HELPERS                                             */
@@ -1575,12 +1649,21 @@ function fecharModal(event) {
 /* ================================================================== */
 /*  INICIALIZACAO                                                     */
 /* ================================================================== */
-async function init() {
+async function initDashboard() {
   try {
     navegarPara('visao-geral');
   } catch (err) {
     console.error('Erro na inicializacao:', err);
     mostrarToast('Erro ao conectar com o banco de dados', 'error');
+  }
+}
+
+function init() {
+  if (verificarSessao()) {
+    mostrarApp();
+    initDashboard();
+  } else {
+    mostrarLogin();
   }
 }
 
