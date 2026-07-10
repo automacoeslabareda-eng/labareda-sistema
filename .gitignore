@@ -26,3 +26,6 @@ Nova pasta/
 .claude/settings.local.json
 .aiox/install-log.txt
 .aiox/handoffs/
+
+# Local Netlify folder
+.netlify

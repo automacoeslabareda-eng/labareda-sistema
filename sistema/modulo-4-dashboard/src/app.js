@@ -514,6 +514,8 @@ async function toggleColaborador(id, atualmenteAtivo) {
 /* ================================================================== */
 /*  TAREFAS                                                           */
 /* ================================================================== */
+var tarefaAbertaId = null;
+
 async function carregarTarefas() {
   try {
     var qs = '?select=*&order=created_at.desc';
@@ -531,14 +533,14 @@ async function carregarTarefas() {
 
     tbody.innerHTML = data.map(function(t) {
       var status = slugStatus(t.status);
-      var prioridade = (t.prioridade || 'media').toLowerCase();
-      var cmd = t.comando_original || t.descricao || '--';
+      var prioridade = (t.prioridade || 'normal').toLowerCase();
+      var cmd = t.comando_original || '--';
       if (cmd.length > 80) cmd = cmd.substring(0, 77) + '...';
       var conclusao = t.porcentagem_conclusao || 0;
 
       return '<tr class="tr-clicavel" onclick="expandirTarefa(\'' + t.id + '\')">' +
         '<td>' + escapeHtml(cmd) + '</td>' +
-        '<td>' + escapeHtml(t.setor || '--') + '</td>' +
+        '<td>' + escapeHtml(t.setor_interpretado || '--') + '</td>' +
         '<td><span class="badge badge--' + status + '">' + (t.status || 'pendente') + '</span></td>' +
         '<td><span class="badge badge--' + prioridade + '">' + prioridade + '</span></td>' +
         '<td>' + formatarData(t.created_at) + '</td>' +
@@ -550,6 +552,7 @@ async function carregarTarefas() {
     }).join('');
 
     $('#tarefa-detalhe').classList.add('escondido');
+    tarefaAbertaId = null;
 
   } catch (err) {
     console.error('Erro ao carregar tarefas:', err);
@@ -559,20 +562,21 @@ async function carregarTarefas() {
 
 async function expandirTarefa(tarefaId) {
   try {
+    tarefaAbertaId = tarefaId;
     var items = await supaFetch('checklist_items?tarefa_id=eq.' + tarefaId + '&order=ordem.asc');
     var detalhe = $('#tarefa-detalhe');
     var container = $('#tarefa-checklist');
 
     if (!items || items.length === 0) {
-      container.innerHTML = '<p class="placeholder">Nenhum item de checklist</p>';
+      container.innerHTML = '<p class="placeholder">Nenhum item de checklist. Clique em "+ Item" para adicionar.</p>';
     } else {
       container.innerHTML = items.map(function(item) {
-        var concluido = item.concluido || item.status === 'concluido';
-        return '<div class="checklist-item">' +
-          '<span class="checklist-item__status checklist-item__status--' + (concluido ? 'concluido' : 'pendente') + '">' +
-            (concluido ? '&#10003;' : '&#9711;') +
+        var concluido = item.status === 'concluido';
+        return '<div class="checklist-item" style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer" onclick="toggleChecklist(\'' + item.id + '\',' + (concluido ? 'false' : 'true') + ')">' +
+          '<span style="font-size:18px;color:' + (concluido ? 'var(--success)' : 'var(--text-muted)') + '">' +
+            (concluido ? '&#9745;' : '&#9744;') +
           '</span>' +
-          '<span>' + escapeHtml(item.descricao || item.texto || '--') + '</span>' +
+          '<span style="' + (concluido ? 'text-decoration:line-through;opacity:0.6' : '') + '">' + escapeHtml(item.descricao || '--') + '</span>' +
           '</div>';
       }).join('');
     }
@@ -583,6 +587,144 @@ async function expandirTarefa(tarefaId) {
 
   } catch (err) {
     console.error('Erro ao expandir tarefa:', err);
+  }
+}
+
+async function toggleChecklist(itemId, marcar) {
+  try {
+    var novoStatus = marcar ? 'concluido' : 'pendente';
+    var updates = { status: novoStatus };
+    if (marcar) updates.concluido_at = new Date().toISOString();
+    else updates.concluido_at = null;
+    await supaUpdate('checklist_items', itemId, updates);
+    if (tarefaAbertaId) {
+      await expandirTarefa(tarefaAbertaId);
+      await atualizarConclusaoTarefa(tarefaAbertaId);
+    }
+  } catch (err) {
+    console.error('Erro ao atualizar checklist:', err);
+    mostrarToast('Erro ao atualizar item', 'error');
+  }
+}
+
+async function atualizarConclusaoTarefa(tarefaId) {
+  try {
+    var items = await supaFetch('checklist_items?tarefa_id=eq.' + tarefaId);
+    if (!items || items.length === 0) return;
+    var concluidos = items.filter(function(i) { return i.status === 'concluido'; }).length;
+    var pct = Math.round((concluidos / items.length) * 100);
+    var novoStatus = pct === 100 ? 'concluida' : (pct > 0 ? 'em_andamento' : 'pendente');
+    await supaUpdate('tarefas', tarefaId, {
+      porcentagem_conclusao: pct,
+      status: novoStatus,
+      concluida_at: pct === 100 ? new Date().toISOString() : null,
+    });
+    carregarTarefas();
+  } catch (err) {
+    console.error('Erro ao atualizar conclusao:', err);
+  }
+}
+
+async function adicionarItemChecklist() {
+  if (!tarefaAbertaId) { mostrarToast('Selecione uma tarefa primeiro', 'error'); return; }
+  var texto = prompt('Descricao do item:');
+  if (!texto || !texto.trim()) return;
+  try {
+    // Get propriedade_id from the tarefa
+    var tarefa = await supaFetch('tarefas?id=eq.' + tarefaAbertaId + '&select=propriedade_id');
+    var propId = (tarefa && tarefa[0]) ? tarefa[0].propriedade_id : null;
+    if (!propId) { mostrarToast('Erro: tarefa sem propriedade', 'error'); return; }
+
+    var items = await supaFetch('checklist_items?tarefa_id=eq.' + tarefaAbertaId + '&select=ordem&order=ordem.desc&limit=1');
+    var proximaOrdem = (items && items.length > 0) ? (items[0].ordem + 1) : 1;
+    await supaInsert('checklist_items', {
+      tarefa_id: tarefaAbertaId,
+      propriedade_id: propId,
+      descricao: texto.trim(),
+      ordem: proximaOrdem,
+      status: 'pendente',
+    });
+    mostrarToast('Item adicionado');
+    await expandirTarefa(tarefaAbertaId);
+  } catch (err) {
+    console.error('Erro ao adicionar item:', err);
+    mostrarToast('Erro ao adicionar item: ' + err.message, 'error');
+  }
+}
+
+function abrirModalTarefa(id) {
+  modalModo = id ? 'tarefa-editar' : 'tarefa-nova';
+  modalItemId = id || null;
+
+  $('#modal-titulo').textContent = id ? 'Editar Tarefa' : 'Nova Tarefa';
+
+  var opcoesSetor = cacheSetores.map(function(s) {
+    return '<option value="' + s.id + '">' + escapeHtml(s.nome) + '</option>';
+  }).join('');
+
+  var opcoesProp = cachePropriedades.map(function(p) {
+    return '<option value="' + p.id + '">' + escapeHtml(p.nome) + '</option>';
+  }).join('');
+
+  var propSelecionada = propriedadeFiltro !== 'todas' ? propriedadeFiltro : '';
+
+  $('#modal-body').innerHTML =
+    '<div class="form-group">' +
+      '<label>Descricao *</label>' +
+      '<textarea id="campo-tarefa-desc" class="form-input" rows="3" placeholder="O que precisa ser feito?"></textarea>' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label>Setor *</label>' +
+      '<select id="campo-tarefa-setor" class="form-input">' +
+        '<option value="">Selecione...</option>' + opcoesSetor +
+      '</select>' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label>Propriedade *</label>' +
+      '<select id="campo-tarefa-prop" class="form-input">' +
+        '<option value="">Selecione...</option>' + opcoesProp +
+      '</select>' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label>Prioridade</label>' +
+      '<select id="campo-tarefa-prio" class="form-input">' +
+        '<option value="normal">Normal</option>' +
+        '<option value="alta">Alta</option>' +
+        '<option value="urgente">Urgente</option>' +
+        '<option value="baixa">Baixa</option>' +
+      '</select>' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label>Data Limite</label>' +
+      '<input id="campo-tarefa-data" type="date" class="form-input" />' +
+    '</div>';
+
+  if (propSelecionada) {
+    $('#campo-tarefa-prop').value = propSelecionada;
+  }
+
+  if (id) {
+    carregarDadosTarefaModal(id);
+  }
+
+  $('#modal-overlay').classList.remove('escondido');
+}
+
+async function carregarDadosTarefaModal(id) {
+  try {
+    var data = await supaFetch('tarefas?id=eq.' + id);
+    if (data && data.length > 0) {
+      var t = data[0];
+      $('#campo-tarefa-desc').value = t.comando_original || '';
+      $('#campo-tarefa-setor').value = t.setor_id || '';
+      $('#campo-tarefa-prop').value = t.propriedade_id || '';
+      $('#campo-tarefa-prio').value = t.prioridade || 'normal';
+      if (t.data_limite) {
+        $('#campo-tarefa-data').value = t.data_limite.substring(0, 10);
+      }
+    }
+  } catch (err) {
+    console.error('Erro ao carregar tarefa:', err);
   }
 }
 
@@ -1389,6 +1531,43 @@ async function salvarModal() {
       fecharModal();
       carregarColaboradores();
 
+    } else if (modalModo === 'tarefa-nova' || modalModo === 'tarefa-editar') {
+      var desc = (($('#campo-tarefa-desc') || {}).value || '').trim();
+      var setorId = ($('#campo-tarefa-setor') || {}).value || '';
+      var propId = ($('#campo-tarefa-prop') || {}).value || '';
+      var prio = ($('#campo-tarefa-prio') || {}).value || 'normal';
+      var dataLimite = ($('#campo-tarefa-data') || {}).value || null;
+
+      if (!desc) { mostrarToast('Descricao e obrigatoria', 'error'); return; }
+      if (!setorId) { mostrarToast('Setor e obrigatorio', 'error'); return; }
+      if (!propId) { mostrarToast('Propriedade e obrigatoria', 'error'); return; }
+
+      var setorNome = '';
+      for (var s = 0; s < cacheSetores.length; s++) {
+        if (cacheSetores[s].id === setorId) { setorNome = cacheSetores[s].nome; break; }
+      }
+
+      var body = {
+        comando_original: desc,
+        setor_id: setorId,
+        setor_interpretado: setorNome,
+        propriedade_id: propId,
+        prioridade: prio,
+        data_limite: dataLimite || null,
+        origem: 'dashboard',
+      };
+
+      if (modalModo === 'tarefa-nova') {
+        await supaInsert('tarefas', body);
+        mostrarToast('Tarefa criada com sucesso');
+      } else {
+        await supaUpdate('tarefas', modalItemId, body);
+        mostrarToast('Tarefa atualizada');
+      }
+
+      fecharModal();
+      carregarTarefas();
+
     } else if (modalModo === 'config-editar') {
       var valor = ($('#campo-config-valor') || {}).value || '';
       await supaUpdate('configuracoes', modalItemId, { valor: valor });
@@ -1416,6 +1595,9 @@ function fecharModal(event) {
 async function initDashboard() {
   try {
     cachePropriedades = await supaFetch('propriedades?select=*');
+    if (cacheSetores.length === 0) {
+      cacheSetores = await supaFetch('setores?select=*');
+    }
     var selectProp = $('#filtro-propriedade');
 
     // Clear existing options (except "Todas")

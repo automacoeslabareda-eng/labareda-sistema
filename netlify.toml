@@ -1,0 +1,9 @@
+[build]
+  base = "sistema/modulo-5-site-institucional/src"
+  publish = "sistema/modulo-5-site-institucional/src"
+  command = "echo 'Static site - no build needed'"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -202,6 +202,7 @@
     <section class="page page--hidden" id="page-tarefas">
       <div class="page__header">
         <h2 class="page__title">Tarefas</h2>
+        <button class="btn btn--primary" onclick="abrirModalTarefa()">+ Nova Tarefa</button>
       </div>
       <div class="filtros">
         <select id="filtro-tarefa-status" class="filtro-select" onchange="carregarTarefas()">
@@ -216,7 +217,7 @@
         <table class="tabela" id="tabela-tarefas">
           <thead>
             <tr>
-              <th>Comando</th>
+              <th>Descricao</th>
               <th>Setor</th>
               <th>Status</th>
               <th>Prioridade</th>
@@ -230,7 +231,10 @@
         </table>
       </div>
       <div class="section-card escondido" id="tarefa-detalhe">
-        <h3 class="section-card__title" id="tarefa-detalhe-titulo">Checklist</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <h3 class="section-card__title" id="tarefa-detalhe-titulo" style="margin:0">Checklist</h3>
+          <button class="btn btn--small btn--secondary" onclick="adicionarItemChecklist()">+ Item</button>
+        </div>
         <div id="tarefa-checklist"></div>
       </div>
     </section>
