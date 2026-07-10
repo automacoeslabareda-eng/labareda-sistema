@@ -1,0 +1,43 @@
+hetzner:
+
+usuario: adm.kosmikraw.com@gmail.com
+
+senha: wexzuh-numket-tubmU7
+
+hostinger:
+
+usuario: marcosdiegopacheco@gmail.com
+senha: 3dghYr0aWrkt1Ru
+
+vps:
+
+ssh: 157.90.165.123
+senha:LjVCvNEu7Uh3
+
+
+portainer:
+
+portainer.sitiolabareda.com
+
+usuario: labareda
+senha: @Labareda123
+
+Manager da Evolution Go: https://apiwhats.sitiolabareda.com/manager
+
+BaseUrl: https://apiwhats.sitiolabareda.com
+
+Global API Key: 6726c36d000c9e73ac5ad778752de934
+
+
+n8n:
+
+https://n8n.sitiolabareda.com/
+
+usuario contato@sitiolabareda.com
+senha: @Labareda123
+
+
+usuario das dashboards:
+
+usuario: marcos@sitiolabareda.com
+senha: labareda2026
