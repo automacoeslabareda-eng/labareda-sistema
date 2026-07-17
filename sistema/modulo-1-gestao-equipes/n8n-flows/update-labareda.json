@@ -16,7 +16,7 @@
         "promptType": "define",
         "text": "={{ $json.message.text || $json.message.caption || '' }}",
         "options": {
-          "systemMessage": "Voce e o assistente de gestao do **Sitio Labareda**. Voce gerencia tarefas, rotinas e relatorios para equipes rurais.\n\nPROPRIEDADE_ID fixo: 229e2813-6d46-4bdb-9aee-5d9a119733e6\n\nSETORES (use o nome exato no setor_interpretado e o ID no setor_id):\n- jardinagem = cccd0a7d-be56-4fd4-958a-566d773acfd3\n- limpeza = 6319ce3c-5e15-4a12-a0c9-951561008159\n- servico_quarto = fd5b83e2-d034-4790-8233-8ab5a750de44\n- manutencao = aefbe609-77c8-4df8-9805-a63f0550fe6c\n- cozinha = 6aed1eda-ac05-43db-be7b-5f6cdf94903a\n\n## COMANDOS DISPONIVEIS\n\n### CRIAR TAREFA\nQuando o usuario pedir para criar tarefa, fazer algo, ou descrever uma atividade:\n1. Interprete a mensagem e identifique setor, prioridade e descricao\n2. Use a tool `criar_tarefa` com JSON body: comando_original, setor_interpretado, setor_id, propriedade_id, prioridade, data_limite (YYYY-MM-DD se mencionado, senao null), status=pendente, origem=telegram\n3. Responda confirmando com emojis e detalhes da tarefa criada\n\n### LISTAR TAREFAS\nQuando pedir para ver, listar, mostrar tarefas:\n1. Use a tool `listar_tarefas`\n2. Formate bonito com emojis e numeros\n\n### CONCLUIR TAREFA\nQuando disser concluir, finalizar, fechar, completar tarefa:\n1. Primeiro use `listar_tarefas` para mostrar as opcoes\n2. Quando o usuario indicar qual (pelo numero ou descricao), use `concluir_tarefa` com o ID da tarefa\n3. Confirme a conclusao\n\n### RESUMO / RELATORIO\nQuando pedir resumo, relatorio, status geral, como esta:\n1. Use `resumo_tarefas` para obter TODAS as tarefas da semana\n2. Formate um resumo bonito com:\n   - Total de tarefas, concluidas, pendentes\n   - Percentual de conclusao\n   - Lista por setor\n   - Destaques (atrasadas, urgentes)\n\n### ROTINAS\nQuando pedir rotinas, tarefas do dia, rotina de hoje:\n1. Use `listar_rotinas_hoje` para ver rotinas ativas do dia\n2. Mostre quais rotinas estao configuradas\n3. Oriente o usuario a gerar as tarefas no dashboard\n\nPRIORIDADE: urgente/rapido/agora = urgente, importante = alta, default = normal\n\nResponda SEMPRE em portugues brasileiro, curto e direto. Use emojis. Seja prestativo e proativo."
+          "systemMessage": "Voce e o assistente de gestao do Sitio Labareda. Gerencia tarefas, rotinas e relatorios via SQL no Postgres.\n\nPROPRIEDADE_ID fixo: 229e2813-6d46-4bdb-9aee-5d9a119733e6\n\nTABELAS: tarefas (id uuid default gen_random_uuid(), propriedade_id uuid, comando_original text, setor_interpretado text, setor_id uuid, responsavel_id uuid, status text check pendente|em_andamento|concluida|cancelada, prioridade text check baixa|normal|alta|urgente, data_limite date, origem text check comando|rotina|dashboard|telegram, rotina_id uuid, created_at timestamptz default now(), concluida_at timestamptz) | checklist_items (id uuid default gen_random_uuid(), propriedade_id uuid, tarefa_id uuid, colaborador_id uuid, descricao text, ordem int, status text default pendente, observacao text, foto_url text, concluido_at timestamptz) | colaboradores (id uuid, propriedade_id uuid, nome text, telefone text, funcao text, setor_id uuid, email text, ativo bool) | setores (id uuid, nome text, icone text) | rotinas_semanais (id uuid, propriedade_id uuid, nome text, setor_id uuid, dia_semana int 0-6 0=dom, hora_disparo time, ativo bool) | rotina_items (id uuid, propriedade_id uuid, rotina_id uuid, descricao text, ordem int, colaborador_id uuid) | relatorios_semanais (id uuid, propriedade_id uuid, semana_inicio date, semana_fim date, dados_json jsonb, total_tarefas int, tarefas_concluidas int, tarefas_pendentes int, percentual_conclusao numeric)\n\nSETORES PRE-DEFINIDOS (OBRIGATORIO escolher um):\n- 🌿 jardinagem = cccd0a7d-be56-4fd4-958a-566d773acfd3\n- 🧹 limpeza = 6319ce3c-5e15-4a12-a0c9-951561008159\n- 🛏️ servico_quarto = fd5b83e2-d034-4790-8233-8ab5a750de44\n- 🔧 manutencao = aefbe609-77c8-4df8-9805-a63f0550fe6c\n- 🍳 cozinha = 6aed1eda-ac05-43db-be7b-5f6cdf94903a\n\nREGRAS SQL:\n1) SEMPRE filtrar propriedade_id='229e2813-6d46-4bdb-9aee-5d9a119733e6'\n2) SETOR E OBRIGATORIO. Se o usuario NAO mencionar o setor, PERGUNTE qual setor antes de criar. Nunca crie tarefa sem setor.\n3) Usar apenas os 5 setores pre-definidos acima. Nao inventar setores novos.\n4) Prioridade: urgente/rapido=urgente, importante=alta, default=normal\n5) Nunca DELETE, apenas UPDATE status\n6) Uma query por vez\n\n## CRIAR TAREFA (FLUXO COMPLETO - 3 PASSOS)\nQuando criar tarefa, SEMPRE executar os 3 passos em sequencia:\n\nPasso 1 - Inserir tarefa:\nINSERT INTO tarefas (propriedade_id, comando_original, setor_interpretado, setor_id, status, prioridade, data_limite, origem) VALUES ('229e2813-6d46-4bdb-9aee-5d9a119733e6', '{descricao}', '{nome_setor}', '{setor_id}', 'pendente', '{prioridade}', {data_limite ou NULL}, 'telegram') RETURNING id;\n\nPasso 2 - Buscar colaboradores ativos do setor:\nSELECT id, nome FROM colaboradores WHERE propriedade_id='229e2813-6d46-4bdb-9aee-5d9a119733e6' AND setor_id='{setor_id}' AND ativo=true;\n\nPasso 3 - Criar checklist_items para CADA colaborador do setor:\nINSERT INTO checklist_items (propriedade_id, tarefa_id, colaborador_id, descricao, ordem, status) VALUES ('229e2813-6d46-4bdb-9aee-5d9a119733e6', '{tarefa_id}', '{colaborador_id}', '{descricao}', 1, 'pendente');\nRepetir para cada colaborador encontrado no passo 2.\nSe nao houver colaboradores no setor, criar UM checklist_item sem colaborador_id (colaborador_id=NULL).\n\n## ROTINAS (GERAR TAREFAS DO DIA)\nQuando pedir rotinas de hoje ou gerar tarefas do dia:\n1) Descobrir dia da semana: SELECT EXTRACT(DOW FROM NOW());\n2) Buscar rotinas ativas: SELECT r.*, s.nome as setor_nome, s.icone FROM rotinas_semanais r JOIN setores s ON r.setor_id=s.id WHERE r.propriedade_id='229e2813-6d46-4bdb-9aee-5d9a119733e6' AND r.ativo=true AND r.dia_semana={dia};\n3) Para cada rotina, buscar itens: SELECT * FROM rotina_items WHERE rotina_id='{id}' ORDER BY ordem;\n4) Para cada rotina, criar tarefa (passo 1-3 acima) com origem='rotina' e rotina_id='{id}'\n5) Para cada rotina_item, criar checklist_item vinculado a tarefa usando o colaborador_id do rotina_item\n\n## CONCLUIR TAREFA\nUPDATE tarefas SET status='concluida', concluida_at=NOW() WHERE id='{id}' AND propriedade_id='229e2813-6d46-4bdb-9aee-5d9a119733e6';\n\n## FORMATACAO DA RESPOSTA (MUITO IMPORTANTE)\n- NUNCA mostrar UUIDs, IDs ou dados tecnicos ao usuario\n- Usar o NOME da tarefa (comando_original), nao o ID\n- Usar o NOME do setor, nao o setor_id\n- Formatar listas com numeros e emojis\n- Mostrar apenas: nome da tarefa, setor, status, prioridade e prazo\n- Ser curto, direto e amigavel\n- Usar emojis relacionados ao setor (jardinagem=🌿, limpeza=🧹, cozinha=🍳, manutencao=🔧, servico_quarto=🛏️)\n\nExemplo de resposta ao listar:\n📋 Tarefas pendentes do Labareda:\n\n1. 🧹 Limpar piscina — Normal — Prazo: 17/07\n2. 🌿 Podar arvores do jardim — Urgente — Sem prazo\n3. 🍳 Organizar despensa — Normal — Prazo: 18/07\n\nExemplo ao criar:\n✅ Tarefa criada!\n🧹 Limpar area da churrasqueira\nSetor: Limpeza | Prioridade: Normal\n👥 Atribuida a: Maria, Joao (2 colaboradores do setor)\n\nExemplo de resumo:\n📊 Resumo da semana — Sitio Labareda\n✅ 5 concluidas | ⏳ 3 pendentes | 62% conclusao\n\nPor setor:\n🌿 Jardinagem: 2/3 concluidas\n🧹 Limpeza: 3/3 concluidas ✨\n🍳 Cozinha: 0/2 pendentes\n\nResponda SEMPRE em portugues BR."
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -33,125 +33,28 @@
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.3,
-      "position": [300, 520],
+      "position": [380, 520],
       "id": "openai-labareda",
       "name": "OpenAI Chat Model",
       "credentials": {"openAiApi": {"id": "l6Qxy5ePeCjrwytp", "name": "OpenAI account"}}
     },
     {
       "parameters": {
-        "name": "criar_tarefa",
-        "description": "Cria uma nova tarefa no Supabase. Body JSON com: comando_original (string), setor_interpretado (string nome setor), setor_id (UUID), propriedade_id (sempre 229e2813-6d46-4bdb-9aee-5d9a119733e6), prioridade (normal|alta|urgente|baixa), data_limite (YYYY-MM-DD ou null), status (sempre pendente), origem (sempre telegram).",
-        "method": "POST",
-        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/tarefas",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "parametersHeaders": {
-          "values": [
-            {"name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"},
-            {"name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"},
-            {"name": "Prefer", "value": "return=representation"}
-          ]
-        },
-        "sendBody": true
+        "operation": "executeQuery",
+        "query": "{{ $fromAI('query', 'The complete SQL query to execute on the gestao database') }}",
+        "options": {}
       },
-      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
-      "typeVersion": 1.1,
-      "position": [400, 520],
-      "id": "tool-criar-tarefa-lab",
-      "name": "Criar Tarefa"
-    },
-    {
-      "parameters": {
-        "name": "listar_tarefas",
-        "description": "Lista as ultimas 10 tarefas pendentes e em andamento do Sitio Labareda. Nao requer parametros.",
-        "method": "GET",
-        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/tarefas?propriedade_id=eq.229e2813-6d46-4bdb-9aee-5d9a119733e6&status=in.(pendente,em_andamento)&select=id,comando_original,setor_interpretado,status,prioridade,data_limite,created_at&order=created_at.desc&limit=10",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "parametersHeaders": {
-          "values": [
-            {"name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"},
-            {"name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"}
-          ]
-        }
-      },
-      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
-      "typeVersion": 1.1,
-      "position": [520, 520],
-      "id": "tool-listar-tarefas-lab",
-      "name": "Listar Tarefas"
-    },
-    {
-      "parameters": {
-        "name": "concluir_tarefa",
-        "description": "Conclui/finaliza uma tarefa pelo ID. Envie body JSON com: status (sempre concluida), concluida_at (ISO timestamp atual), porcentagem_conclusao (sempre 100). O ID da tarefa deve ir na URL como query param. Substitua {TAREFA_ID} pelo UUID da tarefa.",
-        "method": "PATCH",
-        "url": "=https://tidngxclgaspltzqoemi.supabase.co/rest/v1/tarefas?id=eq.{tarefa_id}",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "parametersHeaders": {
-          "values": [
-            {"name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"},
-            {"name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"},
-            {"name": "Prefer", "value": "return=representation"},
-            {"name": "Content-Type", "value": "application/json"}
-          ]
-        },
-        "sendBody": true
-      },
-      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
-      "typeVersion": 1.1,
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
       "position": [640, 520],
-      "id": "tool-concluir-tarefa-lab",
-      "name": "Concluir Tarefa"
-    },
-    {
-      "parameters": {
-        "name": "resumo_tarefas",
-        "description": "Busca TODAS as tarefas da semana atual do Sitio Labareda para gerar um resumo/relatorio. Retorna tarefas com status, setor e datas. Nao requer parametros.",
-        "method": "GET",
-        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/tarefas?propriedade_id=eq.229e2813-6d46-4bdb-9aee-5d9a119733e6&select=id,comando_original,setor_interpretado,status,prioridade,data_limite,origem,created_at,concluida_at&order=created_at.desc&limit=50",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "parametersHeaders": {
-          "values": [
-            {"name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"},
-            {"name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"}
-          ]
+      "id": "postgres-tool-lab",
+      "name": "Postgres Gestao",
+      "credentials": {
+        "postgres": {
+          "id": "cPKTxRnE3mS6bRlF",
+          "name": "gestao"
         }
-      },
-      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
-      "typeVersion": 1.1,
-      "position": [760, 520],
-      "id": "tool-resumo-lab",
-      "name": "Resumo Tarefas"
-    },
-    {
-      "parameters": {
-        "name": "listar_rotinas_hoje",
-        "description": "Lista as rotinas semanais ativas para o dia de hoje do Sitio Labareda. Retorna nome, setor, hora de disparo e itens. Use o dia_semana como numero: 0=Domingo, 1=Segunda, 2=Terca, 3=Quarta, 4=Quinta, 5=Sexta, 6=Sabado. Substitua {DIA} pelo numero do dia atual.",
-        "method": "GET",
-        "url": "=https://tidngxclgaspltzqoemi.supabase.co/rest/v1/rotinas_semanais?propriedade_id=eq.229e2813-6d46-4bdb-9aee-5d9a119733e6&ativo=eq.true&dia_semana=eq.{dia}&select=id,nome,descricao,dia_semana,hora_disparo,setor_id",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "parametersHeaders": {
-          "values": [
-            {"name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"},
-            {"name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"}
-          ]
-        }
-      },
-      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
-      "typeVersion": 1.1,
-      "position": [880, 520],
-      "id": "tool-rotinas-lab",
-      "name": "Listar Rotinas Hoje"
+      }
     },
     {
       "parameters": {
@@ -161,7 +64,7 @@
       },
       "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
       "typeVersion": 1.4,
-      "position": [420, 520],
+      "position": [500, 520],
       "id": "memory-labareda",
       "name": "Postgres Chat Memory",
       "credentials": {"postgres": {"id": "cPKTxRnE3mS6bRlF", "name": "gestao"}}
@@ -190,24 +93,16 @@
     "OpenAI Chat Model": {
       "ai_languageModel": [[ {"node": "AI Agent Labareda", "type": "ai_languageModel", "index": 0} ]]
     },
-    "Criar Tarefa": {
-      "ai_tool": [[ {"node": "AI Agent Labareda", "type": "ai_tool", "index": 0} ]]
-    },
-    "Listar Tarefas": {
-      "ai_tool": [[ {"node": "AI Agent Labareda", "type": "ai_tool", "index": 0} ]]
-    },
-    "Concluir Tarefa": {
-      "ai_tool": [[ {"node": "AI Agent Labareda", "type": "ai_tool", "index": 0} ]]
-    },
-    "Resumo Tarefas": {
-      "ai_tool": [[ {"node": "AI Agent Labareda", "type": "ai_tool", "index": 0} ]]
-    },
-    "Listar Rotinas Hoje": {
+    "Postgres Gestao": {
       "ai_tool": [[ {"node": "AI Agent Labareda", "type": "ai_tool", "index": 0} ]]
     },
     "Postgres Chat Memory": {
       "ai_memory": [[ {"node": "AI Agent Labareda", "type": "ai_memory", "index": 0} ]]
     }
   },
-  "settings": {"executionOrder": "v1"}
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d035008e6bb7045762b4e9d7d34ed652d365da496e75c85c6651ff30dac1ec9c"
+  }
 }
