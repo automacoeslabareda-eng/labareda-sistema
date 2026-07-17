@@ -1265,10 +1265,10 @@ async function gerarTarefasDoDia() {
     }
 
     // 3. Verificar se ja foram geradas hoje (evitar duplicatas)
-    var hojeStr = hoje.toISOString().substring(0, 10);
+    var hojeStr = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0') + '-' + String(hoje.getDate()).padStart(2, '0');
     var jaGeradas = await supaFetch(
       'tarefas?select=rotina_id&origem=eq.rotina&propriedade_id=eq.' + propriedadeFiltro +
-      '&created_at=gte.' + hojeStr + 'T00:00:00&created_at=lt.' + hojeStr + 'T23:59:59'
+      '&created_at=gte.' + hojeStr + 'T00:00:00-03:00&created_at=lt.' + hojeStr + 'T23:59:59-03:00'
     );
     var rotinasJaGeradas = {};
     if (jaGeradas) {
@@ -1309,19 +1309,68 @@ async function gerarTarefasDoDia() {
         data_limite: hojeStr,
       });
 
-      // Copiar itens como checklist
-      if (novaTarefa && novaTarefa.length > 0 && rotItems && rotItems.length > 0) {
+      // Criar checklist_items atribuidos aos colaboradores do setor
+      if (novaTarefa && novaTarefa.length > 0) {
         var tarefaId = novaTarefa[0].id;
-        for (var j = 0; j < rotItems.length; j++) {
-          var ri = rotItems[j];
-          await supaInsert('checklist_items', {
-            tarefa_id: tarefaId,
-            propriedade_id: rot.propriedade_id,
-            colaborador_id: ri.colaborador_id || null,
-            descricao: ri.descricao,
-            ordem: ri.ordem || (j + 1),
-            status: 'pendente',
-          });
+
+        // Buscar colaboradores ativos do setor da rotina
+        var colabsSetor = await supaFetch(
+          'colaboradores?propriedade_id=eq.' + rot.propriedade_id +
+          '&setor_id=eq.' + rot.setor_id + '&ativo=eq.true&select=id,nome'
+        );
+
+        if (rotItems && rotItems.length > 0) {
+          // Tem itens de rotina: criar checklist para cada item X cada colaborador do setor
+          for (var j = 0; j < rotItems.length; j++) {
+            var ri = rotItems[j];
+            if (ri.colaborador_id) {
+              // Item com colaborador especifico
+              await supaInsert('checklist_items', {
+                tarefa_id: tarefaId,
+                propriedade_id: rot.propriedade_id,
+                colaborador_id: ri.colaborador_id,
+                descricao: ri.descricao,
+                ordem: ri.ordem || (j + 1),
+                status: 'pendente',
+              });
+            } else if (colabsSetor && colabsSetor.length > 0) {
+              // Item sem colaborador: atribuir a TODOS do setor
+              for (var k = 0; k < colabsSetor.length; k++) {
+                await supaInsert('checklist_items', {
+                  tarefa_id: tarefaId,
+                  propriedade_id: rot.propriedade_id,
+                  colaborador_id: colabsSetor[k].id,
+                  descricao: ri.descricao,
+                  ordem: ri.ordem || (j + 1),
+                  status: 'pendente',
+                });
+              }
+            } else {
+              // Sem colaboradores no setor: criar sem atribuicao
+              await supaInsert('checklist_items', {
+                tarefa_id: tarefaId,
+                propriedade_id: rot.propriedade_id,
+                colaborador_id: null,
+                descricao: ri.descricao,
+                ordem: ri.ordem || (j + 1),
+                status: 'pendente',
+              });
+            }
+          }
+        } else {
+          // Sem itens de rotina: criar 1 checklist por colaborador do setor com a descricao da rotina
+          if (colabsSetor && colabsSetor.length > 0) {
+            for (var k = 0; k < colabsSetor.length; k++) {
+              await supaInsert('checklist_items', {
+                tarefa_id: tarefaId,
+                propriedade_id: rot.propriedade_id,
+                colaborador_id: colabsSetor[k].id,
+                descricao: rot.nome,
+                ordem: 1,
+                status: 'pendente',
+              });
+            }
+          }
         }
       }
 
@@ -1416,8 +1465,8 @@ async function gerarRelatorioSemanal() {
     var hoje = new Date();
     var inicio = getInicioSemana(hoje);
     var fim = getFimSemana(hoje);
-    var inicioStr = inicio.toISOString().substring(0, 10);
-    var fimStr = fim.toISOString().substring(0, 10);
+    var inicioStr = inicio.getFullYear() + '-' + String(inicio.getMonth() + 1).padStart(2, '0') + '-' + String(inicio.getDate()).padStart(2, '0');
+    var fimStr = fim.getFullYear() + '-' + String(fim.getMonth() + 1).padStart(2, '0') + '-' + String(fim.getDate()).padStart(2, '0');
 
     // Verificar se ja existe relatorio para esta semana
     var existente = await supaFetch(
@@ -1438,8 +1487,8 @@ async function gerarRelatorioSemanal() {
     var tarefas = await supaFetch(
       'tarefas?select=*,colaboradores:responsavel_id(nome),setores:setor_id(nome,icone)' +
       '&propriedade_id=eq.' + propriedadeFiltro +
-      '&created_at=gte.' + inicioStr + 'T00:00:00' +
-      '&created_at=lte.' + fimStr + 'T23:59:59' +
+      '&created_at=gte.' + inicioStr + 'T00:00:00-03:00' +
+      '&created_at=lte.' + fimStr + 'T23:59:59-03:00' +
       '&order=created_at.asc'
     );
 
@@ -1447,8 +1496,8 @@ async function gerarRelatorioSemanal() {
     var checkItems = await supaFetch(
       'checklist_items?select=*,colaboradores:colaborador_id(nome)' +
       '&propriedade_id=eq.' + propriedadeFiltro +
-      '&created_at=gte.' + inicioStr + 'T00:00:00' +
-      '&created_at=lte.' + fimStr + 'T23:59:59'
+      '&created_at=gte.' + inicioStr + 'T00:00:00-03:00' +
+      '&created_at=lte.' + fimStr + 'T23:59:59-03:00'
     );
 
     // Buscar colaboradores ativos
@@ -2399,20 +2448,67 @@ async function salvarModal() {
         var result = await supaInsert('tarefas', body);
         mostrarToast('Tarefa criada com sucesso');
 
-        // Create checklist items if any
-        if (checklistModalItems.length > 0 && result && result.length > 0) {
+        if (result && result.length > 0) {
           var novaTarefaId = result[0].id;
-          for (var ci = 0; ci < checklistModalItems.length; ci++) {
-            await supaInsert('checklist_items', {
-              tarefa_id: novaTarefaId,
-              propriedade_id: propId,
-              descricao: checklistModalItems[ci],
-              ordem: ci + 1,
-              status: 'pendente',
-              colaborador_id: responsavelId || null,
-            });
+
+          // Buscar colaboradores do setor para atribuir checklist_items
+          var colabsDoSetor = await supaFetch(
+            'colaboradores?propriedade_id=eq.' + propId +
+            '&setor_id=eq.' + setorId + '&ativo=eq.true&select=id'
+          );
+
+          if (checklistModalItems.length > 0) {
+            // Criar checklist items definidos pelo usuario
+            for (var ci = 0; ci < checklistModalItems.length; ci++) {
+              if (responsavelId) {
+                // Responsavel especifico
+                await supaInsert('checklist_items', {
+                  tarefa_id: novaTarefaId,
+                  propriedade_id: propId,
+                  descricao: checklistModalItems[ci],
+                  ordem: ci + 1,
+                  status: 'pendente',
+                  colaborador_id: responsavelId,
+                });
+              } else if (colabsDoSetor && colabsDoSetor.length > 0) {
+                // Sem responsavel: atribuir a todos do setor
+                for (var ck = 0; ck < colabsDoSetor.length; ck++) {
+                  await supaInsert('checklist_items', {
+                    tarefa_id: novaTarefaId,
+                    propriedade_id: propId,
+                    descricao: checklistModalItems[ci],
+                    ordem: ci + 1,
+                    status: 'pendente',
+                    colaborador_id: colabsDoSetor[ck].id,
+                  });
+                }
+              }
+            }
+            checklistModalItems = [];
+          } else {
+            // Sem checklist manual: criar 1 item por colaborador do setor
+            if (responsavelId) {
+              await supaInsert('checklist_items', {
+                tarefa_id: novaTarefaId,
+                propriedade_id: propId,
+                descricao: desc,
+                ordem: 1,
+                status: 'pendente',
+                colaborador_id: responsavelId,
+              });
+            } else if (colabsDoSetor && colabsDoSetor.length > 0) {
+              for (var ck = 0; ck < colabsDoSetor.length; ck++) {
+                await supaInsert('checklist_items', {
+                  tarefa_id: novaTarefaId,
+                  propriedade_id: propId,
+                  descricao: desc,
+                  ordem: 1,
+                  status: 'pendente',
+                  colaborador_id: colabsDoSetor[ck].id,
+                });
+              }
+            }
           }
-          checklistModalItems = [];
         }
       } else {
         await supaUpdate('tarefas', modalItemId, body);
