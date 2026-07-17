@@ -1,0 +1,197 @@
+{
+  "name": "[Sao Miguel] Gestao Equipes - Telegram Bot v2",
+  "nodes": [
+    {
+      "parameters": {"updates": ["message"], "additionalFields": {}},
+      "id": "telegram-sm",
+      "name": "Telegram Trigger Sao Miguel",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [160, 300],
+      "webhookId": "719c3810-6ae1-4e49-a73c-31e6c67c37c6",
+      "credentials": {"telegramApi": {"id": "tFHNwQUSJ03HtFjl", "name": "sao miguel"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text || $json.message.caption || '' }}",
+        "options": {
+          "systemMessage": "Voce e o assistente de gestao do **Sitio Sao Miguel**. Voce gerencia tarefas, rotinas e relatorios para equipes rurais.\n\nPROPRIEDADE_ID fixo: 4a5580bb-9971-40c9-9409-ffbe0cff65da\n\nSETORES (use o nome exato no setor_interpretado e o ID no setor_id):\n- jardinagem = cccd0a7d-be56-4fd4-958a-566d773acfd3\n- limpeza = 6319ce3c-5e15-4a12-a0c9-951561008159\n- servico_quarto = fd5b83e2-d034-4790-8233-8ab5a750de44\n- manutencao = aefbe609-77c8-4df8-9805-a63f0550fe6c\n- cozinha = 6aed1eda-ac05-43db-be7b-5f6cdf94903a\n\n## COMANDOS DISPONIVEIS\n\n### CRIAR TAREFA\nQuando o usuario pedir para criar tarefa, fazer algo, ou descrever uma atividade:\n1. Interprete a mensagem e identifique setor, prioridade e descricao\n2. Use a tool `criar_tarefa` com JSON body: comando_original, setor_interpretado, setor_id, propriedade_id, prioridade, data_limite (YYYY-MM-DD se mencionado, senao null), status=pendente, origem=telegram\n3. Responda confirmando com emojis e detalhes da tarefa criada\n\n### LISTAR TAREFAS\nQuando pedir para ver, listar, mostrar tarefas:\n1. Use a tool `listar_tarefas`\n2. Formate bonito com emojis e numeros\n\n### CONCLUIR TAREFA\nQuando disser concluir, finalizar, fechar, completar tarefa:\n1. Primeiro use `listar_tarefas` para mostrar as opcoes\n2. Quando o usuario indicar qual (pelo numero ou descricao), use `concluir_tarefa` com o ID da tarefa\n3. Confirme a conclusao\n\n### RESUMO / RELATORIO\nQuando pedir resumo, relatorio, status geral, como esta:\n1. Use `resumo_tarefas` para obter TODAS as tarefas da semana\n2. Formate um resumo bonito com:\n   - Total de tarefas, concluidas, pendentes\n   - Percentual de conclusao\n   - Lista por setor\n   - Destaques (atrasadas, urgentes)\n\n### ROTINAS\nQuando pedir rotinas, tarefas do dia, rotina de hoje:\n1. Use `listar_rotinas_hoje` para ver rotinas ativas do dia\n2. Mostre quais rotinas estao configuradas\n3. Oriente o usuario a gerar as tarefas no dashboard\n\nPRIORIDADE: urgente/rapido/agora = urgente, importante = alta, default = normal\n\nResponda SEMPRE em portugues brasileiro, curto e direto. Use emojis. Seja prestativo e proativo."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [520, 300],
+      "id": "ai-agent-sm",
+      "name": "AI Agent Sao Miguel"
+    },
+    {
+      "parameters": {
+        "model": {"__rl": true, "value": "gpt-5-mini", "mode": "list", "cachedResultName": "gpt-5-mini"},
+        "builtInTools": {},
+        "options": {"temperature": 0.3}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [300, 520],
+      "id": "openai-sm",
+      "name": "OpenAI Chat Model",
+      "credentials": {"openAiApi": {"id": "l6Qxy5ePeCjrwytp", "name": "OpenAI account"}}
+    },
+    {
+      "parameters": {
+        "name": "criar_tarefa",
+        "description": "Cria uma nova tarefa no Supabase. Body JSON com: comando_original (string), setor_interpretado (string nome setor), setor_id (UUID), propriedade_id (sempre 4a5580bb-9971-40c9-9409-ffbe0cff65da), prioridade (normal|alta|urgente|baixa), data_limite (YYYY-MM-DD ou null), status (sempre pendente), origem (sempre telegram).",
+        "method": "POST",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/tarefas",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {"name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"},
+            {"name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"},
+            {"name": "Prefer", "value": "return=representation"}
+          ]
+        },
+        "sendBody": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [400, 520],
+      "id": "tool-criar-tarefa-sm",
+      "name": "Criar Tarefa"
+    },
+    {
+      "parameters": {
+        "name": "listar_tarefas",
+        "description": "Lista as ultimas 10 tarefas pendentes e em andamento do Sitio Sao Miguel. Nao requer parametros.",
+        "method": "GET",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/tarefas?propriedade_id=eq.4a5580bb-9971-40c9-9409-ffbe0cff65da&status=in.(pendente,em_andamento)&select=id,comando_original,setor_interpretado,status,prioridade,data_limite,created_at&order=created_at.desc&limit=10",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {"name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"},
+            {"name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"}
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [520, 520],
+      "id": "tool-listar-tarefas-sm",
+      "name": "Listar Tarefas"
+    },
+    {
+      "parameters": {
+        "name": "concluir_tarefa",
+        "description": "Conclui/finaliza uma tarefa pelo ID. Envie body JSON com: status (sempre concluida), concluida_at (ISO timestamp atual), porcentagem_conclusao (sempre 100). O ID da tarefa deve ir na URL como query param. Substitua {TAREFA_ID} pelo UUID da tarefa.",
+        "method": "PATCH",
+        "url": "=https://tidngxclgaspltzqoemi.supabase.co/rest/v1/tarefas?id=eq.{tarefa_id}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {"name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"},
+            {"name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"},
+            {"name": "Prefer", "value": "return=representation"},
+            {"name": "Content-Type", "value": "application/json"}
+          ]
+        },
+        "sendBody": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [640, 520],
+      "id": "tool-concluir-tarefa-sm",
+      "name": "Concluir Tarefa"
+    },
+    {
+      "parameters": {
+        "name": "resumo_tarefas",
+        "description": "Busca TODAS as tarefas da semana atual do Sitio Sao Miguel para gerar um resumo/relatorio. Retorna tarefas com status, setor e datas. Nao requer parametros.",
+        "method": "GET",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/tarefas?propriedade_id=eq.4a5580bb-9971-40c9-9409-ffbe0cff65da&select=id,comando_original,setor_interpretado,status,prioridade,data_limite,origem,created_at,concluida_at&order=created_at.desc&limit=50",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {"name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"},
+            {"name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"}
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [760, 520],
+      "id": "tool-resumo-sm",
+      "name": "Resumo Tarefas"
+    },
+    {
+      "parameters": {
+        "name": "listar_rotinas_hoje",
+        "description": "Lista as rotinas semanais ativas para o dia de hoje do Sitio Sao Miguel. Retorna nome, setor, hora de disparo e itens. Use o dia_semana como numero: 0=Domingo, 1=Segunda, 2=Terca, 3=Quarta, 4=Quinta, 5=Sexta, 6=Sabado. Substitua {DIA} pelo numero do dia atual.",
+        "method": "GET",
+        "url": "=https://tidngxclgaspltzqoemi.supabase.co/rest/v1/rotinas_semanais?propriedade_id=eq.4a5580bb-9971-40c9-9409-ffbe0cff65da&ativo=eq.true&dia_semana=eq.{dia}&select=id,nome,descricao,dia_semana,hora_disparo,setor_id",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {"name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"},
+            {"name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"}
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [880, 520],
+      "id": "tool-rotinas-sm",
+      "name": "Listar Rotinas Hoje"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger Sao Miguel').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {"parse_mode": "Markdown"}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [820, 300],
+      "id": "telegram-reply-sm",
+      "name": "Responder Telegram",
+      "credentials": {"telegramApi": {"id": "tFHNwQUSJ03HtFjl", "name": "sao miguel"}}
+    }
+  ],
+  "connections": {
+    "Telegram Trigger Sao Miguel": {
+      "main": [[ {"node": "AI Agent Sao Miguel", "type": "main", "index": 0} ]]
+    },
+    "AI Agent Sao Miguel": {
+      "main": [[ {"node": "Responder Telegram", "type": "main", "index": 0} ]]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [[ {"node": "AI Agent Sao Miguel", "type": "ai_languageModel", "index": 0} ]]
+    },
+    "Criar Tarefa": {
+      "ai_tool": [[ {"node": "AI Agent Sao Miguel", "type": "ai_tool", "index": 0} ]]
+    },
+    "Listar Tarefas": {
+      "ai_tool": [[ {"node": "AI Agent Sao Miguel", "type": "ai_tool", "index": 0} ]]
+    },
+    "Concluir Tarefa": {
+      "ai_tool": [[ {"node": "AI Agent Sao Miguel", "type": "ai_tool", "index": 0} ]]
+    },
+    "Resumo Tarefas": {
+      "ai_tool": [[ {"node": "AI Agent Sao Miguel", "type": "ai_tool", "index": 0} ]]
+    },
+    "Listar Rotinas Hoje": {
+      "ai_tool": [[ {"node": "AI Agent Sao Miguel", "type": "ai_tool", "index": 0} ]]
+    }
+  },
+  "settings": {"executionOrder": "v1"}
+}

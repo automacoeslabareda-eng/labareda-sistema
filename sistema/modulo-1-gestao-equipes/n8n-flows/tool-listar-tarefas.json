@@ -1,0 +1,98 @@
+{
+  "name": "Tool: Listar Tarefas do Supabase",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [-200, 300],
+      "id": "trigger-list-001",
+      "name": "Trigger do Agent"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/tarefas",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "id,comando_original,setor_interpretado,status,prioridade,data_limite,porcentagem_conclusao,created_at,origem"
+            },
+            {
+              "name": "order",
+              "value": "created_at.desc"
+            },
+            {
+              "name": "limit",
+              "value": "10"
+            },
+            {
+              "name": "status",
+              "value": "=in.(pendente,em_andamento)"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [40, 300],
+      "id": "listar-tarefas-001",
+      "name": "Buscar Tarefas"
+    },
+    {
+      "parameters": {
+        "jsCode": "const tarefas = $input.all().map(item => item.json);\n\nif (tarefas.length === 0) {\n  return [{ json: { result: 'Nenhuma tarefa pendente encontrada.' } }];\n}\n\nconst lista = tarefas.map((t, i) => {\n  const desc = t.comando_original || 'Sem descricao';\n  const setor = t.setor_interpretado || 'geral';\n  const status = t.status || 'pendente';\n  const prio = t.prioridade || 'normal';\n  const pct = t.porcentagem_conclusao || 0;\n  const origem = t.origem || 'dashboard';\n  return `${i+1}. [${t.id.substring(0,8)}] ${desc} | Setor: ${setor} | Status: ${status} | Prioridade: ${prio} | Conclusao: ${pct}% | Origem: ${origem}`;\n}).join('\\n');\n\nreturn [{ json: { result: `${tarefas.length} tarefa(s) encontrada(s):\\n${lista}` } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [280, 300],
+      "id": "formatar-lista-001",
+      "name": "Formatar Lista"
+    }
+  ],
+  "connections": {
+    "Trigger do Agent": {
+      "main": [
+        [
+          {
+            "node": "Buscar Tarefas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Tarefas": {
+      "main": [
+        [
+          {
+            "node": "Formatar Lista",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d035008e6bb7045762b4e9d7d34ed652d365da496e75c85c6651ff30dac1ec9c"
+  }
+}

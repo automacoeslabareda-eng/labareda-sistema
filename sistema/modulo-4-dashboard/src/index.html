@@ -212,6 +212,16 @@
           <option value="concluida">Concluida</option>
           <option value="cancelada">Cancelada</option>
         </select>
+        <select id="filtro-tarefa-setor" class="filtro-select" onchange="carregarTarefas()">
+          <option value="">Todos os setores</option>
+        </select>
+        <select id="filtro-tarefa-prio" class="filtro-select" onchange="carregarTarefas()">
+          <option value="">Todas prioridades</option>
+          <option value="urgente">Urgente</option>
+          <option value="alta">Alta</option>
+          <option value="normal">Normal</option>
+          <option value="baixa">Baixa</option>
+        </select>
       </div>
       <div class="table-wrapper">
         <table class="tabela" id="tabela-tarefas">
@@ -219,21 +229,38 @@
             <tr>
               <th>Descricao</th>
               <th>Setor</th>
+              <th>Responsavel</th>
               <th>Status</th>
               <th>Prioridade</th>
-              <th>Data</th>
+              <th>Prazo</th>
+              <th>Origem</th>
               <th>Conclusao</th>
+              <th>Acoes</th>
             </tr>
           </thead>
           <tbody id="tbody-tarefas">
-            <tr><td colspan="6" class="placeholder">Carregando...</td></tr>
+            <tr><td colspan="9" class="placeholder">Carregando...</td></tr>
           </tbody>
         </table>
       </div>
+
+      <!-- Painel de detalhes da tarefa -->
       <div class="section-card escondido" id="tarefa-detalhe">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <h3 class="section-card__title" id="tarefa-detalhe-titulo" style="margin:0">Checklist</h3>
-          <button class="btn btn--small btn--secondary" onclick="adicionarItemChecklist()">+ Item</button>
+        <div class="tarefa-detalhe-header">
+          <div class="tarefa-detalhe-info">
+            <h3 class="section-card__title" id="tarefa-detalhe-titulo" style="margin:0;border:none;padding:0">Detalhes da Tarefa</h3>
+            <div class="tarefa-detalhe-meta" id="tarefa-detalhe-meta"></div>
+          </div>
+          <div class="tarefa-detalhe-acoes">
+            <select id="tarefa-detalhe-status" class="filtro-select" onchange="alterarStatusTarefa()" style="min-width:140px">
+              <option value="pendente">Pendente</option>
+              <option value="em_andamento">Em Andamento</option>
+              <option value="concluida">Concluida</option>
+              <option value="cancelada">Cancelada</option>
+            </select>
+            <button class="btn btn--small btn--secondary" onclick="adicionarItemChecklist()">+ Item</button>
+            <button class="btn btn--small btn--secondary" onclick="fecharDetalheTarefa()">Fechar</button>
+          </div>
         </div>
         <div id="tarefa-checklist"></div>
       </div>
@@ -243,6 +270,10 @@
     <section class="page page--hidden" id="page-rotinas">
       <div class="page__header">
         <h2 class="page__title">Rotinas Semanais</h2>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn--secondary" onclick="gerarTarefasDoDia()" id="btn-gerar-tarefas" title="Cria tarefas a partir das rotinas ativas para hoje">&#9889; Gerar Tarefas de Hoje</button>
+          <button class="btn btn--primary" onclick="abrirModalRotina()">+ Nova Rotina</button>
+        </div>
       </div>
       <div class="table-wrapper">
         <table class="tabela" id="tabela-rotinas">
@@ -253,15 +284,22 @@
               <th>Dia</th>
               <th>Hora</th>
               <th>Status</th>
+              <th>Acoes</th>
             </tr>
           </thead>
           <tbody id="tbody-rotinas">
-            <tr><td colspan="5" class="placeholder">Carregando...</td></tr>
+            <tr><td colspan="6" class="placeholder">Carregando...</td></tr>
           </tbody>
         </table>
       </div>
       <div class="section-card escondido" id="rotina-detalhe">
-        <h3 class="section-card__title" id="rotina-detalhe-titulo">Itens da Rotina</h3>
+        <div class="tarefa-detalhe-header">
+          <h3 class="section-card__title" id="rotina-detalhe-titulo" style="margin:0;border:none;padding:0">Itens da Rotina</h3>
+          <div class="tarefa-detalhe-acoes">
+            <button class="btn btn--small btn--secondary" onclick="adicionarItemRotina()">+ Item</button>
+            <button class="btn btn--small btn--secondary" onclick="fecharDetalheRotina()">Fechar</button>
+          </div>
+        </div>
         <div id="rotina-items"></div>
       </div>
     </section>
@@ -270,18 +308,32 @@
     <section class="page page--hidden" id="page-relatorios">
       <div class="page__header">
         <h2 class="page__title">Relatorios Semanais</h2>
+        <button class="btn btn--primary" onclick="gerarRelatorioSemanal()" id="btn-gerar-relatorio">&#9889; Gerar Relatorio da Semana</button>
       </div>
+
+      <!-- Relatorio expandido -->
+      <div class="section-card escondido" id="relatorio-detalhe">
+        <div class="tarefa-detalhe-header">
+          <h3 class="section-card__title" id="relatorio-detalhe-titulo" style="margin:0;border:none;padding:0">Relatorio</h3>
+          <button class="btn btn--small btn--secondary" onclick="$('#relatorio-detalhe').classList.add('escondido')">Fechar</button>
+        </div>
+        <div id="relatorio-detalhe-body"></div>
+      </div>
+
       <div class="table-wrapper">
         <table class="tabela" id="tabela-relatorios">
           <thead>
             <tr>
               <th>Periodo</th>
+              <th>Tarefas</th>
+              <th>Concluidas</th>
+              <th>Pendentes</th>
               <th>% Conclusao</th>
-              <th>PDF</th>
+              <th>Acoes</th>
             </tr>
           </thead>
           <tbody id="tbody-relatorios">
-            <tr><td colspan="3" class="placeholder">Carregando...</td></tr>
+            <tr><td colspan="6" class="placeholder">Carregando...</td></tr>
           </tbody>
         </table>
       </div>

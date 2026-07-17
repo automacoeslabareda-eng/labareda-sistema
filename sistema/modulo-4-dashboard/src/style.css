@@ -1175,6 +1175,346 @@ body.propriedade-saomiguel .sidebar__select {
 }
 
 /* ================================================================== */
+/*  TAREFAS — MELHORIAS                                               */
+/* ================================================================== */
+
+/* Badge de origem */
+.badge-origem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.origem--dashboard {
+  background: var(--info-light);
+  color: var(--info);
+}
+
+.origem--telegram {
+  background: #e3f0ff;
+  color: #2196F3;
+}
+
+/* Tarefa desc truncada */
+.tarefa-desc {
+  display: block;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Row ativa na tabela */
+.tr-ativa {
+  background: var(--info-light) !important;
+  border-left: 3px solid var(--info);
+}
+
+/* Acoes column */
+.td-acoes {
+  white-space: nowrap;
+}
+
+/* Painel de detalhes da tarefa */
+.tarefa-detalhe-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.tarefa-detalhe-info {
+  flex: 1;
+  min-width: 200px;
+}
+
+.tarefa-detalhe-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.meta-tag {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 4px 10px;
+  background: #f5f5f0;
+  border-radius: var(--radius-pill);
+}
+
+.meta-tag strong {
+  color: var(--text);
+}
+
+.tarefa-detalhe-acoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Checklist melhorado */
+.checklist-resumo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.checklist-item-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+
+.checklist-item-row--done {
+  background: var(--success-light);
+  margin: 0 -12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border-bottom: none;
+  margin-bottom: 4px;
+}
+
+.checklist-item-row:last-child {
+  border-bottom: none;
+}
+
+.checklist-item-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  flex: 1;
+}
+
+.checklist-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.checklist-item-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 2px;
+}
+
+.checklist-detail {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.checklist-detail strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.checklist-foto-link {
+  flex-shrink: 0;
+}
+
+.checklist-foto-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--border);
+  transition: transform var(--transition);
+}
+
+.checklist-foto-thumb:hover {
+  transform: scale(1.5);
+  border-color: var(--sidebar-active);
+  z-index: 10;
+  position: relative;
+}
+
+.checklist-box {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  transition: all var(--transition);
+  color: transparent;
+  margin-top: 1px;
+}
+
+.checklist-box--done {
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
+}
+
+.checklist-text--done {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* Relatorio */
+.relatorio-resumo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.relatorio-stat {
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  text-align: center;
+  border: 1px solid var(--border);
+}
+
+.relatorio-stat--success { background: var(--success-light); border-color: var(--success); }
+.relatorio-stat--warning { background: var(--warning-light); border-color: var(--warning); }
+
+.relatorio-stat__valor {
+  display: block;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.relatorio-stat__label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.relatorio-setores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.relatorio-setor-card {
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  border: 1px solid var(--border);
+}
+
+.relatorio-setor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.relatorio-setor-tarefas {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* Icon button */
+.btn-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all var(--transition);
+  line-height: 1;
+  color: var(--text-muted);
+}
+
+.btn-icon:hover {
+  background: #f0f0f0;
+}
+
+.btn-icon--danger:hover {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+/* Checklist builder (modal) */
+.checklist-builder {
+  margin-bottom: 8px;
+}
+
+.checklist-builder-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #fafaf8;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 4px;
+}
+
+.checklist-builder-num {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  min-width: 20px;
+}
+
+.checklist-builder-text {
+  flex: 1;
+  font-size: 13px;
+}
+
+.checklist-builder-add {
+  display: flex;
+  gap: 8px;
+}
+
+.checklist-builder-add input {
+  flex: 1;
+}
+
+/* Form row (2 cols) */
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.form-group--half {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Normal badge */
+.badge--normal { background: #f0f0f0; color: var(--text-muted); }
+.badge--urgente { background: #2c0a00; color: #ff6b3d; }
+
+/* ================================================================== */
 /*  RESPONSIVE                                                        */
 /* ================================================================== */
 @media (max-width: 768px) {
@@ -1240,6 +1580,23 @@ body.propriedade-saomiguel .sidebar__select {
 
   .filtro-select {
     min-width: 100%;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .tarefa-detalhe-header {
+    flex-direction: column;
+  }
+
+  .tarefa-detalhe-acoes {
+    flex-wrap: wrap;
+  }
+
+  .tarefa-desc {
+    max-width: 160px;
   }
 }
 

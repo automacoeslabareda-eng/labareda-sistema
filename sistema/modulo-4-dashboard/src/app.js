@@ -332,7 +332,7 @@ async function carregarVisaoGeral() {
       supaCount('tarefas', 'status=in.(pendente,em_andamento)' + (pf ? '&' + pf : '')),
       supaCount('tarefas', 'status=eq.concluida' + (pf ? '&' + pf : '')),
       supaCount('tarefas', pf || undefined),
-      supaFetch('tarefas?select=*&order=created_at.desc&limit=5' + (pf ? '&' + pf : '')),
+      supaFetch('tarefas?select=*,colaboradores:responsavel_id(nome),setores:setor_id(nome,icone)&order=created_at.desc&limit=5' + (pf ? '&' + pf : '')),
     ]);
 
     $('#stat-colaboradores').textContent = totalColabs;
@@ -352,9 +352,12 @@ async function carregarVisaoGeral() {
       var status = slugStatus(t.status);
       var cmd = t.comando_original || t.descricao || 'Tarefa';
       if (cmd.length > 60) cmd = cmd.substring(0, 57) + '...';
+      var setorNome = (t.setores && t.setores.nome) || t.setor_interpretado || '';
+      var setorIcone = (t.setores && t.setores.icone) || '';
+      var respNome = (t.colaboradores && t.colaboradores.nome) || '';
       return '<div class="lista-simples__item">' +
         '<span class="lista-simples__texto">' + escapeHtml(cmd) + '</span>' +
-        '<span class="lista-simples__setor">' + escapeHtml(t.setor || '') + '</span>' +
+        '<span class="lista-simples__setor">' + escapeHtml(setorIcone + ' ' + setorNome) + (respNome ? ' <small style="color:var(--text-muted)">(' + escapeHtml(respNome) + ')</small>' : '') + '</span>' +
         '<span class="badge badge--' + status + '">' + (t.status || 'pendente') + '</span>' +
         '</div>';
     }).join('');
@@ -515,78 +518,252 @@ async function toggleColaborador(id, atualmenteAtivo) {
 /*  TAREFAS                                                           */
 /* ================================================================== */
 var tarefaAbertaId = null;
+var tarefaAbertaDados = null;
+var cacheColaboradores = [];
+
+async function carregarCacheColaboradores() {
+  if (cacheColaboradores.length > 0) return;
+  try {
+    var qs = '?select=id,nome,funcao,propriedade_id&ativo=eq.true&order=nome.asc';
+    cacheColaboradores = await supaFetch('colaboradores' + qs);
+  } catch (err) {
+    console.error('Erro ao carregar colaboradores:', err);
+  }
+}
+
+function preencherFiltroSetorTarefas() {
+  var select = $('#filtro-tarefa-setor');
+  if (!select || select.options.length > 1) return;
+  cacheSetores.forEach(function(s) {
+    var opt = document.createElement('option');
+    opt.value = s.nome;
+    opt.textContent = s.nome;
+    select.appendChild(opt);
+  });
+}
 
 async function carregarTarefas() {
   try {
-    var qs = '?select=*&order=created_at.desc';
-    var statusFiltro = $('#filtro-tarefa-status').value;
+    preencherFiltroSetorTarefas();
+
+    var qs = '?select=*,colaboradores:responsavel_id(nome,funcao),setores:setor_id(nome,icone)&order=created_at.desc';
+    var statusFiltro = ($('#filtro-tarefa-status') || {}).value || '';
+    var setorFiltro = ($('#filtro-tarefa-setor') || {}).value || '';
+    var prioFiltro = ($('#filtro-tarefa-prio') || {}).value || '';
+
     if (statusFiltro) qs += '&status=eq.' + statusFiltro;
+    if (setorFiltro) qs += '&setor_interpretado=eq.' + encodeURIComponent(setorFiltro);
+    if (prioFiltro) qs += '&prioridade=eq.' + prioFiltro;
     qs = addPropFiltro(qs);
 
     var data = await supaFetch('tarefas' + qs);
     var tbody = $('#tbody-tarefas');
 
     if (!data || data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="placeholder">Nenhuma tarefa encontrada</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="placeholder">Nenhuma tarefa encontrada</td></tr>';
+      $('#tarefa-detalhe').classList.add('escondido');
       return;
     }
 
     tbody.innerHTML = data.map(function(t) {
       var status = slugStatus(t.status);
       var prioridade = (t.prioridade || 'normal').toLowerCase();
-      var cmd = t.comando_original || '--';
-      if (cmd.length > 80) cmd = cmd.substring(0, 77) + '...';
+      var cmd = t.comando_original || t.descricao || '--';
+      if (cmd.length > 60) cmd = cmd.substring(0, 57) + '...';
       var conclusao = t.porcentagem_conclusao || 0;
+      var responsavel = (t.colaboradores && t.colaboradores.nome) ? t.colaboradores.nome : '--';
+      var setorNome = (t.setores && t.setores.nome) || t.setor_interpretado || '--';
+      var setorIcone = (t.setores && t.setores.icone) || '';
+      var origem = t.origem || 'dashboard';
+      var origemClass = origem === 'telegram' ? 'origem--telegram' : 'origem--dashboard';
+      var origemIcon = origem === 'telegram' ? '&#9992;' : '&#9776;';
 
-      return '<tr class="tr-clicavel" onclick="expandirTarefa(\'' + t.id + '\')">' +
-        '<td>' + escapeHtml(cmd) + '</td>' +
-        '<td>' + escapeHtml(t.setor_interpretado || '--') + '</td>' +
-        '<td><span class="badge badge--' + status + '">' + (t.status || 'pendente') + '</span></td>' +
+      var dataLimite = t.data_limite ? formatarData(t.data_limite) : '--';
+      var atrasada = t.data_limite && t.status !== 'concluida' && t.status !== 'cancelada' && new Date(t.data_limite) < new Date();
+      var dataClass = atrasada ? ' style="color:var(--danger);font-weight:600"' : '';
+
+      var isAtiva = tarefaAbertaId === t.id;
+
+      return '<tr class="tr-clicavel' + (isAtiva ? ' tr-ativa' : '') + '" onclick="expandirTarefa(\'' + t.id + '\')">' +
+        '<td><span class="tarefa-desc">' + escapeHtml(cmd) + '</span></td>' +
+        '<td>' + escapeHtml(setorIcone + ' ' + setorNome) + '</td>' +
+        '<td>' + escapeHtml(responsavel) + '</td>' +
+        '<td><span class="badge badge--' + status + '">' + (t.status || 'pendente').replace('_', ' ') + '</span></td>' +
         '<td><span class="badge badge--' + prioridade + '">' + prioridade + '</span></td>' +
-        '<td>' + formatarData(t.created_at) + '</td>' +
+        '<td' + dataClass + '>' + dataLimite + (atrasada ? ' !' : '') + '</td>' +
+        '<td><span class="badge-origem ' + origemClass + '" title="Criada via ' + escapeHtml(origem) + '">' + origemIcon + ' ' + escapeHtml(origem) + '</span></td>' +
         '<td>' +
           '<div class="progress" title="' + conclusao + '%"><div class="progress__bar" style="width:' + conclusao + '%"></div></div>' +
           '<span style="font-size:12px;color:var(--text-muted)">' + conclusao + '%</span>' +
         '</td>' +
+        '<td class="td-acoes" onclick="event.stopPropagation()">' +
+          '<button class="btn btn--small btn--secondary" onclick="abrirModalTarefa(\'' + t.id + '\')" title="Editar">&#9998;</button> ' +
+          (t.status !== 'cancelada'
+            ? '<button class="btn btn--small btn--danger" onclick="cancelarTarefa(\'' + t.id + '\')" title="Cancelar">&#10005;</button>'
+            : '<button class="btn btn--small btn--secondary" onclick="reativarTarefa(\'' + t.id + '\')" title="Reativar">&#8634;</button>') +
+        '</td>' +
         '</tr>';
     }).join('');
 
-    $('#tarefa-detalhe').classList.add('escondido');
-    tarefaAbertaId = null;
-
   } catch (err) {
     console.error('Erro ao carregar tarefas:', err);
-    $('#tbody-tarefas').innerHTML = '<tr><td colspan="6" class="placeholder">Erro ao carregar</td></tr>';
+    $('#tbody-tarefas').innerHTML = '<tr><td colspan="9" class="placeholder">Erro ao carregar</td></tr>';
   }
 }
 
 async function expandirTarefa(tarefaId) {
   try {
     tarefaAbertaId = tarefaId;
-    var items = await supaFetch('checklist_items?tarefa_id=eq.' + tarefaId + '&order=ordem.asc');
+
+    // Load tarefa data + checklist in parallel
+    var tarefaPromise = supaFetch('tarefas?id=eq.' + tarefaId + '&select=*,colaboradores:responsavel_id(nome,funcao),setores:setor_id(nome,icone)');
+    var itemsPromise = supaFetch('checklist_items?tarefa_id=eq.' + tarefaId + '&select=*,colaboradores:colaborador_id(nome)&order=ordem.asc');
+    var results = await Promise.all([tarefaPromise, itemsPromise]);
+
+    var tarefaData = results[0];
+    var items = results[1];
+
+    if (!tarefaData || tarefaData.length === 0) return;
+    tarefaAbertaDados = tarefaData[0];
+    var t = tarefaAbertaDados;
+
     var detalhe = $('#tarefa-detalhe');
     var container = $('#tarefa-checklist');
 
+    // Update title and meta
+    $('#tarefa-detalhe-titulo').textContent = t.comando_original || t.descricao || 'Tarefa';
+
+    var responsavel = (t.colaboradores && t.colaboradores.nome) ? t.colaboradores.nome : 'Nao atribuida';
+    var setorNome = (t.setores && t.setores.nome) || t.setor_interpretado || '--';
+    var setorIcone = (t.setores && t.setores.icone) || '';
+    var origemLabel = t.origem === 'telegram' ? '&#9992; Telegram' : '&#9776; Dashboard';
+    var dataLimite = t.data_limite ? formatarData(t.data_limite) : 'Sem prazo';
+    var criadaEm = formatarData(t.created_at);
+
+    $('#tarefa-detalhe-meta').innerHTML =
+      '<span class="meta-tag">Setor: <strong>' + escapeHtml(setorIcone + ' ' + setorNome) + '</strong></span>' +
+      '<span class="meta-tag">Responsavel: <strong>' + escapeHtml(responsavel) + '</strong></span>' +
+      '<span class="meta-tag">Prazo: <strong>' + dataLimite + '</strong></span>' +
+      '<span class="meta-tag">Criada: <strong>' + criadaEm + '</strong></span>' +
+      '<span class="meta-tag">Origem: ' + origemLabel + '</span>';
+
+    // Set status dropdown
+    var statusSelect = $('#tarefa-detalhe-status');
+    if (statusSelect) statusSelect.value = t.status || 'pendente';
+
+    // Render checklist
     if (!items || items.length === 0) {
       container.innerHTML = '<p class="placeholder">Nenhum item de checklist. Clique em "+ Item" para adicionar.</p>';
     } else {
-      container.innerHTML = items.map(function(item) {
-        var concluido = item.status === 'concluido';
-        return '<div class="checklist-item" style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer" onclick="toggleChecklist(\'' + item.id + '\',' + (concluido ? 'false' : 'true') + ')">' +
-          '<span style="font-size:18px;color:' + (concluido ? 'var(--success)' : 'var(--text-muted)') + '">' +
-            (concluido ? '&#9745;' : '&#9744;') +
-          '</span>' +
-          '<span style="' + (concluido ? 'text-decoration:line-through;opacity:0.6' : '') + '">' + escapeHtml(item.descricao || '--') + '</span>' +
+      var totalItems = items.length;
+      var concluidos = items.filter(function(i) { return i.status === 'concluido'; }).length;
+
+      container.innerHTML =
+        '<div class="checklist-resumo">' +
+          '<span>' + concluidos + '/' + totalItems + ' concluidos</span>' +
+          '<div class="progress" style="flex:1;max-width:200px" title="' + Math.round((concluidos/totalItems)*100) + '%">' +
+            '<div class="progress__bar" style="width:' + Math.round((concluidos/totalItems)*100) + '%"></div>' +
+          '</div>' +
+        '</div>' +
+        items.map(function(item) {
+          var concluido = item.status === 'concluido';
+          var colabNome = (item.colaboradores && item.colaboradores.nome) ? item.colaboradores.nome : '';
+
+          // Linha principal — itens concluidos sao somente leitura
+          var clickHandler = concluido ? '' : ' onclick="toggleChecklist(\'' + item.id + '\',true)"';
+          var cursorClass = concluido ? ' style="cursor:default"' : '';
+          var html = '<div class="checklist-item-row' + (concluido ? ' checklist-item-row--done' : '') + '">' +
+            '<div class="checklist-item-check"' + clickHandler + cursorClass + '>' +
+              '<span class="checklist-box ' + (concluido ? 'checklist-box--done' : '') + '">' +
+                (concluido ? '&#10003;' : '') +
+              '</span>' +
+              '<div class="checklist-item-content">' +
+                '<span class="' + (concluido ? 'checklist-text--done' : '') + '">' + escapeHtml(item.descricao || '--') + '</span>';
+
+          // Detalhes de conclusao
+          if (concluido) {
+            html += '<div class="checklist-item-details">';
+            if (colabNome) html += '<span class="checklist-detail"><strong>Concluido por:</strong> ' + escapeHtml(colabNome) + '</span>';
+            if (item.concluido_at) html += '<span class="checklist-detail"><strong>Em:</strong> ' + formatarData(item.concluido_at) + ' ' + new Date(item.concluido_at).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) + '</span>';
+            if (item.observacao) html += '<span class="checklist-detail"><strong>Obs:</strong> ' + escapeHtml(item.observacao) + '</span>';
+            html += '</div>';
+          } else if (colabNome) {
+            html += '<div class="checklist-item-details"><span class="checklist-detail">Atribuido a: ' + escapeHtml(colabNome) + '</span></div>';
+          }
+
+          html += '</div></div>';
+
+          // Foto de comprovacao
+          if (concluido && item.foto_url) {
+            html += '<a href="' + escapeHtml(item.foto_url) + '" target="_blank" class="checklist-foto-link" title="Ver foto de comprovacao">' +
+              '<img src="' + escapeHtml(item.foto_url) + '" class="checklist-foto-thumb" alt="Foto comprovacao">' +
+            '</a>';
+          }
+
+          html += '<button class="btn-icon btn-icon--danger" onclick="removerItemChecklist(\'' + item.id + '\')" title="Remover">&times;</button>' +
           '</div>';
-      }).join('');
+
+          return html;
+        }).join('');
     }
 
     detalhe.classList.remove('escondido');
-    $('#tarefa-detalhe-titulo').textContent = 'Checklist da Tarefa';
     detalhe.scrollIntoView({ behavior: 'smooth' });
+
+    // Highlight active row
+    carregarTarefas();
 
   } catch (err) {
     console.error('Erro ao expandir tarefa:', err);
+  }
+}
+
+function fecharDetalheTarefa() {
+  tarefaAbertaId = null;
+  tarefaAbertaDados = null;
+  $('#tarefa-detalhe').classList.add('escondido');
+  carregarTarefas();
+}
+
+async function alterarStatusTarefa() {
+  if (!tarefaAbertaId) return;
+  var novoStatus = ($('#tarefa-detalhe-status') || {}).value;
+  if (!novoStatus) return;
+  try {
+    var updates = { status: novoStatus };
+    if (novoStatus === 'concluida') {
+      updates.concluida_at = new Date().toISOString();
+      updates.porcentagem_conclusao = 100;
+    } else {
+      updates.concluida_at = null;
+    }
+    await supaUpdate('tarefas', tarefaAbertaId, updates);
+    mostrarToast('Status atualizado para ' + novoStatus.replace('_', ' '));
+    await expandirTarefa(tarefaAbertaId);
+  } catch (err) {
+    console.error('Erro ao alterar status:', err);
+    mostrarToast('Erro ao alterar status', 'error');
+  }
+}
+
+async function cancelarTarefa(id) {
+  if (!confirm('Cancelar esta tarefa?')) return;
+  try {
+    await supaUpdate('tarefas', id, { status: 'cancelada' });
+    mostrarToast('Tarefa cancelada');
+    carregarTarefas();
+  } catch (err) {
+    mostrarToast('Erro ao cancelar', 'error');
+  }
+}
+
+async function reativarTarefa(id) {
+  try {
+    await supaUpdate('tarefas', id, { status: 'pendente', concluida_at: null });
+    mostrarToast('Tarefa reativada');
+    carregarTarefas();
+  } catch (err) {
+    mostrarToast('Erro ao reativar', 'error');
   }
 }
 
@@ -598,8 +775,8 @@ async function toggleChecklist(itemId, marcar) {
     else updates.concluido_at = null;
     await supaUpdate('checklist_items', itemId, updates);
     if (tarefaAbertaId) {
-      await expandirTarefa(tarefaAbertaId);
       await atualizarConclusaoTarefa(tarefaAbertaId);
+      await expandirTarefa(tarefaAbertaId);
     }
   } catch (err) {
     console.error('Erro ao atualizar checklist:', err);
@@ -619,7 +796,6 @@ async function atualizarConclusaoTarefa(tarefaId) {
       status: novoStatus,
       concluida_at: pct === 100 ? new Date().toISOString() : null,
     });
-    carregarTarefas();
   } catch (err) {
     console.error('Erro ao atualizar conclusao:', err);
   }
@@ -630,8 +806,7 @@ async function adicionarItemChecklist() {
   var texto = prompt('Descricao do item:');
   if (!texto || !texto.trim()) return;
   try {
-    // Get propriedade_id from the tarefa
-    var tarefa = await supaFetch('tarefas?id=eq.' + tarefaAbertaId + '&select=propriedade_id');
+    var tarefa = await supaFetch('tarefas?id=eq.' + tarefaAbertaId + '&select=propriedade_id,responsavel_id');
     var propId = (tarefa && tarefa[0]) ? tarefa[0].propriedade_id : null;
     if (!propId) { mostrarToast('Erro: tarefa sem propriedade', 'error'); return; }
 
@@ -643,6 +818,7 @@ async function adicionarItemChecklist() {
       descricao: texto.trim(),
       ordem: proximaOrdem,
       status: 'pendente',
+      colaborador_id: (tarefa && tarefa[0]) ? tarefa[0].responsavel_id : null,
     });
     mostrarToast('Item adicionado');
     await expandirTarefa(tarefaAbertaId);
@@ -652,7 +828,26 @@ async function adicionarItemChecklist() {
   }
 }
 
-function abrirModalTarefa(id) {
+async function removerItemChecklist(itemId) {
+  if (!confirm('Remover este item?')) return;
+  try {
+    var url = CONFIG.SUPABASE_URL + '/rest/v1/checklist_items?id=eq.' + itemId;
+    var r = await fetch(url, { method: 'DELETE', headers: apiHeaders() });
+    if (!r.ok) throw new Error('Erro ao remover');
+    mostrarToast('Item removido');
+    if (tarefaAbertaId) {
+      await atualizarConclusaoTarefa(tarefaAbertaId);
+      await expandirTarefa(tarefaAbertaId);
+    }
+  } catch (err) {
+    mostrarToast('Erro ao remover item', 'error');
+  }
+}
+
+async function abrirModalTarefa(id) {
+  await carregarCacheColaboradores();
+  checklistModalItems = [];
+
   modalModo = id ? 'tarefa-editar' : 'tarefa-nova';
   modalItemId = id || null;
 
@@ -666,38 +861,81 @@ function abrirModalTarefa(id) {
     return '<option value="' + p.id + '">' + escapeHtml(p.nome) + '</option>';
   }).join('');
 
+  // Filter collaborators by selected property
+  var colabsHtml = '<option value="">Nenhum (sem responsavel)</option>';
   var propSelecionada = propriedadeFiltro !== 'todas' ? propriedadeFiltro : '';
+
+  var colabsFiltrados = propSelecionada
+    ? cacheColaboradores.filter(function(c) { return String(c.propriedade_id) === String(propSelecionada); })
+    : cacheColaboradores;
+
+  colabsHtml += colabsFiltrados.map(function(c) {
+    return '<option value="' + c.id + '">' + escapeHtml(c.nome) + ' (' + escapeHtml(c.funcao || '') + ')</option>';
+  }).join('');
+
+  var statusHtml = id
+    ? '<div class="form-group">' +
+        '<label>Status</label>' +
+        '<select id="campo-tarefa-status" class="form-input">' +
+          '<option value="pendente">Pendente</option>' +
+          '<option value="em_andamento">Em Andamento</option>' +
+          '<option value="concluida">Concluida</option>' +
+          '<option value="cancelada">Cancelada</option>' +
+        '</select>' +
+      '</div>'
+    : '';
+
+  var checklistHtml = !id
+    ? '<div class="form-group">' +
+        '<label>Itens do Checklist <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label>' +
+        '<div id="campo-tarefa-checklist-items" class="checklist-builder"></div>' +
+        '<div class="checklist-builder-add">' +
+          '<input type="text" id="campo-tarefa-checklist-input" class="form-input" placeholder="Descreva o item e pressione Enter" onkeydown="if(event.key===\'Enter\'){event.preventDefault();adicionarItemChecklistModal()}">' +
+          '<button type="button" class="btn btn--small btn--secondary" onclick="adicionarItemChecklistModal()">+</button>' +
+        '</div>' +
+      '</div>'
+    : '';
 
   $('#modal-body').innerHTML =
     '<div class="form-group">' +
       '<label>Descricao *</label>' +
       '<textarea id="campo-tarefa-desc" class="form-input" rows="3" placeholder="O que precisa ser feito?"></textarea>' +
     '</div>' +
-    '<div class="form-group">' +
-      '<label>Setor *</label>' +
-      '<select id="campo-tarefa-setor" class="form-input">' +
-        '<option value="">Selecione...</option>' + opcoesSetor +
-      '</select>' +
+    '<div class="form-row">' +
+      '<div class="form-group form-group--half">' +
+        '<label>Setor *</label>' +
+        '<select id="campo-tarefa-setor" class="form-input">' +
+          '<option value="">Selecione...</option>' + opcoesSetor +
+        '</select>' +
+      '</div>' +
+      '<div class="form-group form-group--half">' +
+        '<label>Propriedade *</label>' +
+        '<select id="campo-tarefa-prop" class="form-input" onchange="atualizarColabsModal()">' +
+          '<option value="">Selecione...</option>' + opcoesProp +
+        '</select>' +
+      '</div>' +
+    '</div>' +
+    '<div class="form-row">' +
+      '<div class="form-group form-group--half">' +
+        '<label>Prioridade</label>' +
+        '<select id="campo-tarefa-prio" class="form-input">' +
+          '<option value="normal">Normal</option>' +
+          '<option value="alta">Alta</option>' +
+          '<option value="urgente">Urgente</option>' +
+          '<option value="baixa">Baixa</option>' +
+        '</select>' +
+      '</div>' +
+      '<div class="form-group form-group--half">' +
+        '<label>Data Limite</label>' +
+        '<input id="campo-tarefa-data" type="date" class="form-input" />' +
+      '</div>' +
     '</div>' +
     '<div class="form-group">' +
-      '<label>Propriedade *</label>' +
-      '<select id="campo-tarefa-prop" class="form-input">' +
-        '<option value="">Selecione...</option>' + opcoesProp +
-      '</select>' +
+      '<label>Responsavel</label>' +
+      '<select id="campo-tarefa-responsavel" class="form-input">' + colabsHtml + '</select>' +
     '</div>' +
-    '<div class="form-group">' +
-      '<label>Prioridade</label>' +
-      '<select id="campo-tarefa-prio" class="form-input">' +
-        '<option value="normal">Normal</option>' +
-        '<option value="alta">Alta</option>' +
-        '<option value="urgente">Urgente</option>' +
-        '<option value="baixa">Baixa</option>' +
-      '</select>' +
-    '</div>' +
-    '<div class="form-group">' +
-      '<label>Data Limite</label>' +
-      '<input id="campo-tarefa-data" type="date" class="form-input" />' +
-    '</div>';
+    statusHtml +
+    checklistHtml;
 
   if (propSelecionada) {
     $('#campo-tarefa-prop').value = propSelecionada;
@@ -708,6 +946,60 @@ function abrirModalTarefa(id) {
   }
 
   $('#modal-overlay').classList.remove('escondido');
+}
+
+// Update collaborator dropdown when property changes in modal
+function atualizarColabsModal() {
+  var propId = ($('#campo-tarefa-prop') || {}).value || '';
+  var select = $('#campo-tarefa-responsavel');
+  if (!select) return;
+
+  var colabs = propId
+    ? cacheColaboradores.filter(function(c) { return String(c.propriedade_id) === String(propId); })
+    : cacheColaboradores;
+
+  select.innerHTML = '<option value="">Nenhum (sem responsavel)</option>' +
+    colabs.map(function(c) {
+      return '<option value="' + c.id + '">' + escapeHtml(c.nome) + ' (' + escapeHtml(c.funcao || '') + ')</option>';
+    }).join('');
+}
+
+// Checklist builder in modal
+var checklistModalItems = [];
+
+function adicionarItemChecklistModal() {
+  var input = $('#campo-tarefa-checklist-input');
+  if (!input) return;
+  var texto = input.value.trim();
+  if (!texto) return;
+
+  checklistModalItems.push(texto);
+  input.value = '';
+  renderizarChecklistModal();
+  input.focus();
+}
+
+function removerItemChecklistModal(index) {
+  checklistModalItems.splice(index, 1);
+  renderizarChecklistModal();
+}
+
+function renderizarChecklistModal() {
+  var container = $('#campo-tarefa-checklist-items');
+  if (!container) return;
+
+  if (checklistModalItems.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = checklistModalItems.map(function(item, i) {
+    return '<div class="checklist-builder-item">' +
+      '<span class="checklist-builder-num">' + (i + 1) + '.</span>' +
+      '<span class="checklist-builder-text">' + escapeHtml(item) + '</span>' +
+      '<button type="button" class="btn-icon btn-icon--danger" onclick="removerItemChecklistModal(' + i + ')">&times;</button>' +
+    '</div>';
+  }).join('');
 }
 
 async function carregarDadosTarefaModal(id) {
@@ -722,6 +1014,18 @@ async function carregarDadosTarefaModal(id) {
       if (t.data_limite) {
         $('#campo-tarefa-data').value = t.data_limite.substring(0, 10);
       }
+      // Load responsavel
+      if (t.responsavel_id) {
+        // Update colabs for the property first
+        atualizarColabsModal();
+        setTimeout(function() {
+          var selectResp = $('#campo-tarefa-responsavel');
+          if (selectResp) selectResp.value = t.responsavel_id;
+        }, 100);
+      }
+      // Load status
+      var statusSelect = $('#campo-tarefa-status');
+      if (statusSelect) statusSelect.value = t.status || 'pendente';
     }
   } catch (err) {
     console.error('Erro ao carregar tarefa:', err);
@@ -731,16 +1035,20 @@ async function carregarDadosTarefaModal(id) {
 /* ================================================================== */
 /*  ROTINAS                                                           */
 /* ================================================================== */
+var rotinaAbertaId = null;
+var diasSemana = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado'];
+
 async function carregarRotinas() {
   try {
-    var qs = '?select=*&order=dia_semana.asc,hora.asc';
+    var qs = '?select=*,setores(nome,icone)&order=dia_semana.asc,hora_disparo.asc';
     qs = addPropFiltro(qs);
 
     var data = await supaFetch('rotinas_semanais' + qs);
     var tbody = $('#tbody-rotinas');
 
     if (!data || data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="placeholder">Nenhuma rotina encontrada</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="placeholder">Nenhuma rotina encontrada. Clique em "+ Nova Rotina" para criar.</td></tr>';
+      $('#rotina-detalhe').classList.add('escondido');
       return;
     }
 
@@ -748,56 +1056,309 @@ async function carregarRotinas() {
       var ativo = r.ativo !== false;
       var statusClass = ativo ? 'ativo' : 'inativo';
       var statusText = ativo ? 'Ativo' : 'Inativo';
+      var setorNome = (r.setores && r.setores.nome) || '--';
+      var setorIcone = (r.setores && r.setores.icone) || '';
+      var diaNome = (r.dia_semana !== null && r.dia_semana !== undefined) ? (diasSemana[r.dia_semana] || r.dia_semana) : '--';
+      var hora = r.hora_disparo || '--';
+      var isAtiva = rotinaAbertaId === r.id;
 
-      return '<tr class="tr-clicavel" onclick="expandirRotina(\'' + r.id + '\')">' +
+      return '<tr class="tr-clicavel' + (isAtiva ? ' tr-ativa' : '') + '" onclick="expandirRotina(\'' + r.id + '\')">' +
         '<td>' + escapeHtml(r.nome || '--') + '</td>' +
-        '<td>' + escapeHtml(r.setor || '--') + '</td>' +
-        '<td>' + escapeHtml(r.dia_semana || '--') + '</td>' +
-        '<td>' + escapeHtml(r.hora || '--') + '</td>' +
+        '<td>' + escapeHtml(setorIcone + ' ' + setorNome) + '</td>' +
+        '<td>' + escapeHtml(String(diaNome)) + '</td>' +
+        '<td>' + escapeHtml(hora) + '</td>' +
         '<td><span class="badge badge--' + statusClass + '">' + statusText + '</span></td>' +
+        '<td class="td-acoes" onclick="event.stopPropagation()">' +
+          '<button class="btn btn--small btn--secondary" onclick="abrirModalRotina(\'' + r.id + '\')" title="Editar">&#9998;</button> ' +
+          '<button class="btn btn--small btn--danger" onclick="toggleRotina(\'' + r.id + '\',' + ativo + ')" title="' + (ativo ? 'Desativar' : 'Ativar') + '">' + (ativo ? '&#10005;' : '&#10003;') + '</button>' +
+        '</td>' +
         '</tr>';
     }).join('');
 
-    $('#rotina-detalhe').classList.add('escondido');
-
   } catch (err) {
     console.error('Erro ao carregar rotinas:', err);
-    $('#tbody-rotinas').innerHTML = '<tr><td colspan="5" class="placeholder">Erro ao carregar</td></tr>';
+    $('#tbody-rotinas').innerHTML = '<tr><td colspan="6" class="placeholder">Erro ao carregar</td></tr>';
   }
 }
 
 async function expandirRotina(rotinaId) {
   try {
-    var items = await supaFetch('rotina_items?rotina_id=eq.' + rotinaId + '&order=ordem.asc');
+    rotinaAbertaId = rotinaId;
+
+    var rotinaPromise = supaFetch('rotinas_semanais?id=eq.' + rotinaId + '&select=*,setores(nome,icone)');
+    var itemsPromise = supaFetch('rotina_items?rotina_id=eq.' + rotinaId + '&select=*,colaboradores:colaborador_id(nome)&order=ordem.asc');
+    var results = await Promise.all([rotinaPromise, itemsPromise]);
+
+    var rotinaData = results[0];
+    var items = results[1];
+
+    if (!rotinaData || rotinaData.length === 0) return;
+    var rot = rotinaData[0];
+
     var detalhe = $('#rotina-detalhe');
     var container = $('#rotina-items');
 
+    var setorNome = (rot.setores && rot.setores.nome) || '--';
+    var diaNome = (rot.dia_semana !== null) ? (diasSemana[rot.dia_semana] || rot.dia_semana) : '--';
+    $('#rotina-detalhe-titulo').textContent = rot.nome + ' — ' + setorNome + ' (' + diaNome + ')';
+
     if (!items || items.length === 0) {
-      container.innerHTML = '<p class="placeholder">Nenhum item na rotina</p>';
+      container.innerHTML = '<p class="placeholder">Nenhum item na rotina. Clique em "+ Item" para adicionar.</p>';
     } else {
       container.innerHTML = items.map(function(item) {
-        var concluido = item.concluido || item.status === 'concluido';
-        return '<div class="checklist-item">' +
-          '<span class="checklist-item__status checklist-item__status--' + (concluido ? 'concluido' : 'pendente') + '">' +
-            (concluido ? '&#10003;' : '&#9711;') +
-          '</span>' +
-          '<span>' + escapeHtml(item.descricao || item.texto || item.nome || '--') + '</span>' +
-          '</div>';
+        var colabNome = (item.colaboradores && item.colaboradores.nome) ? ' <span style="font-size:11px;color:var(--text-muted)">(' + escapeHtml(item.colaboradores.nome) + ')</span>' : '';
+        return '<div class="checklist-item-row">' +
+          '<div class="checklist-item-check">' +
+            '<span class="checklist-box">' + (item.ordem || '') + '</span>' +
+            '<span>' + escapeHtml(item.descricao || '--') + colabNome + '</span>' +
+          '</div>' +
+          '<button class="btn-icon btn-icon--danger" onclick="removerItemRotina(\'' + item.id + '\')" title="Remover">&times;</button>' +
+        '</div>';
       }).join('');
     }
 
     detalhe.classList.remove('escondido');
-    $('#rotina-detalhe-titulo').textContent = 'Itens da Rotina';
     detalhe.scrollIntoView({ behavior: 'smooth' });
+    carregarRotinas();
 
   } catch (err) {
     console.error('Erro ao expandir rotina:', err);
   }
 }
 
+function fecharDetalheRotina() {
+  rotinaAbertaId = null;
+  $('#rotina-detalhe').classList.add('escondido');
+  carregarRotinas();
+}
+
+function abrirModalRotina(id) {
+  modalModo = id ? 'rotina-editar' : 'rotina-nova';
+  modalItemId = id || null;
+
+  $('#modal-titulo').textContent = id ? 'Editar Rotina' : 'Nova Rotina';
+
+  if (propriedadeFiltro === 'todas') {
+    mostrarToast('Selecione uma propriedade primeiro', 'error');
+    return;
+  }
+
+  var setorOptions = cacheSetores.map(function(s) {
+    return '<option value="' + s.id + '">' + escapeHtml(s.nome) + '</option>';
+  }).join('');
+
+  var diasOptions = diasSemana.map(function(d, i) {
+    return '<option value="' + i + '">' + d + '</option>';
+  }).join('');
+
+  $('#modal-body').innerHTML =
+    '<div class="form-group"><label>Nome da Rotina *</label><input type="text" id="campo-rotina-nome" placeholder="Ex: Limpeza matinal areas comuns" required></div>' +
+    '<div class="form-row">' +
+      '<div class="form-group form-group--half"><label>Setor *</label><select id="campo-rotina-setor" required><option value="">Selecione...</option>' + setorOptions + '</select></div>' +
+      '<div class="form-group form-group--half"><label>Dia da Semana *</label><select id="campo-rotina-dia" required>' + diasOptions + '</select></div>' +
+    '</div>' +
+    '<div class="form-row">' +
+      '<div class="form-group form-group--half"><label>Hora de Disparo</label><input type="time" id="campo-rotina-hora" value="07:00"></div>' +
+      '<div class="form-group form-group--half"><label>Descricao</label><input type="text" id="campo-rotina-desc" placeholder="Descricao opcional"></div>' +
+    '</div>';
+
+  if (id) {
+    carregarDadosRotinaModal(id);
+  }
+
+  $('#modal-overlay').classList.remove('escondido');
+}
+
+async function carregarDadosRotinaModal(id) {
+  try {
+    var data = await supaFetch('rotinas_semanais?id=eq.' + id);
+    if (data && data.length > 0) {
+      var r = data[0];
+      $('#campo-rotina-nome').value = r.nome || '';
+      $('#campo-rotina-setor').value = r.setor_id || '';
+      $('#campo-rotina-dia').value = (r.dia_semana !== null) ? r.dia_semana : 0;
+      $('#campo-rotina-hora').value = r.hora_disparo || '07:00';
+      var descEl = $('#campo-rotina-desc');
+      if (descEl) descEl.value = r.descricao || '';
+    }
+  } catch (err) {
+    console.error('Erro ao carregar rotina:', err);
+  }
+}
+
+async function toggleRotina(id, atualmenteAtivo) {
+  try {
+    await supaUpdate('rotinas_semanais', id, { ativo: !atualmenteAtivo });
+    mostrarToast(atualmenteAtivo ? 'Rotina desativada' : 'Rotina ativada');
+    carregarRotinas();
+  } catch (err) {
+    mostrarToast('Erro ao alterar status', 'error');
+  }
+}
+
+async function adicionarItemRotina() {
+  if (!rotinaAbertaId) { mostrarToast('Selecione uma rotina primeiro', 'error'); return; }
+  var texto = prompt('Descricao do item da rotina:');
+  if (!texto || !texto.trim()) return;
+  try {
+    var rotina = await supaFetch('rotinas_semanais?id=eq.' + rotinaAbertaId + '&select=propriedade_id');
+    var propId = (rotina && rotina[0]) ? rotina[0].propriedade_id : null;
+    if (!propId) { mostrarToast('Erro: rotina sem propriedade', 'error'); return; }
+
+    var items = await supaFetch('rotina_items?rotina_id=eq.' + rotinaAbertaId + '&select=ordem&order=ordem.desc&limit=1');
+    var proximaOrdem = (items && items.length > 0) ? (items[0].ordem + 1) : 1;
+    await supaInsert('rotina_items', {
+      rotina_id: rotinaAbertaId,
+      propriedade_id: propId,
+      descricao: texto.trim(),
+      ordem: proximaOrdem,
+    });
+    mostrarToast('Item adicionado');
+    await expandirRotina(rotinaAbertaId);
+  } catch (err) {
+    console.error('Erro ao adicionar item:', err);
+    mostrarToast('Erro ao adicionar item: ' + err.message, 'error');
+  }
+}
+
+async function removerItemRotina(itemId) {
+  if (!confirm('Remover este item?')) return;
+  try {
+    var url = CONFIG.SUPABASE_URL + '/rest/v1/rotina_items?id=eq.' + itemId;
+    var r = await fetch(url, { method: 'DELETE', headers: apiHeaders() });
+    if (!r.ok) throw new Error('Erro ao remover');
+    mostrarToast('Item removido');
+    if (rotinaAbertaId) await expandirRotina(rotinaAbertaId);
+  } catch (err) {
+    mostrarToast('Erro ao remover item', 'error');
+  }
+}
+
+/* ================================================================== */
+/*  GERAR TAREFAS A PARTIR DE ROTINAS                                 */
+/* ================================================================== */
+async function gerarTarefasDoDia() {
+  if (propriedadeFiltro === 'todas') {
+    mostrarToast('Selecione uma propriedade primeiro', 'error');
+    return;
+  }
+
+  var btn = $('#btn-gerar-tarefas');
+  if (btn) { btn.disabled = true; btn.textContent = 'Gerando...'; }
+
+  try {
+    // 1. Buscar dia da semana atual
+    var hoje = new Date();
+    var diaSemana = hoje.getDay(); // 0=dom, 1=seg...
+
+    // 2. Buscar rotinas ativas para hoje e esta propriedade
+    var rotinas = await supaFetch(
+      'rotinas_semanais?select=*,setores(nome)&ativo=eq.true&dia_semana=eq.' + diaSemana +
+      '&propriedade_id=eq.' + propriedadeFiltro
+    );
+
+    if (!rotinas || rotinas.length === 0) {
+      var diasNomes = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado'];
+      mostrarToast('Nenhuma rotina ativa para ' + diasNomes[diaSemana], 'error');
+      if (btn) { btn.disabled = false; btn.textContent = '\u26A1 Gerar Tarefas de Hoje'; }
+      return;
+    }
+
+    // 3. Verificar se ja foram geradas hoje (evitar duplicatas)
+    var hojeStr = hoje.toISOString().substring(0, 10);
+    var jaGeradas = await supaFetch(
+      'tarefas?select=rotina_id&origem=eq.rotina&propriedade_id=eq.' + propriedadeFiltro +
+      '&created_at=gte.' + hojeStr + 'T00:00:00&created_at=lt.' + hojeStr + 'T23:59:59'
+    );
+    var rotinasJaGeradas = {};
+    if (jaGeradas) {
+      jaGeradas.forEach(function(t) { if (t.rotina_id) rotinasJaGeradas[t.rotina_id] = true; });
+    }
+
+    var criadas = 0;
+    var puladas = 0;
+
+    // 4. Para cada rotina, criar tarefa + copiar itens
+    for (var i = 0; i < rotinas.length; i++) {
+      var rot = rotinas[i];
+
+      // Pular se ja foi gerada hoje
+      if (rotinasJaGeradas[rot.id]) {
+        puladas++;
+        continue;
+      }
+
+      // Buscar itens da rotina
+      var rotItems = await supaFetch(
+        'rotina_items?rotina_id=eq.' + rot.id + '&select=*&order=ordem.asc'
+      );
+
+      var setorNome = (rot.setores && rot.setores.nome) || '';
+
+      // Criar tarefa
+      var novaTarefa = await supaInsert('tarefas', {
+        propriedade_id: rot.propriedade_id,
+        comando_original: rot.nome,
+        descricao: rot.descricao || rot.nome,
+        setor_id: rot.setor_id,
+        setor_interpretado: setorNome,
+        status: 'pendente',
+        prioridade: 'normal',
+        origem: 'rotina',
+        rotina_id: rot.id,
+        data_limite: hojeStr,
+      });
+
+      // Copiar itens como checklist
+      if (novaTarefa && novaTarefa.length > 0 && rotItems && rotItems.length > 0) {
+        var tarefaId = novaTarefa[0].id;
+        for (var j = 0; j < rotItems.length; j++) {
+          var ri = rotItems[j];
+          await supaInsert('checklist_items', {
+            tarefa_id: tarefaId,
+            propriedade_id: rot.propriedade_id,
+            colaborador_id: ri.colaborador_id || null,
+            descricao: ri.descricao,
+            ordem: ri.ordem || (j + 1),
+            status: 'pendente',
+          });
+        }
+      }
+
+      criadas++;
+    }
+
+    // 5. Feedback
+    var msg = criadas + ' tarefa(s) gerada(s) a partir das rotinas';
+    if (puladas > 0) msg += ' (' + puladas + ' ja existiam hoje)';
+    mostrarToast(msg);
+
+  } catch (err) {
+    console.error('Erro ao gerar tarefas:', err);
+    mostrarToast('Erro ao gerar tarefas: ' + err.message, 'error');
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '\u26A1 Gerar Tarefas de Hoje'; }
+}
+
 /* ================================================================== */
 /*  RELATORIOS                                                        */
 /* ================================================================== */
+function getInicioSemana(date) {
+  var d = new Date(date);
+  var dia = d.getDay(); // 0=dom
+  d.setDate(d.getDate() - dia);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function getFimSemana(date) {
+  var d = getInicioSemana(date);
+  d.setDate(d.getDate() + 6);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
 async function carregarRelatorios() {
   try {
     var qs = '?select=*&order=created_at.desc';
@@ -807,40 +1368,306 @@ async function carregarRelatorios() {
     var tbody = $('#tbody-relatorios');
 
     if (!data || data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" class="placeholder">Nenhum relatorio encontrado</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="placeholder">Nenhum relatorio encontrado. Clique em "Gerar Relatorio" para criar.</td></tr>';
       return;
     }
 
     tbody.innerHTML = data.map(function(r) {
       var periodo = '';
-      if (r.periodo_inicio && r.periodo_fim) {
-        periodo = formatarData(r.periodo_inicio) + ' - ' + formatarData(r.periodo_fim);
-      } else if (r.periodo) {
-        periodo = escapeHtml(r.periodo);
+      if (r.semana_inicio && r.semana_fim) {
+        periodo = formatarData(r.semana_inicio) + ' - ' + formatarData(r.semana_fim);
       } else {
         periodo = formatarData(r.created_at);
       }
 
-      var conclusao = r.porcentagem_conclusao || r.percentual || 0;
-      var pdfUrl = r.pdf_url || r.url_pdf || '';
-      var pdfLink = pdfUrl
-        ? '<a href="' + escapeHtml(pdfUrl) + '" target="_blank" class="btn btn--small btn--secondary">Baixar PDF</a>'
-        : '<span style="color:var(--text-muted)">--</span>';
+      var conclusao = r.percentual_conclusao || 0;
 
-      return '<tr>' +
+      return '<tr class="tr-clicavel" onclick="expandirRelatorio(\'' + r.id + '\')">' +
         '<td>' + periodo + '</td>' +
+        '<td>' + (r.total_tarefas || 0) + '</td>' +
+        '<td>' + (r.tarefas_concluidas || 0) + '</td>' +
+        '<td>' + (r.tarefas_pendentes || 0) + '</td>' +
         '<td>' +
           '<div class="progress" title="' + conclusao + '%"><div class="progress__bar" style="width:' + conclusao + '%"></div></div>' +
           '<span style="font-size:12px;color:var(--text-muted)">' + conclusao + '%</span>' +
         '</td>' +
-        '<td>' + pdfLink + '</td>' +
+        '<td class="td-acoes" onclick="event.stopPropagation()">' +
+          '<button class="btn btn--small btn--secondary" onclick="expandirRelatorio(\'' + r.id + '\')" title="Ver detalhes">&#128270;</button>' +
+        '</td>' +
         '</tr>';
     }).join('');
 
   } catch (err) {
     console.error('Erro ao carregar relatorios:', err);
-    $('#tbody-relatorios').innerHTML = '<tr><td colspan="3" class="placeholder">Erro ao carregar</td></tr>';
+    $('#tbody-relatorios').innerHTML = '<tr><td colspan="6" class="placeholder">Erro ao carregar</td></tr>';
   }
+}
+
+async function gerarRelatorioSemanal() {
+  if (propriedadeFiltro === 'todas') {
+    mostrarToast('Selecione uma propriedade primeiro', 'error');
+    return;
+  }
+
+  var btn = $('#btn-gerar-relatorio');
+  if (btn) { btn.disabled = true; btn.textContent = 'Gerando...'; }
+
+  try {
+    var hoje = new Date();
+    var inicio = getInicioSemana(hoje);
+    var fim = getFimSemana(hoje);
+    var inicioStr = inicio.toISOString().substring(0, 10);
+    var fimStr = fim.toISOString().substring(0, 10);
+
+    // Verificar se ja existe relatorio para esta semana
+    var existente = await supaFetch(
+      'relatorios_semanais?semana_inicio=eq.' + inicioStr +
+      '&propriedade_id=eq.' + propriedadeFiltro + '&select=id'
+    );
+    if (existente && existente.length > 0) {
+      if (!confirm('Ja existe um relatorio para esta semana. Deseja gerar novamente (substituir)?')) {
+        if (btn) { btn.disabled = false; btn.textContent = '\u26A1 Gerar Relatorio da Semana'; }
+        return;
+      }
+      // Deletar o existente
+      var urlDel = CONFIG.SUPABASE_URL + '/rest/v1/relatorios_semanais?id=eq.' + existente[0].id;
+      await fetch(urlDel, { method: 'DELETE', headers: apiHeaders() });
+    }
+
+    // Buscar tarefas da semana
+    var tarefas = await supaFetch(
+      'tarefas?select=*,colaboradores:responsavel_id(nome),setores:setor_id(nome,icone)' +
+      '&propriedade_id=eq.' + propriedadeFiltro +
+      '&created_at=gte.' + inicioStr + 'T00:00:00' +
+      '&created_at=lte.' + fimStr + 'T23:59:59' +
+      '&order=created_at.asc'
+    );
+
+    // Buscar checklist_items da semana
+    var checkItems = await supaFetch(
+      'checklist_items?select=*,colaboradores:colaborador_id(nome)' +
+      '&propriedade_id=eq.' + propriedadeFiltro +
+      '&created_at=gte.' + inicioStr + 'T00:00:00' +
+      '&created_at=lte.' + fimStr + 'T23:59:59'
+    );
+
+    // Buscar colaboradores ativos
+    var colabs = await supaFetch(
+      'colaboradores?select=id,nome,funcao,setor_id,setores(nome)' +
+      '&propriedade_id=eq.' + propriedadeFiltro +
+      '&ativo=eq.true'
+    );
+
+    // Calcular estatisticas
+    var totalTarefas = tarefas ? tarefas.length : 0;
+    var tarefasConcluidas = tarefas ? tarefas.filter(function(t) { return t.status === 'concluida'; }).length : 0;
+    var tarefasPendentes = totalTarefas - tarefasConcluidas;
+    var percentual = totalTarefas > 0 ? Math.round((tarefasConcluidas / totalTarefas) * 100) : 0;
+
+    // Estatisticas por setor
+    var porSetor = {};
+    if (tarefas) {
+      tarefas.forEach(function(t) {
+        var setor = (t.setores && t.setores.nome) || t.setor_interpretado || 'Geral';
+        var icone = (t.setores && t.setores.icone) || '';
+        if (!porSetor[setor]) porSetor[setor] = { icone: icone, total: 0, concluidas: 0, tarefas: [] };
+        porSetor[setor].total++;
+        if (t.status === 'concluida') porSetor[setor].concluidas++;
+        porSetor[setor].tarefas.push({
+          nome: t.comando_original || t.descricao,
+          status: t.status,
+          responsavel: (t.colaboradores && t.colaboradores.nome) || null,
+          origem: t.origem,
+        });
+      });
+    }
+
+    // Estatisticas por colaborador
+    var porColab = {};
+    if (checkItems) {
+      checkItems.forEach(function(ci) {
+        var nome = (ci.colaboradores && ci.colaboradores.nome) || 'Nao atribuido';
+        if (!porColab[nome]) porColab[nome] = { total: 0, concluidos: 0 };
+        porColab[nome].total++;
+        if (ci.status === 'concluido') porColab[nome].concluidos++;
+      });
+    }
+
+    // Montar JSON do relatorio
+    var dadosJson = {
+      gerado_em: new Date().toISOString(),
+      propriedade: propriedadeFiltro,
+      por_setor: porSetor,
+      por_colaborador: porColab,
+      total_checklist_items: checkItems ? checkItems.length : 0,
+      checklist_concluidos: checkItems ? checkItems.filter(function(ci) { return ci.status === 'concluido'; }).length : 0,
+      colaboradores_ativos: colabs ? colabs.length : 0,
+    };
+
+    // Inserir relatorio
+    await supaInsert('relatorios_semanais', {
+      propriedade_id: propriedadeFiltro,
+      semana_inicio: inicioStr,
+      semana_fim: fimStr,
+      dados_json: dadosJson,
+      total_tarefas: totalTarefas,
+      tarefas_concluidas: tarefasConcluidas,
+      tarefas_pendentes: tarefasPendentes,
+      percentual_conclusao: percentual,
+    });
+
+    mostrarToast('Relatorio gerado com sucesso!');
+    carregarRelatorios();
+
+  } catch (err) {
+    console.error('Erro ao gerar relatorio:', err);
+    mostrarToast('Erro ao gerar relatorio: ' + err.message, 'error');
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '\u26A1 Gerar Relatorio da Semana'; }
+}
+
+async function expandirRelatorio(relatorioId) {
+  try {
+    var data = await supaFetch('relatorios_semanais?id=eq.' + relatorioId);
+    if (!data || data.length === 0) return;
+    var r = data[0];
+
+    var detalhe = $('#relatorio-detalhe');
+    var body = $('#relatorio-detalhe-body');
+
+    var periodo = formatarData(r.semana_inicio) + ' - ' + formatarData(r.semana_fim);
+    $('#relatorio-detalhe-titulo').textContent = 'Relatorio: ' + periodo;
+
+    var pct = r.percentual_conclusao || 0;
+    var dados = r.dados_json || {};
+
+    // Resumo geral
+    var html = '<div class="relatorio-resumo">' +
+      '<div class="relatorio-stat"><span class="relatorio-stat__valor">' + (r.total_tarefas || 0) + '</span><span class="relatorio-stat__label">Total Tarefas</span></div>' +
+      '<div class="relatorio-stat relatorio-stat--success"><span class="relatorio-stat__valor">' + (r.tarefas_concluidas || 0) + '</span><span class="relatorio-stat__label">Concluidas</span></div>' +
+      '<div class="relatorio-stat relatorio-stat--warning"><span class="relatorio-stat__valor">' + (r.tarefas_pendentes || 0) + '</span><span class="relatorio-stat__label">Pendentes</span></div>' +
+      '<div class="relatorio-stat"><span class="relatorio-stat__valor">' + pct + '%</span><span class="relatorio-stat__label">Conclusao</span></div>' +
+    '</div>';
+
+    // Por setor
+    if (dados.por_setor && Object.keys(dados.por_setor).length > 0) {
+      html += '<h4 style="margin:20px 0 10px;font-size:14px;color:var(--text)">Por Setor</h4>';
+      html += '<div class="relatorio-setores">';
+      Object.keys(dados.por_setor).forEach(function(setor) {
+        var s = dados.por_setor[setor];
+        var sPct = s.total > 0 ? Math.round((s.concluidas / s.total) * 100) : 0;
+        html += '<div class="relatorio-setor-card">' +
+          '<div class="relatorio-setor-header">' +
+            '<span>' + (s.icone || '') + ' <strong>' + escapeHtml(setor) + '</strong></span>' +
+            '<span>' + s.concluidas + '/' + s.total + ' (' + sPct + '%)</span>' +
+          '</div>' +
+          '<div class="progress"><div class="progress__bar" style="width:' + sPct + '%"></div></div>';
+
+        // Listar tarefas do setor
+        if (s.tarefas && s.tarefas.length > 0) {
+          html += '<div class="relatorio-setor-tarefas">';
+          s.tarefas.forEach(function(t) {
+            var statusIcon = t.status === 'concluida' ? '&#10003;' : (t.status === 'cancelada' ? '&#10005;' : '&#9711;');
+            var statusClass = t.status === 'concluida' ? 'color:var(--success)' : (t.status === 'cancelada' ? 'color:var(--danger)' : 'color:var(--warning)');
+            html += '<div style="font-size:13px;padding:3px 0;display:flex;gap:6px;align-items:center">' +
+              '<span style="' + statusClass + '">' + statusIcon + '</span>' +
+              '<span>' + escapeHtml(t.nome || '--') + '</span>' +
+              (t.responsavel ? '<span style="font-size:11px;color:var(--text-muted)">(' + escapeHtml(t.responsavel) + ')</span>' : '') +
+            '</div>';
+          });
+          html += '</div>';
+        }
+
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    // Por colaborador
+    if (dados.por_colaborador && Object.keys(dados.por_colaborador).length > 0) {
+      html += '<h4 style="margin:20px 0 10px;font-size:14px;color:var(--text)">Por Colaborador (Checklist Items)</h4>';
+      html += '<div class="relatorio-setores">';
+      Object.keys(dados.por_colaborador).forEach(function(nome) {
+        var c = dados.por_colaborador[nome];
+        var cPct = c.total > 0 ? Math.round((c.concluidos / c.total) * 100) : 0;
+        html += '<div class="relatorio-setor-card">' +
+          '<div class="relatorio-setor-header">' +
+            '<span><strong>' + escapeHtml(nome) + '</strong></span>' +
+            '<span>' + c.concluidos + '/' + c.total + ' itens (' + cPct + '%)</span>' +
+          '</div>' +
+          '<div class="progress"><div class="progress__bar" style="width:' + cPct + '%"></div></div>' +
+        '</div>';
+      });
+      html += '</div>';
+    }
+
+    // Info extra + botao exportar
+    html += '<div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center">' +
+      '<span style="font-size:12px;color:var(--text-muted)">' +
+        'Gerado em: ' + (dados.gerado_em ? new Date(dados.gerado_em).toLocaleString('pt-BR') : '--') +
+        ' | Colaboradores ativos: ' + (dados.colaboradores_ativos || 0) +
+        ' | Items checklist: ' + (dados.checklist_concluidos || 0) + '/' + (dados.total_checklist_items || 0) +
+      '</span>' +
+      '<button class="btn btn--primary btn--small" onclick="exportarRelatorio(\'' + relatorioId + '\')">&#128196; Exportar PDF</button>' +
+    '</div>';
+
+    body.innerHTML = html;
+    detalhe.classList.remove('escondido');
+    detalhe.scrollIntoView({ behavior: 'smooth' });
+
+  } catch (err) {
+    console.error('Erro ao expandir relatorio:', err);
+  }
+}
+
+function exportarRelatorio(relatorioId) {
+  var detalhe = $('#relatorio-detalhe');
+  if (!detalhe) return;
+
+  // Encontrar nome da propriedade
+  var propNome = 'Propriedade';
+  if (propriedadeFiltro !== 'todas') {
+    var prop = cachePropriedades.find(function(p) { return String(p.id) === String(propriedadeFiltro); });
+    if (prop) propNome = prop.nome;
+  }
+
+  var titulo = ($('#relatorio-detalhe-titulo') || {}).textContent || 'Relatorio';
+  var conteudo = ($('#relatorio-detalhe-body') || {}).innerHTML || '';
+
+  var printWindow = window.open('', '_blank');
+  printWindow.document.write(
+    '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
+    '<title>' + escapeHtml(propNome) + ' - ' + escapeHtml(titulo) + '</title>' +
+    '<style>' +
+      'body{font-family:"DM Sans",sans-serif;max-width:800px;margin:0 auto;padding:20px 30px;color:#1a1a1a}' +
+      '.header{text-align:center;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #C45D3E}' +
+      '.header h1{font-size:20px;margin:0;color:#C45D3E}' +
+      '.header h2{font-size:16px;margin:4px 0 0;font-weight:400;color:#666}' +
+      '.relatorio-resumo{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}' +
+      '.relatorio-stat{background:#f5f5f0;border-radius:8px;padding:14px;text-align:center;border:1px solid #e5e5e0}' +
+      '.relatorio-stat--success{background:#e8f3ec;border-color:#3D6B4F}' +
+      '.relatorio-stat--warning{background:#faf3e0;border-color:#B8964E}' +
+      '.relatorio-stat__valor{display:block;font-size:24px;font-weight:700}' +
+      '.relatorio-stat__label{display:block;font-size:11px;color:#666;margin-top:2px;text-transform:uppercase}' +
+      '.relatorio-setores{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}' +
+      '.relatorio-setor-card{background:#f5f5f0;border-radius:8px;padding:12px;border:1px solid #e5e5e0}' +
+      '.relatorio-setor-header{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}' +
+      '.relatorio-setor-tarefas{margin-top:6px;padding-top:6px;border-top:1px solid #e5e5e0}' +
+      '.progress{background:#e5e5e0;border-radius:100px;height:6px;overflow:hidden}' +
+      '.progress__bar{background:#C45D3E;height:100%;border-radius:100px}' +
+      'h4{margin:18px 0 8px;font-size:14px}' +
+      '@media print{body{padding:10px}@page{margin:15mm}}' +
+    '</style></head><body>' +
+    '<div class="header">' +
+      '<h1>' + escapeHtml(propNome) + '</h1>' +
+      '<h2>' + escapeHtml(titulo) + '</h2>' +
+    '</div>' +
+    conteudo +
+    '<script>window.onload=function(){window.print()}<\/script>' +
+    '</body></html>'
+  );
+  printWindow.document.close();
 }
 
 /* ================================================================== */
@@ -1537,6 +2364,7 @@ async function salvarModal() {
       var propId = ($('#campo-tarefa-prop') || {}).value || '';
       var prio = ($('#campo-tarefa-prio') || {}).value || 'normal';
       var dataLimite = ($('#campo-tarefa-data') || {}).value || null;
+      var responsavelId = ($('#campo-tarefa-responsavel') || {}).value || null;
 
       if (!desc) { mostrarToast('Descricao e obrigatoria', 'error'); return; }
       if (!setorId) { mostrarToast('Setor e obrigatorio', 'error'); return; }
@@ -1555,11 +2383,37 @@ async function salvarModal() {
         prioridade: prio,
         data_limite: dataLimite || null,
         origem: 'dashboard',
+        responsavel_id: responsavelId || null,
       };
 
+      if (modalModo === 'tarefa-editar') {
+        var statusEditar = ($('#campo-tarefa-status') || {}).value;
+        if (statusEditar) {
+          body.status = statusEditar;
+          if (statusEditar === 'concluida') body.concluida_at = new Date().toISOString();
+          else body.concluida_at = null;
+        }
+      }
+
       if (modalModo === 'tarefa-nova') {
-        await supaInsert('tarefas', body);
+        var result = await supaInsert('tarefas', body);
         mostrarToast('Tarefa criada com sucesso');
+
+        // Create checklist items if any
+        if (checklistModalItems.length > 0 && result && result.length > 0) {
+          var novaTarefaId = result[0].id;
+          for (var ci = 0; ci < checklistModalItems.length; ci++) {
+            await supaInsert('checklist_items', {
+              tarefa_id: novaTarefaId,
+              propriedade_id: propId,
+              descricao: checklistModalItems[ci],
+              ordem: ci + 1,
+              status: 'pendente',
+              colaborador_id: responsavelId || null,
+            });
+          }
+          checklistModalItems = [];
+        }
       } else {
         await supaUpdate('tarefas', modalItemId, body);
         mostrarToast('Tarefa atualizada');
@@ -1567,6 +2421,37 @@ async function salvarModal() {
 
       fecharModal();
       carregarTarefas();
+
+    } else if (modalModo === 'rotina-nova' || modalModo === 'rotina-editar') {
+      var rNome = (($('#campo-rotina-nome') || {}).value || '').trim();
+      var rSetor = ($('#campo-rotina-setor') || {}).value || '';
+      var rDia = ($('#campo-rotina-dia') || {}).value;
+      var rHora = ($('#campo-rotina-hora') || {}).value || '07:00';
+      var rDesc = (($('#campo-rotina-desc') || {}).value || '').trim();
+
+      if (!rNome) { mostrarToast('Nome e obrigatorio', 'error'); return; }
+      if (!rSetor) { mostrarToast('Setor e obrigatorio', 'error'); return; }
+
+      var rBody = {
+        nome: rNome,
+        setor_id: rSetor,
+        dia_semana: parseInt(rDia),
+        hora_disparo: rHora,
+        descricao: rDesc || null,
+        propriedade_id: propriedadeFiltro,
+      };
+
+      if (modalModo === 'rotina-nova') {
+        rBody.ativo = true;
+        await supaInsert('rotinas_semanais', rBody);
+        mostrarToast('Rotina criada com sucesso');
+      } else {
+        await supaUpdate('rotinas_semanais', modalItemId, rBody);
+        mostrarToast('Rotina atualizada');
+      }
+
+      fecharModal();
+      carregarRotinas();
 
     } else if (modalModo === 'config-editar') {
       var valor = ($('#campo-config-valor') || {}).value || '';
