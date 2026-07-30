@@ -16,38 +16,23 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            {
-              "name": "nome",
-              "value": "=ilike.%{{ $json.setor }}%"
-            },
-            {
-              "name": "select",
-              "value": "id,nome"
-            },
-            {
-              "name": "limit",
-              "value": "1"
-            }
+            { "name": "nome", "value": "=ilike.%{{ $json.setor }}%" },
+            { "name": "select", "value": "id,nome" },
+            { "name": "limit", "value": "1" }
           ]
         },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "apikey",
-              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            },
-            {
-              "name": "Authorization",
-              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            }
+            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE" },
+            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE" }
           ]
         },
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [20, 300],
+      "position": [20, 200],
       "id": "buscar-setor-001",
       "name": "Buscar Setor"
     },
@@ -58,40 +43,53 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            {
-              "name": "select",
-              "value": "id,nome,slug"
-            },
-            {
-              "name": "limit",
-              "value": "1"
-            },
-            {
-              "name": "order",
-              "value": "nome.asc"
-            }
+            { "name": "select", "value": "id,nome,slug" },
+            { "name": "limit", "value": "1" },
+            { "name": "order", "value": "nome.asc" }
           ]
         },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "apikey",
-              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            },
-            {
-              "name": "Authorization",
-              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            }
+            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE" },
+            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE" }
           ]
         },
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [20, 500],
+      "position": [20, 400],
       "id": "buscar-propriedade-001",
       "name": "Buscar Propriedade Default"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/colaboradores",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "nome", "value": "=ilike.%{{ $('Trigger do Agent').item.json.colaborador || '' }}%" },
+            { "name": "ativo", "value": "eq.true" },
+            { "name": "select", "value": "id,nome" },
+            { "name": "limit", "value": "1" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE" },
+            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [20, 600],
+      "id": "buscar-colaborador-001",
+      "name": "Buscar Colaborador"
     },
     {
       "parameters": {
@@ -100,27 +98,15 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "apikey",
-              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            },
-            {
-              "name": "Authorization",
-              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=representation"
-            }
+            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE" },
+            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"comando_original\": \"{{ $('Trigger do Agent').item.json.descricao }}\",\n  \"setor_interpretado\": \"{{ $('Trigger do Agent').item.json.setor }}\",\n  \"setor_id\": \"{{ $('Buscar Setor').item.json[0]?.id || '' }}\",\n  \"propriedade_id\": \"{{ $('Buscar Propriedade Default').item.json[0]?.id || '' }}\",\n  \"prioridade\": \"{{ $('Trigger do Agent').item.json.prioridade || 'normal' }}\",\n  \"data_limite\": {{ $('Trigger do Agent').item.json.data_limite ? '\"' + $('Trigger do Agent').item.json.data_limite + '\"' : 'null' }},\n  \"origem\": \"telegram\",\n  \"status\": \"pendente\"\n}",
+        "jsonBody": "={\n  \"comando_original\": \"{{ $('Trigger do Agent').item.json.descricao }}\",\n  \"setor_interpretado\": \"{{ $('Trigger do Agent').item.json.setor }}\",\n  \"setor_id\": \"{{ $('Buscar Setor').item.json[0]?.id || '' }}\",\n  \"propriedade_id\": \"{{ $('Buscar Propriedade Default').item.json[0]?.id || '' }}\",\n  \"responsavel_id\": {{ $('Buscar Colaborador').item.json[0]?.id ? '\"' + $('Buscar Colaborador').item.json[0].id + '\"' : 'null' }},\n  \"prioridade\": \"{{ $('Trigger do Agent').item.json.prioridade || 'normal' }}\",\n  \"data_limite\": {{ $('Trigger do Agent').item.json.data_limite ? '\"' + $('Trigger do Agent').item.json.data_limite + '\"' : 'null' }},\n  \"origem\": \"telegram\",\n  \"status\": \"pendente\"\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -136,7 +122,7 @@
             {
               "id": "result",
               "name": "result",
-              "value": "=Tarefa criada com sucesso! ID: {{ $json[0]?.id || 'desconhecido' }}. Descricao: {{ $('Trigger do Agent').item.json.descricao }}. Setor: {{ $('Trigger do Agent').item.json.setor }}. Prioridade: {{ $('Trigger do Agent').item.json.prioridade || 'normal' }}.",
+              "value": "=Tarefa criada com sucesso! ID: {{ $json[0]?.id || 'desconhecido' }}. Descricao: {{ $('Trigger do Agent').item.json.descricao }}. Setor: {{ $('Trigger do Agent').item.json.setor }}. Responsavel: {{ $('Buscar Colaborador').item.json[0]?.nome || 'nao atribuido' }}. Prioridade: {{ $('Trigger do Agent').item.json.prioridade || 'normal' }}.",
               "type": "string"
             }
           ]
@@ -154,39 +140,20 @@
     "Trigger do Agent": {
       "main": [
         [
-          {
-            "node": "Buscar Setor",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Buscar Propriedade Default",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Buscar Setor", "type": "main", "index": 0 },
+          { "node": "Buscar Propriedade Default", "type": "main", "index": 0 },
+          { "node": "Buscar Colaborador", "type": "main", "index": 0 }
         ]
       ]
     },
     "Buscar Setor": {
       "main": [
-        [
-          {
-            "node": "Inserir Tarefa no Supabase",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{ "node": "Inserir Tarefa no Supabase", "type": "main", "index": 0 }]
       ]
     },
     "Inserir Tarefa no Supabase": {
       "main": [
-        [
-          {
-            "node": "Resultado",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{ "node": "Resultado", "type": "main", "index": 0 }]
       ]
     }
   },

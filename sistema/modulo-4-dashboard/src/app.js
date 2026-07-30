@@ -238,7 +238,10 @@ function mostrarToast(msg, tipo) {
 
 function formatarData(iso) {
   if (!iso) return '--';
-  var d = new Date(iso);
+  // Evitar bug de timezone: datas no formato YYYY-MM-DD sao interpretadas como UTC
+  // Adicionar T12:00 para garantir que nao pule um dia ao converter para local
+  var dateStr = iso.length === 10 ? iso + 'T12:00:00' : iso;
+  var d = new Date(dateStr);
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
@@ -1132,7 +1135,7 @@ function fecharDetalheRotina() {
   carregarRotinas();
 }
 
-function abrirModalRotina(id) {
+async function abrirModalRotina(id) {
   modalModo = id ? 'rotina-editar' : 'rotina-nova';
   modalItemId = id || null;
 
@@ -1151,6 +1154,13 @@ function abrirModalRotina(id) {
     return '<option value="' + i + '">' + d + '</option>';
   }).join('');
 
+  // Carregar colaboradores para seletor de responsavel
+  await carregarCacheColaboradores();
+  var colabOptions = '<option value="">Todos do setor</option>';
+  cacheColaboradores.forEach(function(c) {
+    colabOptions += '<option value="' + c.id + '">' + escapeHtml(c.nome) + ' (' + (c.funcao || '') + ')</option>';
+  });
+
   $('#modal-body').innerHTML =
     '<div class="form-group"><label>Nome da Rotina *</label><input type="text" id="campo-rotina-nome" placeholder="Ex: Limpeza matinal areas comuns" required></div>' +
     '<div class="form-row">' +
@@ -1159,8 +1169,9 @@ function abrirModalRotina(id) {
     '</div>' +
     '<div class="form-row">' +
       '<div class="form-group form-group--half"><label>Hora de Disparo</label><input type="time" id="campo-rotina-hora" value="07:00"></div>' +
-      '<div class="form-group form-group--half"><label>Descricao</label><input type="text" id="campo-rotina-desc" placeholder="Descricao opcional"></div>' +
-    '</div>';
+      '<div class="form-group form-group--half"><label>Responsavel</label><select id="campo-rotina-responsavel">' + colabOptions + '</select></div>' +
+    '</div>' +
+    '<div class="form-group"><label>Descricao</label><input type="text" id="campo-rotina-desc" placeholder="Descricao opcional"></div>';
 
   if (id) {
     carregarDadosRotinaModal(id);
@@ -1198,8 +1209,31 @@ async function toggleRotina(id, atualmenteAtivo) {
 
 async function adicionarItemRotina() {
   if (!rotinaAbertaId) { mostrarToast('Selecione uma rotina primeiro', 'error'); return; }
-  var texto = prompt('Descricao do item da rotina:');
-  if (!texto || !texto.trim()) return;
+
+  // Buscar colaboradores da propriedade filtrada
+  await carregarCacheColaboradores();
+  var colabOptions = '<option value="">Sem responsavel</option>';
+  cacheColaboradores.forEach(function(c) {
+    colabOptions += '<option value="' + c.id + '">' + escapeHtml(c.nome) + ' (' + (c.funcao || '') + ')</option>';
+  });
+
+  modalModo = 'rotina-item-novo';
+  modalItemId = null;
+  $('#modal-titulo').textContent = 'Novo Item da Rotina';
+  $('#modal-body').innerHTML =
+    '<div class="form-group"><label>Descricao do item *</label><input type="text" id="campo-item-descricao" placeholder="Ex: Rocagem geral" required></div>' +
+    '<div class="form-group"><label>Responsavel</label><select id="campo-item-colaborador">' + colabOptions + '</select></div>';
+  $('#modal-overlay').classList.remove('escondido');
+
+  // Focar no input
+  setTimeout(function() { var el = $('#campo-item-descricao'); if (el) el.focus(); }, 100);
+}
+
+async function salvarItemRotina() {
+  var descricao = ($('#campo-item-descricao') || {}).value;
+  var colaboradorId = ($('#campo-item-colaborador') || {}).value;
+  if (!descricao || !descricao.trim()) { mostrarToast('Preencha a descricao', 'error'); return; }
+
   try {
     var rotina = await supaFetch('rotinas_semanais?id=eq.' + rotinaAbertaId + '&select=propriedade_id');
     var propId = (rotina && rotina[0]) ? rotina[0].propriedade_id : null;
@@ -1207,13 +1241,18 @@ async function adicionarItemRotina() {
 
     var items = await supaFetch('rotina_items?rotina_id=eq.' + rotinaAbertaId + '&select=ordem&order=ordem.desc&limit=1');
     var proximaOrdem = (items && items.length > 0) ? (items[0].ordem + 1) : 1;
-    await supaInsert('rotina_items', {
+
+    var body = {
       rotina_id: rotinaAbertaId,
       propriedade_id: propId,
-      descricao: texto.trim(),
+      descricao: descricao.trim(),
       ordem: proximaOrdem,
-    });
+    };
+    if (colaboradorId) body.colaborador_id = colaboradorId;
+
+    await supaInsert('rotina_items', body);
     mostrarToast('Item adicionado');
+    fecharModal();
     await expandirRotina(rotinaAbertaId);
   } catch (err) {
     console.error('Erro ao adicionar item:', err);
@@ -1531,14 +1570,21 @@ async function gerarRelatorioSemanal() {
       });
     }
 
-    // Estatisticas por colaborador
+    // Estatisticas por colaborador (com itens detalhados)
     var porColab = {};
     if (checkItems) {
       checkItems.forEach(function(ci) {
         var nome = (ci.colaboradores && ci.colaboradores.nome) || 'Nao atribuido';
-        if (!porColab[nome]) porColab[nome] = { total: 0, concluidos: 0 };
+        if (!porColab[nome]) porColab[nome] = { total: 0, concluidos: 0, itens: [] };
         porColab[nome].total++;
         if (ci.status === 'concluido') porColab[nome].concluidos++;
+        porColab[nome].itens.push({
+          descricao: ci.descricao,
+          status: ci.status,
+          observacao: ci.observacao || null,
+          foto: ci.foto_url ? true : false,
+          concluido_at: ci.concluido_at || null,
+        });
       });
     }
 
@@ -1645,8 +1691,31 @@ async function expandirRelatorio(relatorioId) {
             '<span><strong>' + escapeHtml(nome) + '</strong></span>' +
             '<span>' + c.concluidos + '/' + c.total + ' itens (' + cPct + '%)</span>' +
           '</div>' +
-          '<div class="progress"><div class="progress__bar" style="width:' + cPct + '%"></div></div>' +
-        '</div>';
+          '<div class="progress"><div class="progress__bar" style="width:' + cPct + '%"></div></div>';
+
+        // Listar itens do colaborador
+        if (c.itens && c.itens.length > 0) {
+          html += '<div class="relatorio-setor-tarefas">';
+          c.itens.forEach(function(item) {
+            var ic = item.status === 'concluido' ? '&#10003;' : '&#9711;';
+            var cor = item.status === 'concluido' ? 'color:var(--success)' : 'color:var(--warning)';
+            var hora = '';
+            if (item.concluido_at) {
+              var dt = new Date(item.concluido_at);
+              hora = ' ' + dt.getHours().toString().padStart(2,'0') + ':' + dt.getMinutes().toString().padStart(2,'0');
+            }
+            html += '<div style="font-size:13px;padding:3px 0;display:flex;gap:6px;align-items:center">' +
+              '<span style="' + cor + '">' + ic + '</span>' +
+              '<span>' + escapeHtml(item.descricao || '') + '</span>' +
+              (hora ? '<span style="font-size:11px;color:var(--text-muted)">' + hora + '</span>' : '') +
+              (item.foto ? '<span style="font-size:11px">&#128248;</span>' : '') +
+              (item.observacao ? '<span style="font-size:11px;color:var(--text-muted);font-style:italic">' + escapeHtml(item.observacao).substring(0,30) + '</span>' : '') +
+            '</div>';
+          });
+          html += '</div>';
+        }
+
+        html += '</div>';
       });
       html += '</div>';
     }
@@ -1723,6 +1792,8 @@ function exportarRelatorio(relatorioId) {
 /*  WHATSAPP — EVOLUTION API                                          */
 /* ================================================================== */
 var wppInstanciaAtual = null;
+var wppInstanciaToken = null;
+var wppInstanciaId = null;
 var wppStatusInterval = null;
 var wppColaboradoresSelecionados = [];
 
@@ -1735,27 +1806,36 @@ function getEvolutionConfig() {
     key: prop.evolution_api_key,
     nome: prop.nome || 'Propriedade',
     slug: prop.slug || prop.nome || '',
+    instanceName: prop.evolution_instance_name || '',
+    instanceToken: prop.evolution_instance_token || '',
   };
 }
 
-async function evolutionFetch(method, path, body) {
+async function evolutionFetch(method, path, body, tokenOverride) {
   var cfg = getEvolutionConfig();
   if (!cfg) throw new Error('Evolution API nao configurada para esta propriedade');
   var url = cfg.url + path;
   var opts = {
     method: method,
     headers: {
-      'apikey': cfg.key,
+      'apikey': tokenOverride || cfg.key,
       'Content-Type': 'application/json',
     },
   };
-  if (body) opts.body = JSON.stringify(body);
+  // Evolution Go expects a body for POST/PATCH/PUT even if empty
+  if (body) {
+    opts.body = JSON.stringify(body);
+  } else if (method === 'POST' || method === 'PATCH' || method === 'PUT') {
+    opts.body = '{}';
+  }
   var r = await fetch(url, opts);
   if (!r.ok) {
     var txt = await r.text();
     throw new Error('Evolution API ' + method + ' ' + path + ': ' + r.status + ' ' + txt);
   }
-  return r.json();
+  var txt = await r.text();
+  if (!txt) return {};
+  try { return JSON.parse(txt); } catch(e) { return { raw: txt }; }
 }
 
 async function carregarWhatsApp() {
@@ -1775,24 +1855,57 @@ async function carregarWppConexao() {
   container.innerHTML = '<p class="placeholder">Carregando instancias...</p>';
 
   try {
-    var instances = await evolutionFetch('GET', '/instance/all');
     var instanciaSlug = cfg.slug.toLowerCase().replace(/[^a-z0-9]/g, '-');
-
-    // Find instance for this property
+    var instanceName = cfg.instanceName || (instanciaSlug + '-gestao');
+    var instanceToken = cfg.instanceToken || (instanceName + '-token');
     var instancia = null;
-    if (Array.isArray(instances)) {
-      instancia = instances.find(function(i) {
-        var name = (i.instanceName || i.name || i.instance || '').toLowerCase();
-        return name === instanciaSlug || name.indexOf(instanciaSlug) !== -1;
-      });
+
+    // Evolution Go: GET /instance/all (global apikey) lists all instances
+    try {
+      var resp = await evolutionFetch('GET', '/instance/all', null);
+      var instances = resp && resp.data ? resp.data : (Array.isArray(resp) ? resp : []);
+      if (instances.length > 0) {
+        var found = instances.find(function(inst) {
+          return inst.name === instanceName;
+        });
+        if (found) {
+          instancia = { name: found.name, id: found.id, connected: found.connected === true, token: found.token, status: found };
+          // Use the instance's own token if available
+          if (found.token) instanceToken = found.token;
+        }
+      }
+    } catch (e) {
+      console.error('Erro ao listar instancias:', e);
+      // Fallback: try status with instance token
+      try {
+        var statusResp = await evolutionFetch('GET', '/instance/status', null, instanceToken);
+        if (statusResp && statusResp.data) {
+          instancia = { name: instanceName, connected: statusResp.data.Connected === true, status: statusResp.data };
+        }
+      } catch (e2) {
+        // Instance doesn't exist
+      }
     }
 
     if (instancia) {
-      wppInstanciaAtual = instancia.instanceName || instancia.name || instancia.instance;
+      wppInstanciaAtual = instancia.name;
+      wppInstanciaToken = instancia.token || instanceToken;
+      wppInstanciaId = instancia.id || null;
+      // Save instance token to Supabase so n8n can use it
+      if (wppInstanciaToken) {
+        var prop = cachePropriedades.find(function(p) { return String(p.id) === String(propriedadeFiltro); });
+        if (prop && prop.evolution_instance_token !== wppInstanciaToken) {
+          supaFetch('propriedades?id=eq.' + propriedadeFiltro, 'PATCH', { evolution_instance_token: wppInstanciaToken })
+            .then(function() { if (prop) prop.evolution_instance_token = wppInstanciaToken; })
+            .catch(function(e) { console.error('Erro ao salvar token:', e); });
+        }
+      }
       renderWppConexaoStatus(instancia);
     } else {
       wppInstanciaAtual = null;
-      renderWppSemInstancia(instanciaSlug);
+      wppInstanciaToken = null;
+      wppInstanciaId = null;
+      renderWppSemInstancia(instanceName);
     }
 
   } catch (err) {
@@ -1820,16 +1933,22 @@ async function renderWppConexaoStatus(instancia) {
   var instanceName = instancia.instanceName || instancia.name || instancia.instance;
   wppInstanciaAtual = instanceName;
 
-  // Check detailed status
+  // Check status - use data from instance list first, then try API
   try {
-    var statusData = await evolutionFetch('GET', '/instance/status?instanceName=' + encodeURIComponent(instanceName));
     var status = 'desconectado';
-    if (statusData) {
-      var s = (statusData.state || statusData.status || statusData.connectionStatus || '').toLowerCase();
-      if (s === 'open' || s === 'connected' || s === 'online') {
-        status = 'conectado';
-      } else if (s === 'connecting' || s === 'qr') {
-        status = 'aguardando';
+    if (instancia.connected === true) {
+      status = 'conectado';
+    } else {
+      // Try to get detailed status via API
+      try {
+        var statusData = await evolutionFetch('GET', '/instance/status', null, wppInstanciaToken || undefined);
+        var d = statusData.data || statusData;
+        if (d.Connected === true || d.connected === true) {
+          status = 'conectado';
+        }
+      } catch(e) {
+        // Status check failed, use instance list data
+        console.log('Status check falhou, usando dados da listagem:', e.message);
       }
     }
 
@@ -1895,11 +2014,28 @@ async function criarInstancia() {
 
   try {
     mostrarToast('Criando instancia...');
-    await evolutionFetch('POST', '/instance/create', {
-      instanceName: nome.trim(),
-      integration: 'WHATSAPP-BAILEYS',
-    });
-    mostrarToast('Instancia criada com sucesso!');
+    var instanceToken = nome.trim() + '-token';
+    // Evolution Go: POST /instance/create
+    try {
+      await evolutionFetch('POST', '/instance/create', {
+        name: nome.trim(),
+        token: instanceToken,
+      });
+      mostrarToast('Instancia criada com sucesso!');
+    } catch (createErr) {
+      // If instance already exists, just connect to it
+      if (createErr.message && createErr.message.indexOf('already exists') !== -1) {
+        mostrarToast('Instancia ja existe, conectando...');
+      } else {
+        throw createErr;
+      }
+    }
+    wppInstanciaToken = instanceToken;
+    // Save instance name and token to Supabase
+    supaFetch('propriedades?id=eq.' + propriedadeFiltro, 'PATCH', {
+      evolution_instance_name: nome.trim(),
+      evolution_instance_token: instanceToken,
+    }).catch(function(e) { console.error('Erro ao salvar config instancia:', e); });
     carregarWppConexao();
   } catch (err) {
     console.error('Erro ao criar instancia:', err);
@@ -1911,9 +2047,8 @@ async function conectarInstancia() {
   if (!wppInstanciaAtual) return;
   try {
     mostrarToast('Conectando instancia...');
-    await evolutionFetch('POST', '/instance/connect', {
-      instanceName: wppInstanciaAtual,
-    });
+    // Evolution Go: POST /instance/connect (uses apikey header to identify instance)
+    await evolutionFetch('POST', '/instance/connect', null, wppInstanciaToken || undefined);
     carregarWppConexao();
   } catch (err) {
     console.error('Erro ao conectar:', err);
@@ -1924,7 +2059,8 @@ async function conectarInstancia() {
 async function desconectarInstancia() {
   if (!wppInstanciaAtual) return;
   try {
-    await evolutionFetch('POST', '/instance/disconnect?instanceName=' + encodeURIComponent(wppInstanciaAtual));
+    // Evolution Go: POST /instance/disconnect
+    await evolutionFetch('POST', '/instance/disconnect', null, wppInstanciaToken || undefined);
     mostrarToast('Instancia desconectada');
     carregarWppConexao();
   } catch (err) {
@@ -1937,7 +2073,9 @@ async function deletarInstancia() {
   if (!wppInstanciaAtual) return;
   if (!confirm('Tem certeza que deseja deletar a instancia "' + wppInstanciaAtual + '"? Esta acao nao pode ser desfeita.')) return;
   try {
-    await evolutionFetch('DELETE', '/instance/delete/' + encodeURIComponent(wppInstanciaAtual));
+    // Evolution Go: DELETE /instance/delete/{instanceId}
+    var deleteId = wppInstanciaId || wppInstanciaAtual;
+    await evolutionFetch('DELETE', '/instance/delete/' + deleteId, null);
     mostrarToast('Instancia deletada');
     wppInstanciaAtual = null;
     carregarWppConexao();
@@ -1954,22 +2092,27 @@ async function buscarQrCode() {
   container.innerHTML = '<p class="placeholder">Gerando QR Code...</p>';
 
   try {
-    var data = await evolutionFetch('GET', '/instance/qr?instanceName=' + encodeURIComponent(wppInstanciaAtual));
-    if (data && data.qrcode) {
-      // qrcode can be a base64 image or a data URL
-      var src = data.qrcode;
+    // Evolution Go: first connect, then wait a moment for QR to generate
+    try { await evolutionFetch('POST', '/instance/connect', { immediate: true }, wppInstanciaToken || undefined); } catch(e) { console.log('Connect pre-QR:', e.message); }
+    // Wait briefly for QR to be generated after connect
+    await new Promise(function(r) { setTimeout(r, 2000); });
+    var data = await evolutionFetch('GET', '/instance/qr', null, wppInstanciaToken || undefined);
+    // Evolution Go response: { data: { Qrcode: "data:image/png;base64,...", Code: "2@..." }, message: "success" }
+    var qrData = data && data.data ? data.data : data;
+    if (qrData && (qrData.Qrcode || qrData.qrcode)) {
+      var src = qrData.Qrcode || qrData.qrcode;
       if (!src.startsWith('data:')) {
         src = 'data:image/png;base64,' + src;
       }
       container.innerHTML = '<img src="' + src + '" alt="QR Code WhatsApp" class="wpp-qr-img">';
-    } else if (data && data.base64) {
-      var src2 = data.base64;
+    } else if (qrData && (qrData.base64 || qrData.Base64)) {
+      var src2 = qrData.base64 || qrData.Base64;
       if (!src2.startsWith('data:')) {
         src2 = 'data:image/png;base64,' + src2;
       }
       container.innerHTML = '<img src="' + src2 + '" alt="QR Code WhatsApp" class="wpp-qr-img">';
-    } else if (data && data.code) {
-      container.innerHTML = '<div class="wpp-qr-text"><code>' + escapeHtml(data.code) + '</code></div>';
+    } else if (qrData && (qrData.Code || qrData.code)) {
+      container.innerHTML = '<div class="wpp-qr-text"><code>' + escapeHtml(qrData.Code || qrData.code) + '</code></div>';
     } else {
       container.innerHTML = '<p class="placeholder">QR Code nao disponivel. Tente conectar a instancia primeiro.</p>' +
         '<button class="btn btn--secondary btn--small" onclick="conectarInstancia()" style="margin-top:8px">Conectar</button>';
@@ -2085,12 +2228,11 @@ async function enviarParaGrupoWpp() {
   if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
 
   try {
-    await evolutionFetch('POST', '/send/media', {
-      instanceName: wppInstanciaAtual,
+    // Evolution Go: POST /send/text (instance identified by apikey header token)
+    await evolutionFetch('POST', '/send/text', {
       number: grupoId,
-      mediatype: 'text',
-      caption: mensagem.trim(),
-    });
+      text: mensagem.trim(),
+    }, wppInstanciaToken || undefined);
     mostrarToast('Mensagem enviada para o grupo!');
     if ($('#wpp-mensagem-grupo')) $('#wpp-mensagem-grupo').value = '';
   } catch (err) {
@@ -2157,12 +2299,11 @@ async function enviarDisparoWpp() {
         numero = '55' + numero;
       }
 
-      await evolutionFetch('POST', '/send/media', {
-        instanceName: wppInstanciaAtual,
+      // Evolution Go: POST /send/text
+      await evolutionFetch('POST', '/send/text', {
         number: numero,
-        mediatype: 'text',
-        caption: mensagem.trim(),
-      });
+        text: mensagem.trim(),
+      }, wppInstanciaToken || undefined);
       enviados++;
     } catch (err) {
       console.error('Erro ao enviar para ' + dest.nome + ':', err);
@@ -2224,7 +2365,8 @@ async function carregarConfigPropriedade() {
       { chave: 'telegram_grupo_id', label: 'Telegram Grupo ID', valor: prop.telegram_grupo_id || '', section: 'telegram', placeholder: 'Ex: -1001234567890 (ID do grupo)' },
       { chave: 'evolution_api_url', label: 'Evolution API URL', valor: prop.evolution_api_url || '', section: 'whatsapp', placeholder: 'https://apiwhats.sitiolabareda.com' },
       { chave: 'evolution_api_key', label: 'Evolution API Key', valor: prop.evolution_api_key || '', sensitive: true, section: 'whatsapp' },
-      { chave: 'evolution_instance_name', label: 'Nome da Instancia WhatsApp', valor: prop.evolution_instance_name || '', section: 'whatsapp', placeholder: 'Ex: labareda' },
+      { chave: 'evolution_instance_name', label: 'Nome da Instancia WhatsApp', valor: prop.evolution_instance_name || '', section: 'whatsapp', placeholder: 'Ex: labareda-gestao' },
+      { chave: 'evolution_instance_token', label: 'Token da Instancia (auto)', valor: prop.evolution_instance_token || '', section: 'whatsapp', placeholder: 'Preenchido automaticamente ao conectar' },
       { chave: 'whatsapp_grupo_id', label: 'WhatsApp Grupo ID', valor: prop.whatsapp_grupo_id || '', section: 'whatsapp', placeholder: 'Ex: 5511999999999-1234567890@g.us' },
       { chave: 'relatorio_dia_semana', label: 'Dia do Relatorio', valor: prop.relatorio_dia_semana || '', section: 'config' },
       { chave: 'relatorio_hora', label: 'Hora do Relatorio', valor: prop.relatorio_hora || '', section: 'config' },
@@ -2345,6 +2487,10 @@ function editarConfig(id, chave) {
 /* ================================================================== */
 async function salvarModal() {
   try {
+    if (modalModo === 'rotina-item-novo') {
+      await salvarItemRotina();
+      return;
+    }
     if (modalModo === 'colaborador-novo' || modalModo === 'colaborador-editar') {
       var nome = (($('#campo-nome') || {}).value || '').trim();
       var email = (($('#campo-email') || {}).value || '').trim();

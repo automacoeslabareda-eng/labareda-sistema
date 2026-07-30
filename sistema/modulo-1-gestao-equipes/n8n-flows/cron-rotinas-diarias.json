@@ -1,0 +1,633 @@
+{
+  "name": "Cron - Rotinas Diarias",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-400, 300],
+      "id": "cron-trigger-001",
+      "name": "Cron 07h00 Brasilia"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/propriedades",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "ativo",
+              "value": "eq.true"
+            },
+            {
+              "name": "select",
+              "value": "*"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-160, 300],
+      "id": "get-propriedades-001",
+      "name": "GET Propriedades Ativas"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [80, 300],
+      "id": "loop-propriedades-001",
+      "name": "Loop Propriedades"
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst brasilOffset = -3;\nconst brasilTime = new Date(now.getTime() + (brasilOffset * 60 * 60 * 1000 - now.getTimezoneOffset() * 60 * 1000));\nconst diaSemana = brasilTime.getDay();\nconst hoje = brasilTime.toISOString().split('T')[0];\n\nreturn [\n  {\n    json: {\n      ...$input.item.json,\n      dia_semana: diaSemana,\n      hoje: hoje\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [320, 300],
+      "id": "calc-dia-semana-001",
+      "name": "Calcular Dia Semana"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/rotinas_semanais",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "propriedade_id",
+              "value": "=eq.{{ $json.id }}"
+            },
+            {
+              "name": "dia_semana",
+              "value": "=eq.{{ $json.dia_semana }}"
+            },
+            {
+              "name": "ativo",
+              "value": "eq.true"
+            },
+            {
+              "name": "select",
+              "value": "*,setores(nome)"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, 300],
+      "id": "get-rotinas-dia-001",
+      "name": "GET Rotinas do Dia"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rotinas = $input.item.json;\nconst propriedade = $('Calcular Dia Semana').item.json;\n\n// Se nao retornou rotinas ou array vazio, retornar vazio\nif (!rotinas || (Array.isArray(rotinas) && rotinas.length === 0)) {\n  return [];\n}\n\n// Se retornou array, mapear cada rotina\nconst rotinasList = Array.isArray(rotinas) ? rotinas : [rotinas];\n\nreturn rotinasList.map(rotina => ({\n  json: {\n    rotina_id: rotina.id,\n    rotina_nome: rotina.nome,\n    setor_id: rotina.setor_id,\n    setor_nome: rotina.setores ? rotina.setores.nome : 'geral',\n    propriedade_id: propriedade.id,\n    propriedade_nome: propriedade.nome,\n    hoje: propriedade.hoje\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [800, 300],
+      "id": "preparar-rotinas-001",
+      "name": "Preparar Rotinas"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-rotinas",
+              "leftValue": "={{ $input.item.json.rotina_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1040, 300],
+      "id": "check-rotinas-001",
+      "name": "Tem Rotinas?"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/tarefas",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "propriedade_id",
+              "value": "=eq.{{ $json.propriedade_id }}"
+            },
+            {
+              "name": "origem",
+              "value": "eq.rotina"
+            },
+            {
+              "name": "rotina_id",
+              "value": "=eq.{{ $json.rotina_id }}"
+            },
+            {
+              "name": "created_at",
+              "value": "=gte.{{ $json.hoje }}T00:00:00"
+            },
+            {
+              "name": "select",
+              "value": "id"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1280, 200],
+      "id": "check-ja-gerou-001",
+      "name": "Verificar Ja Gerou Hoje"
+    },
+    {
+      "parameters": {
+        "jsCode": "const resultado = $input.item.json;\nconst rotina = $('Preparar Rotinas').item.json;\n\n// Se retornou array vazio ou nenhum resultado, nao gerou ainda\nconst jaGerou = Array.isArray(resultado) ? resultado.length > 0 : (resultado && resultado.id);\n\nreturn [\n  {\n    json: {\n      ...rotina,\n      ja_gerou: jaGerou\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1520, 200],
+      "id": "avaliar-duplicata-001",
+      "name": "Avaliar Duplicata"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-nao-gerou",
+              "leftValue": "={{ $json.ja_gerou }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1760, 200],
+      "id": "if-nao-gerou-001",
+      "name": "Nao Gerou Ainda?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/tarefas",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"propriedade_id\": {{ $json.propriedade_id }},\n  \"comando_original\": \"{{ $json.rotina_nome }}\",\n  \"descricao\": \"{{ $json.rotina_nome }}\",\n  \"setor_id\": {{ $json.setor_id }},\n  \"setor_interpretado\": \"{{ $json.setor_nome }}\",\n  \"status\": \"pendente\",\n  \"prioridade\": \"normal\",\n  \"origem\": \"rotina\",\n  \"rotina_id\": {{ $json.rotina_id }},\n  \"data_limite\": \"{{ $json.hoje }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 100],
+      "id": "criar-tarefa-001",
+      "name": "POST Criar Tarefa"
+    },
+    {
+      "parameters": {
+        "jsCode": "const tarefa = $input.item.json;\nconst rotina = $('Avaliar Duplicata').item.json;\n\n// Pegar o ID da tarefa criada\nconst tarefaData = Array.isArray(tarefa) ? tarefa[0] : tarefa;\n\nreturn [\n  {\n    json: {\n      tarefa_id: tarefaData.id,\n      propriedade_id: rotina.propriedade_id,\n      rotina_id: rotina.rotina_id\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2240, 100],
+      "id": "extrair-tarefa-id-001",
+      "name": "Extrair Tarefa ID"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/rotina_items",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "rotina_id",
+              "value": "=eq.{{ $json.rotina_id }}"
+            },
+            {
+              "name": "select",
+              "value": "*"
+            },
+            {
+              "name": "order",
+              "value": "ordem.asc"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2480, 100],
+      "id": "get-rotina-items-001",
+      "name": "GET Rotina Items"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.item.json;\nconst tarefaInfo = $('Extrair Tarefa ID').item.json;\n\nconst itemsList = Array.isArray(items) ? items : [items];\n\nif (!itemsList[0] || !itemsList[0].id) {\n  return [];\n}\n\nreturn itemsList.map(item => ({\n  json: {\n    tarefa_id: tarefaInfo.tarefa_id,\n    propriedade_id: tarefaInfo.propriedade_id,\n    colaborador_id: item.colaborador_id,\n    descricao: item.descricao,\n    ordem: item.ordem\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2720, 100],
+      "id": "preparar-checklist-001",
+      "name": "Preparar Checklist Items"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/checklist_items",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"tarefa_id\": {{ $json.tarefa_id }},\n  \"propriedade_id\": {{ $json.propriedade_id }},\n  \"colaborador_id\": {{ $json.colaborador_id }},\n  \"descricao\": \"{{ $json.descricao }}\",\n  \"ordem\": {{ $json.ordem }},\n  \"status\": \"pendente\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2960, 100],
+      "id": "criar-checklist-item-001",
+      "name": "POST Criar Checklist Item"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1040, 500],
+      "id": "no-op-sem-rotinas-001",
+      "name": "Sem Rotinas"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [2000, 300],
+      "id": "no-op-ja-gerou-001",
+      "name": "Ja Gerou Hoje"
+    }
+  ],
+  "connections": {
+    "Cron 07h00 Brasilia": {
+      "main": [
+        [
+          {
+            "node": "GET Propriedades Ativas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Propriedades Ativas": {
+      "main": [
+        [
+          {
+            "node": "Loop Propriedades",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Propriedades": {
+      "main": [
+        [
+          {
+            "node": "Calcular Dia Semana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular Dia Semana": {
+      "main": [
+        [
+          {
+            "node": "GET Rotinas do Dia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Rotinas do Dia": {
+      "main": [
+        [
+          {
+            "node": "Preparar Rotinas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Rotinas": {
+      "main": [
+        [
+          {
+            "node": "Tem Rotinas?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem Rotinas?": {
+      "main": [
+        [
+          {
+            "node": "Verificar Ja Gerou Hoje",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sem Rotinas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar Ja Gerou Hoje": {
+      "main": [
+        [
+          {
+            "node": "Avaliar Duplicata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Avaliar Duplicata": {
+      "main": [
+        [
+          {
+            "node": "Nao Gerou Ainda?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nao Gerou Ainda?": {
+      "main": [
+        [
+          {
+            "node": "POST Criar Tarefa",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ja Gerou Hoje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST Criar Tarefa": {
+      "main": [
+        [
+          {
+            "node": "Extrair Tarefa ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair Tarefa ID": {
+      "main": [
+        [
+          {
+            "node": "GET Rotina Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Rotina Items": {
+      "main": [
+        [
+          {
+            "node": "Preparar Checklist Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Checklist Items": {
+      "main": [
+        [
+          {
+            "node": "POST Criar Checklist Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sem Rotinas": {
+      "main": [
+        [
+          {
+            "node": "Loop Propriedades",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ja Gerou Hoje": {
+      "main": [
+        [
+          {
+            "node": "Loop Propriedades",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST Criar Checklist Item": {
+      "main": [
+        [
+          {
+            "node": "Loop Propriedades",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-07-30T00:00:00.000Z",
+  "versionId": "1"
+}

@@ -1,0 +1,90 @@
+{
+  "name": "Cron - Notificacao Diaria Grupo Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "triggerAtHour": 10, "triggerAtMinute": 5 }]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 300],
+      "id": "cron-001",
+      "name": "Cron 07:05 Brasilia"
+    },
+    {
+      "parameters": {
+        "jsCode": "const supaUrl = 'https://tidngxclgaspltzqoemi.supabase.co';\nconst supaKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE';\nconst headers = { 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey };\n\nconst hoje = new Date();\nconst hojeStr = hoje.toISOString().split('T')[0];\nconst diasNomes = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado'];\nconst diaNome = diasNomes[hoje.getDay()];\n\n// Buscar tarefas criadas hoje\nconst tarefasResp = await fetch(`${supaUrl}/rest/v1/tarefas?created_at=gte.${hojeStr}T00:00:00&created_at=lt.${hojeStr}T23:59:59&select=id,comando_original,propriedade_id,setores(nome),colaboradores:responsavel_id(nome)&order=propriedade_id`, { headers });\nconst tarefas = await tarefasResp.json();\n\nif (!tarefas || tarefas.length === 0) {\n  return [{ json: { skip: true } }];\n}\n\n// Buscar checklist_items de hoje\nconst itemsResp = await fetch(`${supaUrl}/rest/v1/checklist_items?created_at=gte.${hojeStr}T00:00:00&created_at=lt.${hojeStr}T23:59:59&select=id,descricao,colaborador_id,tarefa_id,colaboradores:colaborador_id(nome)&order=ordem`, { headers });\nconst items = await itemsResp.json();\n\n// Agrupar por propriedade\nconst props = {\n  '229e2813-6d46-4bdb-9aee-5d9a119733e6': { nome: 'Sitio Labareda', chatId: '-1003848664476', isLabareda: true, tarefas: [], items: [] },\n  '4a5580bb-9971-40c9-9409-ffbe0cff65da': { nome: 'Sitio Sao Miguel', chatId: '-5579671663', isLabareda: false, tarefas: [], items: [] },\n};\n\nfor (const t of tarefas) {\n  if (props[t.propriedade_id]) props[t.propriedade_id].tarefas.push(t);\n}\nfor (const i of (items || [])) {\n  // Encontrar propriedade pelo tarefa_id\n  for (const t of tarefas) {\n    if (t.id === i.tarefa_id && props[t.propriedade_id]) {\n      props[t.propriedade_id].items.push(i);\n      break;\n    }\n  }\n}\n\nconst results = [];\nfor (const [propId, prop] of Object.entries(props)) {\n  if (prop.tarefas.length === 0) continue;\n\n  let msg = `\\ud83c\\udf05 Bom dia! Tarefas de ${diaNome} (${hojeStr.split('-').reverse().join('/')})\\n\\n`;\n  msg += `\\ud83c\\udfe1 ${prop.nome}\\n`;\n  msg += `\\ud83d\\udccb ${prop.tarefas.length} tarefa(s) | ${prop.items.length} item(ns)\\n\\n`;\n\n  for (const t of prop.tarefas) {\n    const setor = t.setores ? t.setores.nome : '';\n    const resp = t.colaboradores ? t.colaboradores.nome : '';\n    msg += `\\ud83d\\udccc ${t.comando_original}`;\n    if (setor) msg += ` (${setor})`;\n    if (resp) msg += ` — ${resp}`;\n    msg += '\\n';\n\n    // Listar items desta tarefa\n    const tarefaItems = prop.items.filter(i => i.tarefa_id === t.id);\n    for (const item of tarefaItems) {\n      const colabNome = item.colaboradores ? item.colaboradores.nome : '';\n      msg += `   \\u25cb ${item.descricao}`;\n      if (colabNome) msg += ` (${colabNome})`;\n      msg += '\\n';\n    }\n    msg += '\\n';\n  }\n\n  msg += '\\ud83d\\udcf1 Acesse o painel para marcar as tarefas!';\n\n  results.push({ json: { mensagem: msg, chatId: prop.chatId, isLabareda: prop.isLabareda, propriedade: prop.nome } });\n}\n\nif (results.length === 0) return [{ json: { skip: true } }];\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "id": "montar-msg-001",
+      "name": "Montar Resumo do Dia"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [{ "id": "skip", "leftValue": "={{ $json.skip }}", "rightValue": true, "operator": { "type": "boolean", "operation": "notEquals" } }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [480, 300],
+      "id": "tem-tarefas-001",
+      "name": "Tem Tarefas?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [{ "id": "check-lab", "leftValue": "={{ $json.isLabareda }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [720, 300],
+      "id": "check-prop-001",
+      "name": "Labareda ou Sao Miguel?"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.mensagem }}",
+        "additionalFields": { "appendAttribution": false }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [960, 200],
+      "id": "telegram-lab-001",
+      "name": "Enviar Telegram Labareda",
+      "credentials": { "telegramApi": { "id": "6zYThDEEV1lrdtMS", "name": "labareda gestao" } }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.mensagem }}",
+        "additionalFields": { "appendAttribution": false }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [960, 400],
+      "id": "telegram-sm-001",
+      "name": "Enviar Telegram Sao Miguel",
+      "credentials": { "telegramApi": { "id": "tFHNwQUSJ03HtFjl", "name": "sao miguel" } }
+    }
+  ],
+  "connections": {
+    "Cron 07:05 Brasilia": { "main": [[{ "node": "Montar Resumo do Dia", "type": "main", "index": 0 }]] },
+    "Montar Resumo do Dia": { "main": [[{ "node": "Tem Tarefas?", "type": "main", "index": 0 }]] },
+    "Tem Tarefas?": { "main": [[{ "node": "Labareda ou Sao Miguel?", "type": "main", "index": 0 }], []] },
+    "Labareda ou Sao Miguel?": { "main": [[{ "node": "Enviar Telegram Labareda", "type": "main", "index": 0 }], [{ "node": "Enviar Telegram Sao Miguel", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "America/Sao_Paulo" }
+}

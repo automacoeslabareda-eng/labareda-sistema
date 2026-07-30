@@ -1,0 +1,191 @@
+{
+  "name": "Cron - Lembretes Mensais (Dias 5, 15, 25)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtDay": 5,
+              "triggerAtHour": 7
+            },
+            {
+              "triggerAtDay": 15,
+              "triggerAtHour": 7
+            },
+            {
+              "triggerAtDay": 25,
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 300],
+      "id": "lembrete-trigger-001",
+      "name": "Cron Dias 5, 15, 25"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/propriedades",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "ativo", "value": "eq.true" },
+            { "name": "select", "value": "*" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE" },
+            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, 300],
+      "id": "lembrete-get-props-001",
+      "name": "Buscar Propriedades"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [460, 300],
+      "id": "lembrete-loop-props-001",
+      "name": "Loop Propriedades"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/rotina_items",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "select", "value": "*" },
+            { "name": "rotina_id", "value": "eq.3afef9b4-ddff-4d7f-804a-80ed36fe79b6" },
+            { "name": "order", "value": "ordem.asc" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE" },
+            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "id": "lembrete-get-items-001",
+      "name": "Buscar Itens Lembretes"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Criar tarefa de lembrete para a propriedade\nconst prop = $('Loop Propriedades').first().json;\nconst hoje = new Date();\nconst hojeStr = hoje.toISOString().split('T')[0];\nconst dia = hoje.getDate();\n\nreturn [{\n  json: {\n    propriedade_id: prop.id,\n    comando_original: `Lembretes Quinzenais - Limpeza Profunda (Dia ${dia})`,\n    descricao: `Limpeza profunda programada para o dia ${dia} do mes`,\n    setor_id: '6319ce3c-5e15-4a12-a0c9-951561008159',\n    setor_interpretado: 'limpeza',\n    status: 'pendente',\n    prioridade: 'alta',\n    origem: 'rotina',\n    rotina_id: '3afef9b4-ddff-4d7f-804a-80ed36fe79b6',\n    data_limite: hojeStr\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300],
+      "id": "lembrete-prep-tarefa-001",
+      "name": "Preparar Tarefa"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/tarefas",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE" },
+            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300],
+      "id": "lembrete-criar-tarefa-001",
+      "name": "Criar Tarefa Lembrete"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Criar checklist_items para cada item do lembrete\nconst tarefa = $('Criar Tarefa Lembrete').first().json;\nconst items = $('Buscar Itens Lembretes').all();\nconst tarefaId = Array.isArray(tarefa) ? tarefa[0].id : tarefa.id;\n\nconst result = [];\nfor (const item of items) {\n  result.push({\n    json: {\n      tarefa_id: tarefaId,\n      propriedade_id: item.json.propriedade_id,\n      colaborador_id: item.json.colaborador_id,\n      descricao: item.json.descricao,\n      ordem: item.json.ordem,\n      status: 'pendente'\n    }\n  });\n}\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300],
+      "id": "lembrete-prep-items-001",
+      "name": "Preparar Checklist Items"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/checklist_items",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE" },
+            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 300],
+      "id": "lembrete-criar-items-001",
+      "name": "Criar Checklist Items"
+    }
+  ],
+  "connections": {
+    "Cron Dias 5, 15, 25": {
+      "main": [[{ "node": "Buscar Propriedades", "type": "main", "index": 0 }]]
+    },
+    "Buscar Propriedades": {
+      "main": [[{ "node": "Loop Propriedades", "type": "main", "index": 0 }]]
+    },
+    "Loop Propriedades": {
+      "main": [
+        [{ "node": "Buscar Itens Lembretes", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Buscar Itens Lembretes": {
+      "main": [[{ "node": "Preparar Tarefa", "type": "main", "index": 0 }]]
+    },
+    "Preparar Tarefa": {
+      "main": [[{ "node": "Criar Tarefa Lembrete", "type": "main", "index": 0 }]]
+    },
+    "Criar Tarefa Lembrete": {
+      "main": [[{ "node": "Preparar Checklist Items", "type": "main", "index": 0 }]]
+    },
+    "Preparar Checklist Items": {
+      "main": [[{ "node": "Criar Checklist Items", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
+  }
+}

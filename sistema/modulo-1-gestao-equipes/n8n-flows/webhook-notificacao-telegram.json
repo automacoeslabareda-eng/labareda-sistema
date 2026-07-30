@@ -1,0 +1,321 @@
+{
+  "name": "Webhook - Notificacao Telegram Tarefa Concluida",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tarefa-concluida",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-400, 300],
+      "id": "webhook-trigger-001",
+      "name": "Webhook Tarefa Concluida",
+      "webhookId": "tarefa-concluida-notify"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "colab-nome",
+              "name": "colaborador_nome",
+              "value": "={{ $json.body.colaborador_nome }}",
+              "type": "string"
+            },
+            {
+              "id": "descricao-item",
+              "name": "descricao_item",
+              "value": "={{ $json.body.descricao_item }}",
+              "type": "string"
+            },
+            {
+              "id": "tarefa-nome",
+              "name": "tarefa_nome",
+              "value": "={{ $json.body.tarefa_nome }}",
+              "type": "string"
+            },
+            {
+              "id": "foto-url",
+              "name": "foto_url",
+              "value": "={{ $json.body.foto_url }}",
+              "type": "string"
+            },
+            {
+              "id": "observacao",
+              "name": "observacao",
+              "value": "={{ $json.body.observacao }}",
+              "type": "string"
+            },
+            {
+              "id": "propriedade-id",
+              "name": "propriedade_id",
+              "value": "={{ $json.body.propriedade_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-160, 300],
+      "id": "extrair-dados-001",
+      "name": "Extrair Dados do Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const dados = $input.item.json;\n\n// Montar mensagem\nlet msg = `\\u2705 Tarefa concluida!\\n\\n\\u{1f464} ${dados.colaborador_nome}\\n\\u{1f4cb} ${dados.tarefa_nome}\\n\\u{1f4dd} ${dados.descricao_item}`;\n\nif (dados.observacao && dados.observacao !== '' && dados.observacao !== 'undefined') {\n  msg += `\\n\\u{1f4ac} ${dados.observacao}`;\n}\n\nif (dados.foto_url && dados.foto_url !== '' && dados.foto_url !== 'undefined') {\n  msg += `\\n\\u{1f4f8} Foto anexada`;\n}\n\n// Determinar propriedade\nconst LABAREDA_ID = '229e2813-6d46-4bdb-9aee-5d9a119733e6';\nconst SAO_MIGUEL_ID = '4a5580bb-9971-40c9-9409-ffbe0cff65da';\n\nconst isLabareda = dados.propriedade_id === LABAREDA_ID;\nconst isSaoMiguel = dados.propriedade_id === SAO_MIGUEL_ID;\n\nif (!isLabareda && !isSaoMiguel) {\n  return [\n    {\n      json: {\n        erro: true,\n        mensagem: msg,\n        propriedade: 'desconhecida'\n      }\n    }\n  ];\n}\n\nreturn [\n  {\n    json: {\n      erro: false,\n      mensagem: msg,\n      propriedade: isLabareda ? 'labareda' : 'sao_miguel',\n      chatId: isLabareda ? '-1003848664476' : '-5579671663'\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [80, 300],
+      "id": "montar-msg-telegram-001",
+      "name": "Montar Mensagem e Identificar Propriedade"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-erro",
+              "leftValue": "={{ $json.erro }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [320, 300],
+      "id": "if-sem-erro-001",
+      "name": "Propriedade Reconhecida?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-labareda",
+              "leftValue": "={{ $json.propriedade }}",
+              "rightValue": "labareda",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [560, 200],
+      "id": "if-labareda-001",
+      "name": "Eh Labareda?"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Montar Mensagem e Identificar Propriedade').item.json.chatId }}",
+        "text": "={{ $('Montar Mensagem e Identificar Propriedade').item.json.mensagem }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [800, 100],
+      "id": "enviar-telegram-labareda-001",
+      "name": "Enviar Telegram Labareda",
+      "credentials": {
+        "telegramApi": {
+          "id": "6zYThDEEV1lrdtMS",
+          "name": "labareda gestao"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Montar Mensagem e Identificar Propriedade').item.json.chatId }}",
+        "text": "={{ $('Montar Mensagem e Identificar Propriedade').item.json.mensagem }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [800, 300],
+      "id": "enviar-telegram-saomiguel-001",
+      "name": "Enviar Telegram Sao Miguel",
+      "credentials": {
+        "telegramApi": {
+          "id": "tFHNwQUSJ03HtFjl",
+          "name": "sao miguel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "success-result",
+              "name": "success",
+              "value": true,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1040, 200],
+      "id": "respond-ok-001",
+      "name": "Responder Sucesso"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "error-result",
+              "name": "success",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "error-msg",
+              "name": "message",
+              "value": "Propriedade nao reconhecida",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [560, 500],
+      "id": "respond-erro-001",
+      "name": "Responder Erro"
+    }
+  ],
+  "connections": {
+    "Webhook Tarefa Concluida": {
+      "main": [
+        [
+          {
+            "node": "Extrair Dados do Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair Dados do Webhook": {
+      "main": [
+        [
+          {
+            "node": "Montar Mensagem e Identificar Propriedade",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Mensagem e Identificar Propriedade": {
+      "main": [
+        [
+          {
+            "node": "Propriedade Reconhecida?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Propriedade Reconhecida?": {
+      "main": [
+        [
+          {
+            "node": "Eh Labareda?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder Erro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Eh Labareda?": {
+      "main": [
+        [
+          {
+            "node": "Enviar Telegram Labareda",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar Telegram Sao Miguel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Telegram Labareda": {
+      "main": [
+        [
+          {
+            "node": "Responder Sucesso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Telegram Sao Miguel": {
+      "main": [
+        [
+          {
+            "node": "Responder Sucesso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-07-30T00:00:00.000Z",
+  "versionId": "2"
+}

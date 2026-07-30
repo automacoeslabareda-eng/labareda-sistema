@@ -1,0 +1,643 @@
+{
+  "name": "Cron - Relatorio Semanal",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 23 * * 5"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-600, 300],
+      "id": "cron-relatorio-001",
+      "name": "Cron Sexta 20h00 Brasilia"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/propriedades",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "ativo",
+              "value": "eq.true"
+            },
+            {
+              "name": "select",
+              "value": "*"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-360, 300],
+      "id": "get-props-rel-001",
+      "name": "GET Propriedades Ativas"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [-120, 300],
+      "id": "loop-props-rel-001",
+      "name": "Loop Propriedades"
+    },
+    {
+      "parameters": {
+        "jsCode": "const prop = $input.item.json;\n\n// Calcular segunda e sexta da semana atual (horario Brasilia)\nconst now = new Date();\nconst brasilOffset = -3;\nconst brasilTime = new Date(now.getTime() + (brasilOffset * 60 * 60 * 1000 - now.getTimezoneOffset() * 60 * 1000));\n\nconst dayOfWeek = brasilTime.getDay();\n// Segunda = dia atual - (dayOfWeek - 1), ajustando se domingo (0)\nconst diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;\nconst segunda = new Date(brasilTime);\nsegunda.setDate(brasilTime.getDate() - diffToMonday);\nsegunda.setHours(0, 0, 0, 0);\n\nconst sexta = new Date(segunda);\nsexta.setDate(segunda.getDate() + 4);\nsexta.setHours(23, 59, 59, 999);\n\nconst sabado = new Date(segunda);\nsabado.setDate(segunda.getDate() + 5);\nsabado.setHours(0, 0, 0, 0);\n\nconst formatDate = (d) => d.toISOString().split('T')[0];\n\n// Determinar propriedade para Telegram\nconst LABAREDA_ID = '229e2813-6d46-4bdb-9aee-5d9a119733e6';\nconst SAO_MIGUEL_ID = '4a5580bb-9971-40c9-9409-ffbe0cff65da';\n\nlet propriedade_slug = 'desconhecida';\nlet chatId = '';\nif (prop.id === LABAREDA_ID) {\n  propriedade_slug = 'labareda';\n  chatId = '-1003848664476';\n} else if (prop.id === SAO_MIGUEL_ID) {\n  propriedade_slug = 'sao_miguel';\n  chatId = '-5579671663';\n}\n\nreturn [\n  {\n    json: {\n      ...prop,\n      semana_inicio: formatDate(segunda),\n      semana_fim: formatDate(sexta),\n      sabado_iso: formatDate(sabado),\n      propriedade_slug: propriedade_slug,\n      telegram_chat_id: chatId\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, 300],
+      "id": "calc-semana-001",
+      "name": "Calcular Semana"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/tarefas",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "propriedade_id",
+              "value": "=eq.{{ $json.id }}"
+            },
+            {
+              "name": "created_at",
+              "value": "=gte.{{ $json.semana_inicio }}T00:00:00"
+            },
+            {
+              "name": "created_at",
+              "value": "=lt.{{ $json.sabado_iso }}T00:00:00"
+            },
+            {
+              "name": "select",
+              "value": "id,descricao,setor_id,setor_interpretado,status,setores(nome)"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [360, 300],
+      "id": "get-tarefas-semana-001",
+      "name": "GET Tarefas da Semana"
+    },
+    {
+      "parameters": {
+        "jsCode": "const tarefas = $input.item.json;\nconst prop = $('Calcular Semana').item.json;\n\nconst tarefasList = Array.isArray(tarefas) ? tarefas : (tarefas && tarefas.id ? [tarefas] : []);\n\nif (tarefasList.length === 0) {\n  return [\n    {\n      json: {\n        ...prop,\n        tarefas: [],\n        tarefa_ids: '',\n        total_tarefas: 0,\n        sem_tarefas: true\n      }\n    }\n  ];\n}\n\nconst ids = tarefasList.map(t => t.id);\n\nreturn [\n  {\n    json: {\n      ...prop,\n      tarefas: tarefasList,\n      tarefa_ids: '(' + ids.join(',') + ')',\n      total_tarefas: tarefasList.length,\n      sem_tarefas: false\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 300],
+      "id": "preparar-tarefas-rel-001",
+      "name": "Preparar Tarefas"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-tem-tarefas",
+              "leftValue": "={{ $json.sem_tarefas }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [840, 300],
+      "id": "if-tem-tarefas-rel-001",
+      "name": "Tem Tarefas na Semana?"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/checklist_items",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "tarefa_id",
+              "value": "=in.{{ $json.tarefa_ids }}"
+            },
+            {
+              "name": "select",
+              "value": "id,tarefa_id,colaborador_id,descricao,status,colaboradores:colaborador_id(nome)"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1080, 200],
+      "id": "get-checklist-semana-001",
+      "name": "GET Checklist Items da Semana"
+    },
+    {
+      "parameters": {
+        "jsCode": "const checklistItems = $input.item.json;\nconst propData = $('Preparar Tarefas').item.json;\n\nconst items = Array.isArray(checklistItems) ? checklistItems : (checklistItems && checklistItems.id ? [checklistItems] : []);\nconst tarefas = propData.tarefas;\n\n// Metricas gerais\nconst totalItems = items.length;\nconst concluidos = items.filter(i => i.status === 'concluido').length;\nconst pendentes = totalItems - concluidos;\nconst percentual = totalItems > 0 ? Math.round((concluidos / totalItems) * 100) : 0;\n\n// Por colaborador\nconst porColaborador = {};\nitems.forEach(item => {\n  const nome = item.colaboradores ? item.colaboradores.nome : 'Sem atribuicao';\n  if (!porColaborador[nome]) {\n    porColaborador[nome] = { total: 0, concluidos: 0 };\n  }\n  porColaborador[nome].total++;\n  if (item.status === 'concluido') {\n    porColaborador[nome].concluidos++;\n  }\n});\n\n// Por setor\nconst porSetor = {};\ntarefas.forEach(tarefa => {\n  const setor = tarefa.setores ? tarefa.setores.nome : (tarefa.setor_interpretado || 'geral');\n  if (!porSetor[setor]) {\n    porSetor[setor] = { total: 0, concluidos: 0 };\n  }\n  const tarefaItems = items.filter(i => i.tarefa_id === tarefa.id);\n  porSetor[setor].total += tarefaItems.length;\n  porSetor[setor].concluidos += tarefaItems.filter(i => i.status === 'concluido').length;\n});\n\n// Montar mensagem\nlet msg = `\\u{1f4ca} Relatorio Semanal \\u2014 ${propData.nome}\\n`;\nmsg += `\\u{1f4c5} ${propData.semana_inicio} a ${propData.semana_fim}\\n\\n`;\nmsg += `\\u{1f4cb} Total de itens: ${totalItems}\\n`;\nmsg += `\\u2705 Concluidos: ${concluidos} (${percentual}%)\\n`;\nmsg += `\\u23f3 Pendentes: ${pendentes}\\n\\n`;\n\nmsg += `\\u{1f465} Por colaborador:\\n`;\nObject.entries(porColaborador).forEach(([nome, dados]) => {\n  msg += `  \\u2022 ${nome}: ${dados.concluidos}/${dados.total} concluidos\\n`;\n});\n\nmsg += `\\n\\u{1f3f7}\\ufe0f Por setor:\\n`;\nObject.entries(porSetor).forEach(([setor, dados]) => {\n  msg += `  \\u2022 ${setor}: ${dados.concluidos}/${dados.total} concluidos\\n`;\n});\n\n// Dados JSON para salvar\nconst dadosJson = {\n  porColaborador,\n  porSetor,\n  items: items.length\n};\n\nreturn [\n  {\n    json: {\n      propriedade_id: propData.id,\n      propriedade_nome: propData.nome,\n      propriedade_slug: propData.propriedade_slug,\n      telegram_chat_id: propData.telegram_chat_id,\n      semana_inicio: propData.semana_inicio,\n      semana_fim: propData.semana_fim,\n      total_tarefas: propData.total_tarefas,\n      tarefas_concluidas: concluidos,\n      tarefas_pendentes: pendentes,\n      percentual_conclusao: percentual,\n      dados_json: JSON.stringify(dadosJson),\n      mensagem: msg\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 200],
+      "id": "calcular-metricas-001",
+      "name": "Calcular Metricas e Montar Relatorio"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/relatorios_semanais",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"propriedade_id\": \"{{ $json.propriedade_id }}\",\n  \"semana_inicio\": \"{{ $json.semana_inicio }}\",\n  \"semana_fim\": \"{{ $json.semana_fim }}\",\n  \"dados_json\": {{ $json.dados_json }},\n  \"total_tarefas\": {{ $json.total_tarefas }},\n  \"tarefas_concluidas\": {{ $json.tarefas_concluidas }},\n  \"tarefas_pendentes\": {{ $json.tarefas_pendentes }},\n  \"percentual_conclusao\": {{ $json.percentual_conclusao }},\n  \"telegram_enviado\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 200],
+      "id": "salvar-relatorio-001",
+      "name": "POST Salvar Relatorio"
+    },
+    {
+      "parameters": {
+        "jsCode": "const relatorio = $input.item.json;\nconst dados = $('Calcular Metricas e Montar Relatorio').item.json;\n\nconst rel = Array.isArray(relatorio) ? relatorio[0] : relatorio;\n\nreturn [\n  {\n    json: {\n      relatorio_id: rel.id,\n      propriedade_slug: dados.propriedade_slug,\n      telegram_chat_id: dados.telegram_chat_id,\n      mensagem: dados.mensagem\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 200],
+      "id": "preparar-envio-001",
+      "name": "Preparar Envio Telegram"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-chatid",
+              "leftValue": "={{ $json.telegram_chat_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2040, 200],
+      "id": "if-telegram-config-001",
+      "name": "Tem Telegram Configurado?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-labareda-rel",
+              "leftValue": "={{ $json.propriedade_slug }}",
+              "rightValue": "labareda",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2280, 100],
+      "id": "if-labareda-rel-001",
+      "name": "Eh Labareda?"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Preparar Envio Telegram').item.json.telegram_chat_id }}",
+        "text": "={{ $('Preparar Envio Telegram').item.json.mensagem }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2520, 0],
+      "id": "enviar-rel-labareda-001",
+      "name": "Enviar Relatorio Labareda",
+      "credentials": {
+        "telegramApi": {
+          "id": "6zYThDEEV1lrdtMS",
+          "name": "labareda gestao"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Preparar Envio Telegram').item.json.telegram_chat_id }}",
+        "text": "={{ $('Preparar Envio Telegram').item.json.mensagem }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2520, 200],
+      "id": "enviar-rel-saomiguel-001",
+      "name": "Enviar Relatorio Sao Miguel",
+      "credentials": {
+        "telegramApi": {
+          "id": "tFHNwQUSJ03HtFjl",
+          "name": "sao miguel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://tidngxclgaspltzqoemi.supabase.co/rest/v1/relatorios_semanais?id=eq.{{ $('Preparar Envio Telegram').item.json.relatorio_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"telegram_enviado\": true\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2760, 100],
+      "id": "update-relatorio-001",
+      "name": "UPDATE Relatorio telegram_enviado"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [2280, 300],
+      "id": "no-op-sem-telegram-001",
+      "name": "Sem Telegram"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1080, 400],
+      "id": "no-op-sem-tarefas-rel-001",
+      "name": "Sem Tarefas na Semana"
+    }
+  ],
+  "connections": {
+    "Cron Sexta 20h00 Brasilia": {
+      "main": [
+        [
+          {
+            "node": "GET Propriedades Ativas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Propriedades Ativas": {
+      "main": [
+        [
+          {
+            "node": "Loop Propriedades",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Propriedades": {
+      "main": [
+        [
+          {
+            "node": "Calcular Semana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular Semana": {
+      "main": [
+        [
+          {
+            "node": "GET Tarefas da Semana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Tarefas da Semana": {
+      "main": [
+        [
+          {
+            "node": "Preparar Tarefas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Tarefas": {
+      "main": [
+        [
+          {
+            "node": "Tem Tarefas na Semana?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem Tarefas na Semana?": {
+      "main": [
+        [
+          {
+            "node": "GET Checklist Items da Semana",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sem Tarefas na Semana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Checklist Items da Semana": {
+      "main": [
+        [
+          {
+            "node": "Calcular Metricas e Montar Relatorio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular Metricas e Montar Relatorio": {
+      "main": [
+        [
+          {
+            "node": "POST Salvar Relatorio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST Salvar Relatorio": {
+      "main": [
+        [
+          {
+            "node": "Preparar Envio Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Envio Telegram": {
+      "main": [
+        [
+          {
+            "node": "Tem Telegram Configurado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem Telegram Configurado?": {
+      "main": [
+        [
+          {
+            "node": "Eh Labareda?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sem Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Eh Labareda?": {
+      "main": [
+        [
+          {
+            "node": "Enviar Relatorio Labareda",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar Relatorio Sao Miguel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Relatorio Labareda": {
+      "main": [
+        [
+          {
+            "node": "UPDATE Relatorio telegram_enviado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Relatorio Sao Miguel": {
+      "main": [
+        [
+          {
+            "node": "UPDATE Relatorio telegram_enviado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UPDATE Relatorio telegram_enviado": {
+      "main": [
+        [
+          {
+            "node": "Loop Propriedades",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sem Telegram": {
+      "main": [
+        [
+          {
+            "node": "Loop Propriedades",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sem Tarefas na Semana": {
+      "main": [
+        [
+          {
+            "node": "Loop Propriedades",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-07-30T00:00:00.000Z",
+  "versionId": "2"
+}
