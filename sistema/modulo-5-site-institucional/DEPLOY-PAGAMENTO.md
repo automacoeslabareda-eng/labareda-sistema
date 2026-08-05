@@ -20,11 +20,16 @@ O site já é deployado pelo `netlify.toml` da raiz. Agora ele roda `npm install
 
 ### Variáveis de ambiente no Netlify (nomes EXATOS)
 
+> IMPORTANTE: usamos nomes PRÓPRIOS da loja (`ECOMMERCE_...`) porque já existe
+> uma variável `SUPABASE_URL` na Netlify apontando para o projeto de GESTÃO.
+
 | Variável | Valor | Secreta? |
 |---|---|---|
-| `MP_ACCESS_TOKEN` | Access Token de **teste** do MP (`TEST-...`) | 🔒 |
-| `SUPABASE_URL` | `https://wgvqiguebiqhubhtwfhz.supabase.co` | Não |
-| `SUPABASE_SERVICE_ROLE_KEY` | service_role do projeto Site-ecommerce (Supabase → Settings → API) | 🔒 |
+| `MP_ENV` | `teste` (troca para `producao` no go-live) | Não |
+| `MP_ACCESS_TOKEN_TESTE` | Access Token de **teste** do MP (`APP_USR-...`) | 🔒 |
+| `MP_ACCESS_TOKEN_PROD` | Access Token de produção (só após regenerar; vazio agora) | 🔒 |
+| `ECOMMERCE_SUPABASE_URL` | `https://wgvqiguebiqhubhtwfhz.supabase.co` | Não |
+| `ECOMMERCE_SUPABASE_SERVICE_ROLE_KEY` | service_role do projeto Site-ecommerce (Supabase → Settings → API) | 🔒 |
 | `SITE_URL` | URL pública do site (ex: `https://sitiolabareda.netlify.app`) | Não |
 | `N8N_WEBHOOK_URL` | URL do fluxo n8n de venda (Telegram) — tarefa 3, opcional agora | Não |
 

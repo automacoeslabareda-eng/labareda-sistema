@@ -30,11 +30,24 @@ function resposta(status, corpo) {
   return { statusCode: status, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) };
 }
 
+// Escolhe o Access Token conforme MP_ENV ('teste' ou 'producao').
+// Mantem compatibilidade: se so existir MP_ACCESS_TOKEN, usa ele.
+function resolverAccessToken(env) {
+  const ambiente = (env.MP_ENV || 'teste').toLowerCase();
+  const prod = ambiente === 'producao' || ambiente === 'production' || ambiente === 'prod';
+  return (prod ? env.MP_ACCESS_TOKEN_PROD : env.MP_ACCESS_TOKEN_TESTE) || env.MP_ACCESS_TOKEN || '';
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return resposta(200, { ok: true });
   if (event.httpMethod !== 'POST') return resposta(405, { erro: 'Metodo nao permitido' });
 
-  const { MP_ACCESS_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SITE_URL } = process.env;
+  // Usa nomes PROPRIOS da loja para nao colidir com SUPABASE_URL (que aponta
+  // para o projeto de GESTAO na Netlify). A loja é o projeto Site-ecommerce.
+  const SUPABASE_URL = process.env.ECOMMERCE_SUPABASE_URL;
+  const SUPABASE_SERVICE_ROLE_KEY = process.env.ECOMMERCE_SUPABASE_SERVICE_ROLE_KEY;
+  const SITE_URL = process.env.SITE_URL;
+  const MP_ACCESS_TOKEN = resolverAccessToken(process.env);
   if (!MP_ACCESS_TOKEN || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return resposta(500, { erro: 'Configuracao do servidor incompleta (variaveis de ambiente).' });
   }

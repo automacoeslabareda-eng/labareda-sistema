@@ -25,11 +25,23 @@ const { MercadoPagoConfig, Payment } = require('mercadopago');
 // Propriedade Labareda (mesmo id usado no fluxo Telegram do modulo 1)
 const PROPRIEDADE_LABAREDA = '229e2813-6d46-4bdb-9aee-5d9a119733e6';
 
+// Escolhe o Access Token conforme MP_ENV ('teste' ou 'producao').
+function resolverAccessToken(env) {
+  const ambiente = (env.MP_ENV || 'teste').toLowerCase();
+  const prod = ambiente === 'producao' || ambiente === 'production' || ambiente === 'prod';
+  return (prod ? env.MP_ACCESS_TOKEN_PROD : env.MP_ACCESS_TOKEN_TESTE) || env.MP_ACCESS_TOKEN || '';
+}
+
 exports.handler = async (event) => {
   const ok200 = { statusCode: 200, body: 'ok' };
   if (event.httpMethod !== 'POST') return ok200;
 
-  const { MP_ACCESS_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, N8N_WEBHOOK_URL } = process.env;
+  // Nomes PROPRIOS da loja (Site-ecommerce), para nao colidir com SUPABASE_URL
+  // ja existente na Netlify (que aponta para o projeto de GESTAO).
+  const SUPABASE_URL = process.env.ECOMMERCE_SUPABASE_URL;
+  const SUPABASE_SERVICE_ROLE_KEY = process.env.ECOMMERCE_SUPABASE_SERVICE_ROLE_KEY;
+  const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL;
+  const MP_ACCESS_TOKEN = resolverAccessToken(process.env);
   if (!MP_ACCESS_TOKEN || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     console.error('webhook: variaveis de ambiente ausentes');
     return ok200;
