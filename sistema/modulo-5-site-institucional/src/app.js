@@ -1694,6 +1694,41 @@
     renderFreteOptions(this.value);
   });
 
+  /* CEP automatico: ao digitar o CEP, puxa endereco/bairro/cidade/estado e ja
+     seleciona o frete (ViaCEP). Usuario so preenche numero/complemento.
+     Todos os campos continuam editaveis. */
+  (function () {
+    var cepEl = document.getElementById('checkout-cep');
+    if (!cepEl) return;
+    function buscarCep() {
+      var cep = (cepEl.value || '').replace(/\D/g, '');
+      if (cep.length !== 8) return;
+      cepEl.disabled = true;
+      fetch('https://viacep.com.br/ws/' + cep + '/json/')
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d && !d.erro) {
+            if (d.logradouro) document.getElementById('checkout-rua').value = d.logradouro;
+            if (d.bairro) document.getElementById('checkout-bairro').value = d.bairro;
+            if (d.localidade) document.getElementById('checkout-cidade').value = d.localidade;
+            var estadoEl = document.getElementById('checkout-estado');
+            if (d.uf && estadoEl) {
+              estadoEl.value = d.uf;
+              renderFreteOptions(d.uf); /* seleciona o frete da regiao automaticamente */
+            }
+            var numEl = document.getElementById('checkout-numero');
+            if (numEl) numEl.focus(); /* leva o cursor direto pro numero */
+          }
+        })
+        .catch(function () {})
+        .finally(function () { cepEl.disabled = false; });
+    }
+    cepEl.addEventListener('blur', buscarCep);
+    cepEl.addEventListener('input', function () {
+      if ((cepEl.value || '').replace(/\D/g, '').length === 8) buscarCep();
+    });
+  })();
+
   /* Confirm Order */
   document.getElementById('checkout-confirm').addEventListener('click', function () {
     var btn = this;

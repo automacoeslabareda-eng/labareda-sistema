@@ -199,3 +199,44 @@ h1, h2, h3,
 .product-card img {
   background: rgba(46, 38, 36, .06);
 }
+
+/* ==========================================================================
+   ITERAÇÃO 4 — Hero com logo (emblema) + tarja vermelha texturizada no topo
+   ========================================================================== */
+
+/* Header = tarja vermelha texturizada (igual ao PSD, em qualquer estado de scroll) */
+header.site-header,
+header.site-header.scrolled,
+header.site-header.is-scrolled,
+header.site-header.header--scrolled,
+header.site-header.solid,
+header.site-header.sticky {
+  background-color: var(--terracota) !important;
+  background-image: url('img/textures/VERMELHO.jpg') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .18);
+  border-bottom: none;
+}
+.site-header { color: var(--branco) !important; }
+.site-header .logo-text,
+.site-header .nav-link,
+.site-header .lang-option,
+.site-header .lang-divider,
+.site-header .logo-star { color: var(--branco) !important; }
+
+/* Hero: emblema (logo) centralizado, sem texto */
+.hero-content {
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hero-logo {
+  width: min(340px, 62vw);
+  height: auto;
+  filter: drop-shadow(0 8px 22px rgba(0, 0, 0, .5));
+}
+
+/* Linha turquesa embaixo do hero (assinatura do PSD) */
+.hero { border-bottom: 7px solid var(--turquesa); }
