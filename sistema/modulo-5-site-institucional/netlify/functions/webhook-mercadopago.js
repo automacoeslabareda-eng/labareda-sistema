@@ -74,7 +74,7 @@ exports.handler = async (event) => {
     // 3. Busca o pedido (idempotencia)
     const { data: pedido } = await supabase
       .from('pedidos')
-      .select('id, numero, status, total, endereco_entrega, cliente_id')
+      .select('id, numero, status, subtotal, frete, total, endereco_entrega, cliente_id')
       .eq('id', pedidoId)
       .single();
     if (!pedido) return ok200;
@@ -141,6 +141,8 @@ exports.handler = async (event) => {
               cliente_nome: cliente ? cliente.nome : (info.payer && info.payer.first_name) || '',
               cliente_email: cliente ? cliente.email : (info.payer && info.payer.email) || '',
               cliente_telefone: cliente ? cliente.telefone : '',
+              valor_produtos: pedido.subtotal,
+              valor_frete: pedido.frete,
               valor_total: pedido.total,
               pagamento_id: String(paymentId),
               endereco: pedido.endereco_entrega || null,
