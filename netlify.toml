@@ -1,8 +1,17 @@
+# ============================================================
+#  Site institucional Sitio Labareda (modulo 5) + Loja (Shop)
+#  Inclui as Netlify Functions do pagamento Mercado Pago.
+# ============================================================
 [build]
-  base = "sistema/modulo-5-site-institucional/src"
-  publish = "sistema/modulo-5-site-institucional/src"
-  command = "echo 'Static site - no build needed'"
+  base = "sistema/modulo-5-site-institucional"
+  publish = "src"
+  command = "npm install"
 
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# SPA fallback: rotas caem no index.html, MAS nao intercepta as functions
 [[redirects]]
   from = "/*"
   to = "/index.html"

@@ -1768,34 +1768,25 @@
         });
       })
       .then(function (pedido) {
-        /* Success */
-        saveCart([]);
-        updateCartBadge();
-
-        /* Show success step */
-        for (var i = 1; i <= 3; i++) {
-          var el = document.getElementById('checkout-step-' + i);
-          if (el) el.style.display = 'none';
-        }
-        document.getElementById('checkout-steps').style.display = 'none';
-
-        var successEl = document.getElementById('checkout-success');
-        var numberEl = document.getElementById('checkout-success-number');
-        numberEl.textContent = translations[currentLang].checkout_order_number + (pedido.numero || pedido.id.substring(0, 8));
-        successEl.style.display = 'block';
-
-        /* Reset form */
-        document.getElementById('checkout-nome').value = '';
-        document.getElementById('checkout-email').value = '';
-        document.getElementById('checkout-telefone').value = '';
-        document.getElementById('checkout-cpf').value = '';
-        document.getElementById('checkout-rua').value = '';
-        document.getElementById('checkout-numero').value = '';
-        document.getElementById('checkout-complemento').value = '';
-        document.getElementById('checkout-bairro').value = '';
-        document.getElementById('checkout-cidade').value = '';
-        document.getElementById('checkout-estado').value = '';
-        document.getElementById('checkout-cep').value = '';
+        /* Pedido criado (pendente). Agora cria o pagamento no Mercado Pago
+           e redireciona o cliente para pagar (Pix, cartao ou boleto). */
+        return fetch('/.netlify/functions/criar-pagamento', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pedido_id: pedido.id }),
+        }).then(function (r) {
+          return r.json().then(function (data) {
+            if (!r.ok || !data.ok) {
+              throw new Error((data && data.erro) || 'Falha ao iniciar o pagamento');
+            }
+            var link = data.init_point || data.sandbox_init_point;
+            if (!link) throw new Error('Link de pagamento nao recebido');
+            /* O pedido ja existe no banco: limpa o carrinho e vai ao Mercado Pago */
+            saveCart([]);
+            updateCartBadge();
+            window.location.href = link;
+          });
+        });
       })
       .catch(function (err) {
         console.error('Checkout error:', err);
@@ -1809,6 +1800,26 @@
 
   /* Success close */
   document.getElementById('checkout-success-close').addEventListener('click', closeCheckout);
+
+  /* Retorno do Mercado Pago (back_urls): mostra feedback ao cliente */
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    var pg = params.get('pagamento');
+    if (!pg) return;
+    var num = params.get('pedido');
+    var t = translations[currentLang] || {};
+    if (pg === 'sucesso') {
+      showToast((t.checkout_paid_ok || 'Pagamento aprovado! Pedido') + (num ? ' #' + num : ''));
+    } else if (pg === 'pendente') {
+      showToast(t.checkout_paid_pending || 'Pagamento pendente. Voce recebera a confirmacao em breve.');
+    } else if (pg === 'falhou') {
+      showToast(t.checkout_paid_fail || 'Pagamento nao concluido. Tente novamente.', true);
+    }
+    /* Limpa os parametros da URL para nao repetir o aviso ao recarregar */
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState({}, document.title, window.location.pathname + '#shop');
+    }
+  })();
 
   /* Escape key for all modals */
   document.addEventListener('keydown', function (e) {
