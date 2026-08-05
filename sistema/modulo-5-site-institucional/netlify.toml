@@ -1,9 +1,12 @@
 # ============================================================
-#  Site institucional Sitio Labareda (modulo 5) + Loja (Shop)
+#  Config do site labareda-site (modulo 5) — site institucional + Loja (Shop)
 #  Inclui as Netlify Functions do pagamento Mercado Pago.
+#
+#  IMPORTANTE: no Netlify, o projeto "labareda-site" deve ter
+#  Base directory = sistema/modulo-5-site-institucional
+#  Assim ele le ESTE arquivo (e nao afeta os outros sites do mesmo repo).
 # ============================================================
 [build]
-  base = "sistema/modulo-5-site-institucional"
   publish = "src"
   command = "npm install"
 
@@ -11,7 +14,6 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
-# SPA fallback: rotas caem no index.html, MAS nao intercepta as functions
 [[redirects]]
   from = "/*"
   to = "/index.html"
