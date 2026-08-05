@@ -51,7 +51,12 @@ exports.handler = async (event) => {
   if (!MP_ACCESS_TOKEN || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return resposta(500, { erro: 'Configuracao do servidor incompleta (variaveis de ambiente).' });
   }
-  const siteUrl = (SITE_URL || '').replace(/\/$/, '') || 'https://sitiolabareda.netlify.app';
+  // Normaliza a URL do site: remove barra final, FORCA https (o Mercado Pago
+  // exige https nas back_urls; http faz o MP tratar como "nao definida").
+  let siteUrl = (SITE_URL || '').trim().replace(/\/+$/, '');
+  if (!siteUrl) siteUrl = 'https://sitiolabareda.com';
+  siteUrl = siteUrl.replace(/^http:\/\//i, 'https://');
+  if (!/^https:\/\//i.test(siteUrl)) siteUrl = 'https://' + siteUrl.replace(/^\/+/, '');
 
   let dados;
   try {
@@ -114,9 +119,9 @@ exports.handler = async (event) => {
         external_reference: pedido.id, // o webhook usa isso para achar o pedido
         payer,
         back_urls: {
-          success: `${siteUrl}/?pagamento=sucesso&pedido=${pedido.numero}#shop`,
-          failure: `${siteUrl}/?pagamento=falhou#shop`,
-          pending: `${siteUrl}/?pagamento=pendente#shop`,
+          success: `${siteUrl}/?pagamento=sucesso&pedido=${pedido.numero}`,
+          failure: `${siteUrl}/?pagamento=falhou`,
+          pending: `${siteUrl}/?pagamento=pendente`,
         },
         auto_return: 'approved',
         notification_url: `${siteUrl}/.netlify/functions/webhook-mercadopago`,
