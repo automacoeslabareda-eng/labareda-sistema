@@ -1626,6 +1626,8 @@ async function carregarDadosRotinaModal(id) {
       $('#campo-rotina-hora').value = r.hora_disparo || '07:00';
       var descEl = $('#campo-rotina-desc');
       if (descEl) descEl.value = r.descricao || '';
+      var respEl = $('#campo-rotina-responsavel');
+      if (respEl && r.responsavel_id) respEl.value = r.responsavel_id;
     }
   } catch (err) {
     console.error('Erro ao carregar rotina:', err);
@@ -1781,6 +1783,7 @@ async function gerarTarefasDoDia() {
         origem: 'rotina',
         rotina_id: rot.id,
         data_limite: hojeStr,
+        responsavel_id: rot.responsavel_id || null,
       });
 
       // Criar checklist_items atribuidos aos colaboradores do setor
@@ -2227,14 +2230,17 @@ function exportarRelatorio(relatorioId) {
     // Converter PDF para base64
     var pdfBase64 = pdf.output('datauristring').split(',')[1];
 
-    // Perguntar se quer enviar
-    var enviar = confirm('PDF gerado! Deseja enviar via WhatsApp para o grupo?');
-    if (enviar) {
-      enviarRelatorioPDF(pdfBase64, filename, propNome + ' - ' + titulo);
-    }
-
     // Download local
     pdf.save(filename);
+
+    // Perguntar se quer enviar
+    var escolha = prompt('PDF salvo! Enviar para:\n1 - WhatsApp\n2 - Telegram\n3 - Ambos\n(Enter para nenhum)');
+    if (escolha === '1' || escolha === '3') {
+      enviarRelatorioPDF(pdfBase64, filename, propNome + ' - ' + titulo);
+    }
+    if (escolha === '2' || escolha === '3') {
+      enviarRelatorioPDFTelegram(pdfBase64, filename, propNome + ' - ' + titulo);
+    }
   }).catch(function(err) {
     document.body.removeChild(container);
     console.error('Erro ao gerar PDF:', err);
@@ -2281,10 +2287,54 @@ async function enviarRelatorioPDF(pdfBase64, filename, caption) {
       }),
     });
 
-    mostrarToast('PDF enviado com sucesso!');
+    mostrarToast('PDF enviado via WhatsApp!');
   } catch (err) {
     console.error('Erro ao enviar PDF:', err);
     mostrarToast('Erro ao enviar PDF: ' + err.message, 'error');
+  }
+}
+
+async function enviarRelatorioPDFTelegram(pdfBase64, filename, caption) {
+  try {
+    mostrarToast('Enviando PDF pro Telegram...');
+    var path = 'relatorios/' + Date.now() + '-' + filename;
+    var uploadUrl = CONFIG.SUPABASE_URL + '/storage/v1/object/relatorios-pdf/' + path;
+
+    var byteChars = atob(pdfBase64);
+    var byteArray = new Uint8Array(byteChars.length);
+    for (var i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
+    var blob = new Blob([byteArray], { type: 'application/pdf' });
+
+    var uploadResp = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'apikey': CONFIG.SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY,
+        'Content-Type': 'application/pdf',
+      },
+      body: blob,
+    });
+
+    if (!uploadResp.ok) throw new Error('Falha no upload do PDF');
+    var publicUrl = CONFIG.SUPABASE_URL + '/storage/v1/object/public/relatorios-pdf/' + path;
+
+    var propId = propriedadeFiltro !== 'todas' ? propriedadeFiltro : cachePropriedades[0].id;
+
+    await fetch('https://n8n.sitiolabareda.com/webhook/telegram-enviar-pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pdf_url: publicUrl,
+        filename: filename,
+        caption: caption,
+        propriedade_id: propId,
+      }),
+    });
+
+    mostrarToast('PDF enviado pro Telegram!');
+  } catch (err) {
+    console.error('Erro ao enviar PDF Telegram:', err);
+    mostrarToast('Erro ao enviar PDF Telegram: ' + err.message, 'error');
   }
 }
 
@@ -3203,6 +3253,8 @@ async function salvarModal() {
       if (!rNome) { mostrarToast('Nome e obrigatorio', 'error'); return; }
       if (!rSetor) { mostrarToast('Setor e obrigatorio', 'error'); return; }
 
+      var rResp = ($('#campo-rotina-responsavel') || {}).value || null;
+
       var rBody = {
         nome: rNome,
         setor_id: rSetor,
@@ -3210,6 +3262,7 @@ async function salvarModal() {
         hora_disparo: rHora,
         descricao: rDesc || null,
         propriedade_id: propriedadeFiltro,
+        responsavel_id: rResp || null,
       };
 
       if (modalModo === 'rotina-nova') {
