@@ -172,3 +172,30 @@ h1, h2, h3,
 /* ---- Rodapé / contato em cacau escuro ---- */
 .site-footer,
 .section--contact { background: var(--cacau); color: var(--branco); }
+
+/* ==========================================================================
+   ITERAÇÃO 3 — correções (conteúdo sempre visível + refinos)
+   ========================================================================== */
+
+/* CONTEÚDO SEMPRE VISÍVEL: o efeito "reveal" deixava seções (ex: Manifesto,
+   O QUE VOCÊ VAI VIVER) vazias/vermelhas até rolar. Garante que apareçam. */
+.reveal,
+.reveal--delay-1,
+.reveal--delay-2,
+.reveal--delay-3 {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* Cards claros (experience / shop) legíveis sobre o vermelho/creme */
+.section--experience .exp-card,
+.section--experience [class*="card"] {
+  background: var(--creme);
+  color: var(--preto);
+}
+
+/* Molduras de produto: quando sem foto, mostra um fundo suave (evita moldura vazia crua) */
+.product-card__img,
+.product-card img {
+  background: rgba(46, 38, 36, .06);
+}
