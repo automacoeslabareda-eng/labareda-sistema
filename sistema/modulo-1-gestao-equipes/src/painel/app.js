@@ -302,21 +302,24 @@ async function marcarConclusao(itemId, observacao, fotoUrl, audioUrl) {
   }
 
   // 3) Notificar Telegram via webhook
-  if (CONFIG.N8N_WEBHOOK_URL && item) {
-    const tarefaNome = (item.tarefas && item.tarefas.comando_original) || 'Tarefa';
+  if (CONFIG.N8N_WEBHOOK_URL) {
+    const itemDados = item || estado.itens.find((i) => i.id === itemId) || {};
+    const tarefaNome = (itemDados.tarefas && itemDados.tarefas.comando_original) || itemDados.descricao || 'Tarefa';
     const webhookPayload = {
       colaborador_nome: estado.usuario.nome,
-      descricao_item: item.descricao || '',
+      descricao_item: itemDados.descricao || '',
       tarefa_nome: tarefaNome,
       foto_url: fotoUrl || '',
       observacao: observacao || '',
       propriedade_id: estado.usuario.propriedade_id,
     };
+    console.log('Disparando Telegram:', webhookPayload);
     fetch(`${CONFIG.N8N_WEBHOOK_URL}/webhook/tarefa-concluida`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(webhookPayload),
-    }).catch((e) => console.log('Webhook Telegram:', e.message));
+    }).then((r) => console.log('Telegram webhook:', r.status))
+      .catch((e) => console.log('Webhook Telegram erro:', e.message));
   }
 }
 
@@ -512,76 +515,106 @@ function renderizarTarefas() {
     return;
   }
 
-  const grupos = {};
-  estado.itens.forEach((item) => {
-    const tid = item.tarefa_id || 'sem-tarefa';
-    if (!grupos[tid]) grupos[tid] = [];
-    grupos[tid].push(item);
-  });
+  // Separar itens pendentes e concluidos
+  const itensPendentes = estado.itens.filter((i) => i.status !== 'concluido');
+  const itensConcluidos = estado.itens.filter((i) => i.status === 'concluido');
 
-  Object.entries(grupos).forEach(([tarefaId, itens]) => {
-    const tarefa = itens[0].tarefas;
-    const setorNome = tarefa?.setores?.nome || tarefa?.setor_interpretado || 'Geral';
-    const setorIcone = tarefa?.setores?.icone || '📋';
-    const todosCompletos = itens.every((i) => i.status === 'concluido');
-
-    // Periodo
-    let periodo = '';
-    if (tarefa?.data_inicio && tarefa?.data_fim) {
-      const di = new Date(tarefa.data_inicio + 'T12:00:00');
-      const df = new Date(tarefa.data_fim + 'T12:00:00');
-      periodo = `${di.getDate()}/${di.getMonth()+1} a ${df.getDate()}/${df.getMonth()+1}`;
-    }
-
-    const grupoEl = document.createElement('section');
-    grupoEl.className = 'grupo-tarefa';
-    grupoEl.setAttribute('aria-label', `Tarefa: ${setorNome}`);
-
-    grupoEl.innerHTML = `
-      <div class="grupo-tarefa__header">
-        <span class="grupo-tarefa__icone" aria-hidden="true">${setorIcone}</span>
-        <h2 class="grupo-tarefa__nome">${setorNome}${periodo ? ' — ' + periodo : ''}</h2>
-      </div>
-      <div class="banner-completa ${todosCompletos ? 'visivel' : ''}" role="status" aria-live="polite">
-        <span class="banner-completa__icone" aria-hidden="true">&#10003;</span>
-        Tarefa completa!
-      </div>
-    `;
-
-    itens.forEach((item) => {
-      const concluido = item.status === 'concluido';
-      const card = document.createElement('article');
-      card.className = `card-item ${concluido ? 'card-item--concluido' : ''}`;
-      card.setAttribute('role', 'button');
-      card.setAttribute('tabindex', concluido ? '-1' : '0');
-      card.setAttribute('aria-label', `${item.descricao}${concluido ? ' - concluido' : ''}`);
-      card.dataset.itemId = item.id;
-
-      card.innerHTML = `
-        <div class="checkbox-custom ${concluido ? 'checkbox-custom--marcado' : ''}" aria-hidden="true">
-          <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M2 7.5L5.5 11L12 3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <div class="card-item__corpo">
-          <p class="card-item__descricao">${item.descricao}</p>
-          ${item.observacao ? `<p class="card-item__obs">${item.observacao}</p>` : ''}
-        </div>
-        ${concluido ? '' : '<span class="card-item__seta" aria-hidden="true">&#8250;</span>'}
-      `;
-
-      if (!concluido) {
-        card.addEventListener('click', () => abrirModal(item));
-        card.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirModal(item); }
-        });
-      }
-
-      grupoEl.appendChild(card);
+  function renderizarGrupo(itensLista, containerEl) {
+    const grupos = {};
+    itensLista.forEach((item) => {
+      const tid = item.tarefa_id || 'sem-tarefa';
+      if (!grupos[tid]) grupos[tid] = [];
+      grupos[tid].push(item);
     });
 
-    container.appendChild(grupoEl);
-  });
+    Object.entries(grupos).forEach(([tarefaId, itens]) => {
+      const tarefa = itens[0].tarefas;
+      const setorNome = tarefa?.setores?.nome || tarefa?.setor_interpretado || 'Geral';
+      const setorIcone = tarefa?.setores?.icone || '📋';
+      const todosCompletos = itens.every((i) => i.status === 'concluido');
+
+      let periodo = '';
+      if (tarefa?.data_inicio && tarefa?.data_fim) {
+        const di = new Date(tarefa.data_inicio + 'T12:00:00');
+        const df = new Date(tarefa.data_fim + 'T12:00:00');
+        periodo = `${di.getDate()}/${di.getMonth()+1} a ${df.getDate()}/${df.getMonth()+1}`;
+      }
+
+      const grupoEl = document.createElement('section');
+      grupoEl.className = 'grupo-tarefa';
+      grupoEl.setAttribute('aria-label', `Tarefa: ${setorNome}`);
+
+      grupoEl.innerHTML = `
+        <div class="grupo-tarefa__header">
+          <span class="grupo-tarefa__icone" aria-hidden="true">${setorIcone}</span>
+          <h2 class="grupo-tarefa__nome">${setorNome}${periodo ? ' — ' + periodo : ''}</h2>
+        </div>
+        <div class="banner-completa ${todosCompletos ? 'visivel' : ''}" role="status" aria-live="polite">
+          <span class="banner-completa__icone" aria-hidden="true">&#10003;</span>
+          Tarefa completa!
+        </div>
+      `;
+
+      itens.forEach((item) => {
+        const concluido = item.status === 'concluido';
+        const card = document.createElement('article');
+        card.className = `card-item ${concluido ? 'card-item--concluido' : ''}`;
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', concluido ? '-1' : '0');
+        card.setAttribute('aria-label', `${item.descricao}${concluido ? ' - concluido' : ''}`);
+        card.dataset.itemId = item.id;
+
+        card.innerHTML = `
+          <div class="checkbox-custom ${concluido ? 'checkbox-custom--marcado' : ''}" aria-hidden="true">
+            <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2 7.5L5.5 11L12 3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="card-item__corpo">
+            <p class="card-item__descricao">${item.descricao}</p>
+            ${item.observacao ? `<p class="card-item__obs">${item.observacao}</p>` : ''}
+          </div>
+          ${concluido ? '' : '<span class="card-item__seta" aria-hidden="true">&#8250;</span>'}
+        `;
+
+        if (!concluido) {
+          card.addEventListener('click', () => abrirModal(item));
+          card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirModal(item); }
+          });
+        }
+
+        grupoEl.appendChild(card);
+      });
+
+      containerEl.appendChild(grupoEl);
+    });
+  }
+
+  // Pendentes primeiro
+  if (itensPendentes.length > 0) {
+    renderizarGrupo(itensPendentes, container);
+  } else {
+    container.innerHTML = `
+      <div class="empty-state" role="status">
+        <div class="empty-state__icone" aria-hidden="true">&#11088;</div>
+        <p class="empty-state__msg">Tudo concluido! Bom trabalho!</p>
+      </div>
+    `;
+  }
+
+  // Concluidos separados
+  if (itensConcluidos.length > 0) {
+    const secaoConcluidos = document.createElement('div');
+    secaoConcluidos.innerHTML = `
+      <div class="secao-header" style="margin-top:24px;padding:8px 0;border-top:1px solid var(--border, #e0e0e0)">
+        <span class="secao-header__icone">&#10003;</span>
+        <span class="secao-header__titulo" style="color:var(--text-muted, #888)">Concluidos (${itensConcluidos.length})</span>
+      </div>
+    `;
+    container.appendChild(secaoConcluidos);
+    renderizarGrupo(itensConcluidos, container);
+  }
 }
 
 /* ================================================================== */

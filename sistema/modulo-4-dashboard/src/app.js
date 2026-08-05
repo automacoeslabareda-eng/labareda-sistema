@@ -2178,7 +2178,6 @@ function exportarRelatorio(relatorioId) {
   var detalhe = $('#relatorio-detalhe');
   if (!detalhe) return;
 
-  // Encontrar nome da propriedade
   var propNome = 'Propriedade';
   if (propriedadeFiltro !== 'todas') {
     var prop = cachePropriedades.find(function(p) { return String(p.id) === String(propriedadeFiltro); });
@@ -2188,15 +2187,11 @@ function exportarRelatorio(relatorioId) {
   var titulo = ($('#relatorio-detalhe-titulo') || {}).textContent || 'Relatorio';
   var conteudo = ($('#relatorio-detalhe-body') || {}).innerHTML || '';
 
-  var printWindow = window.open('', '_blank');
-  printWindow.document.write(
-    '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
-    '<title>' + escapeHtml(propNome) + ' - ' + escapeHtml(titulo) + '</title>' +
+  // Criar container temporario para gerar PDF
+  var container = document.createElement('div');
+  container.style.cssText = 'font-family:DM Sans,sans-serif;max-width:800px;margin:0 auto;padding:20px 30px;color:#1a1a1a';
+  container.innerHTML =
     '<style>' +
-      'body{font-family:"DM Sans",sans-serif;max-width:800px;margin:0 auto;padding:20px 30px;color:#1a1a1a}' +
-      '.header{text-align:center;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #C45D3E}' +
-      '.header h1{font-size:20px;margin:0;color:#C45D3E}' +
-      '.header h2{font-size:16px;margin:4px 0 0;font-weight:400;color:#666}' +
       '.relatorio-resumo{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}' +
       '.relatorio-stat{background:#f5f5f0;border-radius:8px;padding:14px;text-align:center;border:1px solid #e5e5e0}' +
       '.relatorio-stat--success{background:#e8f3ec;border-color:#3D6B4F}' +
@@ -2206,21 +2201,91 @@ function exportarRelatorio(relatorioId) {
       '.relatorio-setores{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}' +
       '.relatorio-setor-card{background:#f5f5f0;border-radius:8px;padding:12px;border:1px solid #e5e5e0}' +
       '.relatorio-setor-header{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}' +
-      '.relatorio-setor-tarefas{margin-top:6px;padding-top:6px;border-top:1px solid #e5e5e0}' +
       '.progress{background:#e5e5e0;border-radius:100px;height:6px;overflow:hidden}' +
       '.progress__bar{background:#C45D3E;height:100%;border-radius:100px}' +
       'h4{margin:18px 0 8px;font-size:14px}' +
-      '@media print{body{padding:10px}@page{margin:15mm}}' +
-    '</style></head><body>' +
-    '<div class="header">' +
-      '<h1>' + escapeHtml(propNome) + '</h1>' +
-      '<h2>' + escapeHtml(titulo) + '</h2>' +
+    '</style>' +
+    '<div style="text-align:center;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #C45D3E">' +
+      '<h1 style="font-size:20px;margin:0;color:#C45D3E">' + escapeHtml(propNome) + '</h1>' +
+      '<h2 style="font-size:16px;margin:4px 0 0;font-weight:400;color:#666">' + escapeHtml(titulo) + '</h2>' +
     '</div>' +
-    conteudo +
-    '<script>window.onload=function(){window.print()}<\/script>' +
-    '</body></html>'
-  );
-  printWindow.document.close();
+    conteudo;
+
+  document.body.appendChild(container);
+
+  var filename = propNome.replace(/\s/g, '-') + '-' + titulo.replace(/\s/g, '-') + '.pdf';
+
+  html2pdf().set({
+    margin: 10,
+    filename: filename,
+    image: { type: 'jpeg', quality: 0.95 },
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  }).from(container).toPdf().get('pdf').then(function(pdf) {
+    document.body.removeChild(container);
+
+    // Converter PDF para base64
+    var pdfBase64 = pdf.output('datauristring').split(',')[1];
+
+    // Perguntar se quer enviar
+    var enviar = confirm('PDF gerado! Deseja enviar via WhatsApp para o grupo?');
+    if (enviar) {
+      enviarRelatorioPDF(pdfBase64, filename, propNome + ' - ' + titulo);
+    }
+
+    // Download local
+    pdf.save(filename);
+  }).catch(function(err) {
+    document.body.removeChild(container);
+    console.error('Erro ao gerar PDF:', err);
+    mostrarToast('Erro ao gerar PDF', 'error');
+  });
+}
+
+async function enviarRelatorioPDF(pdfBase64, filename, caption) {
+  try {
+    mostrarToast('Enviando PDF...');
+    // Upload para Supabase Storage para gerar URL publica
+    var path = 'relatorios/' + Date.now() + '-' + filename;
+    var uploadUrl = CONFIG.SUPABASE_URL + '/storage/v1/object/relatorios-pdf/' + path;
+
+    // Converter base64 para blob
+    var byteChars = atob(pdfBase64);
+    var byteArray = new Uint8Array(byteChars.length);
+    for (var i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
+    var blob = new Blob([byteArray], { type: 'application/pdf' });
+
+    var uploadResp = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'apikey': CONFIG.SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY,
+        'Content-Type': 'application/pdf',
+      },
+      body: blob,
+    });
+
+    if (!uploadResp.ok) throw new Error('Falha no upload do PDF');
+    var publicUrl = CONFIG.SUPABASE_URL + '/storage/v1/object/public/relatorios-pdf/' + path;
+
+    // Enviar via webhook WhatsApp
+    await fetch('https://n8n.sitiolabareda.com/webhook/whatsapp-envio-direto', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        telefone: '558296838800',
+        mensagem: '\u{1f4ca} ' + caption,
+        tipo: 'media',
+        mediaUrl: publicUrl,
+        mediaFilename: filename,
+      }),
+    });
+
+    mostrarToast('PDF enviado com sucesso!');
+  } catch (err) {
+    console.error('Erro ao enviar PDF:', err);
+    mostrarToast('Erro ao enviar PDF: ' + err.message, 'error');
+  }
 }
 
 /* ================================================================== */
@@ -3111,7 +3176,7 @@ async function salvarModal() {
             if (!tel || tel.includes('00000000')) continue;
             if (!tel.startsWith('55')) tel = '55' + tel;
 
-            var msg = '\u{1f4cb} Ola ' + colab.nome + '!\n\nVoce tem uma nova tarefa:\n\n' + itensTexto + '\n\n\u{1f449} Acesse seu painel:\nhttps://sitiolabareda.com/painel\n\n\u{1f511} Email: ' + (colab.email || '') + '\n\u{1f511} Senha: ' + (colab.senha_hash || '');
+            var msg = '\u{1f4cb} Ola ' + colab.nome + '!\n\nVoce tem uma nova tarefa:\n\n' + itensTexto + '\n\n\u{1f449} Acesse seu painel:\nhttps://labareda-gestao.netlify.app\n\n\u{1f511} Email: ' + (colab.email || '') + '\n\u{1f511} Senha: ' + (colab.senha_hash || '');
 
             fetch('https://n8n.sitiolabareda.com/webhook/whatsapp-envio-direto', {
               method: 'POST',
