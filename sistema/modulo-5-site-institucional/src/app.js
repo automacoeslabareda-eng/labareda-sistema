@@ -58,7 +58,10 @@
   }
 
   function supabaseUpsert(tabela, data, onConflict) {
-    return fetch(SUPABASE_URL + '/rest/v1/' + tabela, {
+    // on_conflict diz ao Supabase em qual coluna resolver duplicados (ex: email).
+    // Sem isso, e-mail repetido gera erro 409 (Conflict).
+    var url = SUPABASE_URL + '/rest/v1/' + tabela + (onConflict ? '?on_conflict=' + encodeURIComponent(onConflict) : '');
+    return fetch(url, {
       method: 'POST',
       headers: {
         'apikey': SUPABASE_KEY,
@@ -1733,7 +1736,7 @@
       endereco_cidade: endereco.cidade,
       endereco_estado: endereco.estado,
       endereco_cep: endereco.cep,
-    })
+    }, 'email')
       .then(function (clienteData) {
         var clienteId = clienteData && clienteData.length > 0 ? clienteData[0].id : null;
 
