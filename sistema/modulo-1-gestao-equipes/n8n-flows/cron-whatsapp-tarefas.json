@@ -1,5 +1,5 @@
 {
-  "name": "Cron - WhatsApp Tarefas Diarias",
+  "name": "WhatsApp - Notificar Tarefas aos Colaboradores",
   "nodes": [
     {
       "parameters": {
@@ -20,6 +20,20 @@
     },
     {
       "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-tarefas",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-400, 500],
+      "id": "webhook-whats-001",
+      "name": "Webhook Disparo Imediato",
+      "webhookId": "whatsapp-tarefas"
+    },
+    {
+      "parameters": {
         "method": "GET",
         "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/propriedades",
         "sendQuery": true,
@@ -31,6 +45,10 @@
             },
             {
               "name": "evolution_api_url",
+              "value": "not.is.null"
+            },
+            {
+              "name": "evolution_instance_token",
               "value": "not.is.null"
             },
             {
@@ -60,7 +78,7 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-160, 300],
+      "position": [-100, 400],
       "id": "get-props-whats-001",
       "name": "GET Propriedades com WhatsApp"
     },
@@ -70,79 +88,19 @@
       },
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
-      "position": [80, 300],
+      "position": [140, 400],
       "id": "loop-props-whats-001",
       "name": "Loop Propriedades"
     },
     {
       "parameters": {
-        "jsCode": "const prop = $input.item.json;\nconst now = new Date();\nconst brasilOffset = -3;\nconst brasilTime = new Date(now.getTime() + (brasilOffset * 60 * 60 * 1000 - now.getTimezoneOffset() * 60 * 1000));\nconst hoje = brasilTime.toISOString().split('T')[0];\n\nreturn [\n  {\n    json: {\n      ...prop,\n      hoje: hoje\n    }\n  }\n];"
+        "jsCode": "const prop = $input.item.json;\nreturn [{ json: { ...prop } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [320, 300],
-      "id": "set-data-whats-001",
-      "name": "Calcular Data Hoje"
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/colaboradores",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "propriedade_id",
-              "value": "=eq.{{ $json.id }}"
-            },
-            {
-              "name": "ativo",
-              "value": "eq.true"
-            },
-            {
-              "name": "telefone",
-              "value": "not.is.null"
-            },
-            {
-              "name": "select",
-              "value": "id,nome,telefone"
-            }
-          ]
-        },
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            },
-            {
-              "name": "Authorization",
-              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [560, 300],
-      "id": "get-colaboradores-whats-001",
-      "name": "GET Colaboradores com Telefone"
-    },
-    {
-      "parameters": {
-        "jsCode": "const colaboradores = $input.item.json;\nconst prop = $('Calcular Data Hoje').item.json;\n\nconst colabList = Array.isArray(colaboradores) ? colaboradores : [colaboradores];\n\nif (!colabList[0] || !colabList[0].id) {\n  return [];\n}\n\nreturn colabList.map(colab => ({\n  json: {\n    colaborador_id: colab.id,\n    colaborador_nome: colab.nome,\n    telefone: colab.telefone,\n    propriedade_id: prop.id,\n    propriedade_nome: prop.nome,\n    evolution_api_url: prop.evolution_api_url || 'https://apiwhats.sitiolabareda.com',\n    evolution_api_key: prop.evolution_instance_token || prop.evolution_api_key || '6726c36d000c9e73ac5ad778752de934',\n    evolution_instance: prop.evolution_instance_name,\n    hoje: prop.hoje\n  }\n}));"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [800, 300],
-      "id": "preparar-colabs-001",
-      "name": "Preparar Colaboradores"
+      "position": [380, 400],
+      "id": "set-prop-001",
+      "name": "Set Propriedade"
     },
     {
       "parameters": {
@@ -152,20 +110,24 @@
         "queryParameters": {
           "parameters": [
             {
-              "name": "colaborador_id",
-              "value": "=eq.{{ $json.colaborador_id }}"
-            },
-            {
               "name": "propriedade_id",
-              "value": "=eq.{{ $json.propriedade_id }}"
+              "value": "=eq.{{ $json.id }}"
             },
             {
               "name": "status",
               "value": "eq.pendente"
             },
             {
+              "name": "whatsapp_enviado",
+              "value": "eq.false"
+            },
+            {
               "name": "select",
-              "value": "id,descricao"
+              "value": "id,descricao,colaborador_id,tarefa_id,tarefas(descricao,data_limite,data_inicio,data_fim,origem),colaboradores(nome,telefone,whatsapp_jid,email,senha_hash)"
+            },
+            {
+              "name": "order",
+              "value": "colaborador_id.asc"
             }
           ]
         },
@@ -190,19 +152,19 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1040, 300],
-      "id": "get-checklist-colab-001",
-      "name": "GET Checklist Items do Colaborador"
+      "position": [620, 400],
+      "id": "get-items-pendentes-001",
+      "name": "GET Itens Pendentes Nao Enviados"
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.item.json;\nconst colab = $('Preparar Colaboradores').item.json;\n\nconst itemsList = Array.isArray(items) ? items : (items && items.id ? [items] : []);\nconst quantidade = itemsList.length;\n\nif (quantidade === 0) {\n  return [];\n}\n\nreturn [\n  {\n    json: {\n      ...colab,\n      quantidade: quantidade,\n      itens: itemsList\n    }\n  }\n];"
+        "jsCode": "const items = $input.item.json;\nconst prop = $('Set Propriedade').item.json;\n\n// items pode ser array ou objeto unico\nconst itemsList = Array.isArray(items) ? items : (items && items.id ? [items] : []);\n\nif (itemsList.length === 0) {\n  return [];\n}\n\n// Agrupar por colaborador\nconst porColab = {};\nconst itemIds = [];\n\nfor (const item of itemsList) {\n  const colabId = item.colaborador_id;\n  if (!colabId) continue;\n  \n  const colab = item.colaboradores || {};\n  const tarefa = item.tarefas || {};\n  const telefone = colab.whatsapp_jid || colab.telefone || '';\n  \n  if (!telefone || telefone.includes('00000000')) continue;\n  \n  if (!porColab[colabId]) {\n    porColab[colabId] = {\n      colaborador_id: colabId,\n      colaborador_nome: colab.nome || 'Colaborador',\n      telefone: telefone,\n      email: colab.email || '',\n      senha: colab.senha_hash || 'mudar123',\n      itens: [],\n      item_ids: []\n    };\n  }\n  \n  const desc = item.descricao || tarefa.descricao || 'Tarefa sem descricao';\n  porColab[colabId].itens.push(desc);\n  porColab[colabId].item_ids.push(item.id);\n  itemIds.push(item.id);\n}\n\nconst resultados = Object.values(porColab).map(colab => {\n  // Formatar telefone\n  let tel = colab.telefone.replace(/\\D/g, '');\n  if (!tel.startsWith('55')) tel = '55' + tel;\n  \n  // Montar mensagem listando cada tarefa\n  const listaItens = colab.itens.map((item, i) => `  ${i + 1}. ${item}`).join('\\n');\n  \n  const mensagem = `\\u{1f4cb} Ola ${colab.colaborador_nome}!\\n\\nVoce tem ${colab.itens.length} ${colab.itens.length === 1 ? 'tarefa pendente' : 'tarefas pendentes'}:\\n\\n${listaItens}\\n\\n\\u{1f449} Acesse seu painel:\\nhttps://sitiolabareda.com/painel\\n\\n\\u{1f511} Email: ${colab.email}\\n\\u{1f511} Senha: ${colab.senha}\\n\\n\\u{23f0} Preencher ate sexta-feira 16:30!`;\n  \n  return {\n    json: {\n      telefone: tel,\n      mensagem: mensagem,\n      colaborador_nome: colab.colaborador_nome,\n      item_ids: colab.item_ids,\n      evolution_api_url: prop.evolution_api_url || 'https://apiwhats.sitiolabareda.com',\n      evolution_api_key: prop.evolution_instance_token || prop.evolution_api_key,\n      propriedade_id: prop.id\n    }\n  };\n});\n\nreturn resultados.length > 0 ? resultados : [];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1280, 300],
-      "id": "verificar-tarefas-001",
-      "name": "Verificar Se Tem Tarefas"
+      "position": [860, 400],
+      "id": "agrupar-por-colab-001",
+      "name": "Agrupar por Colaborador e Montar Mensagem"
     },
     {
       "parameters": {
@@ -214,12 +176,12 @@
           },
           "conditions": [
             {
-              "id": "check-qtd",
-              "leftValue": "={{ $json.quantidade }}",
-              "rightValue": 0,
+              "id": "check-tel",
+              "leftValue": "={{ $json.telefone }}",
+              "rightValue": "",
               "operator": {
-                "type": "number",
-                "operation": "gt"
+                "type": "string",
+                "operation": "notEmpty"
               }
             }
           ],
@@ -229,19 +191,9 @@
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1520, 300],
-      "id": "if-tem-tarefas-001",
-      "name": "Tem Tarefas?"
-    },
-    {
-      "parameters": {
-        "jsCode": "const data = $input.item.json;\n\nconst urlPainel = `https://labareda.sitiolabareda.com/painel`;\n\nconst mensagem = `\\u{1f305} Bom dia ${data.colaborador_nome}!\\n\\nVoce tem tarefas para hoje. Acesse seu painel:\\n\\u{1f449} ${urlPainel}\\n\\n\\u{1f4cb} ${data.quantidade} ${data.quantidade === 1 ? 'item pendente' : 'itens pendentes'}`;\n\n// Formatar telefone: remover tudo que nao for numero, garantir 55 na frente\nlet telefone = data.telefone.replace(/\\D/g, '');\nif (!telefone.startsWith('55')) {\n  telefone = '55' + telefone;\n}\n\nreturn [\n  {\n    json: {\n      telefone: telefone,\n      mensagem: mensagem,\n      evolution_api_url: data.evolution_api_url,\n      evolution_api_key: data.evolution_api_key,\n      evolution_instance: data.evolution_instance\n    }\n  }\n];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1760, 200],
-      "id": "montar-msg-whats-001",
-      "name": "Montar Mensagem WhatsApp"
+      "position": [1100, 400],
+      "id": "if-tem-dados-001",
+      "name": "Tem Destinatario?"
     },
     {
       "parameters": {
@@ -263,25 +215,105 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"number\": \"{{ $json.telefone }}\",\n  \"text\": {{ JSON.stringify($json.mensagem) }}\n}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300],
+      "id": "enviar-whatsapp-001",
+      "name": "Enviar WhatsApp via Evolution Go"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.item.json;\nconst prev = $('Agrupar por Colaborador e Montar Mensagem').item.json;\n\n// Montar lista de IDs para marcar como enviado\nconst itemIds = prev.item_ids || [];\n\nreturn [{\n  json: {\n    item_ids: itemIds,\n    colaborador_nome: prev.colaborador_nome,\n    enviado: true\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1580, 300],
+      "id": "preparar-update-001",
+      "name": "Preparar IDs para Update"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/checklist_items",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "=in.({{ $json.item_ids.join(',') }})"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"whatsapp_enviado\": true,\n  \"whatsapp_enviado_at\": \"{{ new Date().toISOString() }}\"\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2000, 200],
-      "id": "enviar-whatsapp-001",
-      "name": "Enviar WhatsApp via Evolution"
+      "position": [1820, 300],
+      "id": "marcar-enviado-001",
+      "name": "Marcar whatsapp_enviado = true"
     },
     {
       "parameters": {},
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [1760, 400],
-      "id": "no-op-sem-tarefas-001",
-      "name": "Sem Tarefas"
+      "position": [1340, 500],
+      "id": "no-op-sem-dest-001",
+      "name": "Sem Destinatario"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Disparos processados' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2060, 400],
+      "id": "respond-webhook-001",
+      "name": "Responder Webhook"
     }
   ],
   "connections": {
     "Cron 07h15 Brasilia": {
+      "main": [
+        [
+          {
+            "node": "GET Propriedades com WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Disparo Imediato": {
       "main": [
         [
           {
@@ -307,98 +339,87 @@
       "main": [
         [
           {
-            "node": "Calcular Data Hoje",
+            "node": "Set Propriedade",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Calcular Data Hoje": {
+    "Set Propriedade": {
       "main": [
         [
           {
-            "node": "GET Colaboradores com Telefone",
+            "node": "GET Itens Pendentes Nao Enviados",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "GET Colaboradores com Telefone": {
+    "GET Itens Pendentes Nao Enviados": {
       "main": [
         [
           {
-            "node": "Preparar Colaboradores",
+            "node": "Agrupar por Colaborador e Montar Mensagem",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Preparar Colaboradores": {
+    "Agrupar por Colaborador e Montar Mensagem": {
       "main": [
         [
           {
-            "node": "GET Checklist Items do Colaborador",
+            "node": "Tem Destinatario?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "GET Checklist Items do Colaborador": {
+    "Tem Destinatario?": {
       "main": [
         [
           {
-            "node": "Verificar Se Tem Tarefas",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Verificar Se Tem Tarefas": {
-      "main": [
-        [
-          {
-            "node": "Tem Tarefas?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Tem Tarefas?": {
-      "main": [
-        [
-          {
-            "node": "Montar Mensagem WhatsApp",
+            "node": "Enviar WhatsApp via Evolution Go",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Sem Tarefas",
+            "node": "Sem Destinatario",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Montar Mensagem WhatsApp": {
+    "Enviar WhatsApp via Evolution Go": {
       "main": [
         [
           {
-            "node": "Enviar WhatsApp via Evolution",
+            "node": "Preparar IDs para Update",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Enviar WhatsApp via Evolution": {
+    "Preparar IDs para Update": {
+      "main": [
+        [
+          {
+            "node": "Marcar whatsapp_enviado = true",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar whatsapp_enviado = true": {
       "main": [
         [
           {
@@ -409,7 +430,7 @@
         ]
       ]
     },
-    "Sem Tarefas": {
+    "Sem Destinatario": {
       "main": [
         [
           {
@@ -427,7 +448,7 @@
   },
   "staticData": null,
   "tags": [],
-  "triggerCount": 1,
+  "triggerCount": 2,
   "updatedAt": "2026-07-30T00:00:00.000Z",
-  "versionId": "1"
+  "versionId": "2"
 }

@@ -15,6 +15,8 @@
   --cor-cinza: #666;
   --cor-cinza-claro: #999;
   --cor-obs: #555;
+  --cor-amarelo: #f59e0b;
+  --cor-amarelo-suave: #fef3c7;
   --radius-card: 12px;
   --radius-btn: 8px;
   --shadow-card: 0 1px 4px rgba(0,0,0,.08);
@@ -111,6 +113,39 @@ body {
 .header__btn-sair:hover {
   background: rgba(255,255,255,.1);
   border-color: rgba(255,255,255,.5);
+}
+
+/* ---- Tabs de Navegacao ---- */
+.tabs {
+  display: flex;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+  position: sticky;
+  top: 62px;
+  z-index: 90;
+}
+
+.tab {
+  flex: 1;
+  padding: 12px 8px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cor-cinza-claro);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: color var(--transition), border-color var(--transition);
+}
+
+.tab:hover {
+  color: var(--cor-preto);
+}
+
+.tab--ativo {
+  color: var(--cor-terracota);
+  border-bottom-color: var(--cor-terracota);
 }
 
 /* ---- Tela Login ---- */
@@ -258,6 +293,9 @@ body {
   margin: 0 auto;
 }
 
+/* ---- Abas ---- */
+.aba { }
+
 /* ---- Loading ---- */
 .loading {
   display: flex;
@@ -337,18 +375,6 @@ body {
   color: var(--cor-cinza);
 }
 
-.grupo-tarefa__setor {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--cor-areia);
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 11px;
-  color: var(--cor-preto);
-  font-weight: 500;
-}
-
 /* ---- Banner Tarefa Completa ---- */
 .banner-completa {
   display: none;
@@ -371,7 +397,7 @@ body {
   font-size: 18px;
 }
 
-/* ---- Card Item ---- */
+/* ---- Card Item (Tarefas) ---- */
 .card-item {
   background: #fff;
   border: 1px solid #eee;
@@ -466,6 +492,129 @@ body {
 
 .card-item--concluido .card-item__seta {
   visibility: hidden;
+}
+
+/* ---- Card Aviso ---- */
+.card-aviso {
+  background: #fff;
+  border: 1px solid #eee;
+  border-left: 4px solid var(--cor-amarelo);
+  border-radius: var(--radius-card);
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.card-aviso__icone {
+  flex-shrink: 0;
+  font-size: 18px;
+  margin-top: 1px;
+}
+
+.card-aviso__corpo {
+  flex: 1;
+}
+
+.card-aviso__descricao {
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.card-aviso__freq {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--cor-amarelo);
+  background: var(--cor-amarelo-suave);
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin-top: 6px;
+}
+
+/* ---- Secao Header ---- */
+.secao-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.secao-header__icone {
+  font-size: 18px;
+}
+
+.secao-header__titulo {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--cor-cinza);
+}
+
+.secao-header__badge {
+  background: var(--cor-areia);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cor-preto);
+}
+
+/* ---- Card Projeto ---- */
+.card-projeto {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: var(--radius-card);
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.card-projeto__status {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--cor-verde);
+}
+
+.card-projeto__status--finalizado {
+  background: var(--cor-cinza-claro);
+}
+
+.card-projeto__titulo {
+  flex: 1;
+  font-size: 15px;
+}
+
+.card-projeto__titulo--finalizado {
+  text-decoration: line-through;
+  color: var(--cor-cinza-claro);
+}
+
+.card-projeto__btn {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: var(--radius-btn);
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.card-projeto__btn:hover {
+  background: var(--cor-verde-suave);
 }
 
 /* ---- Empty State ---- */
@@ -662,6 +811,100 @@ body {
   justify-content: center;
 }
 
+/* ---- Audio ---- */
+.audio-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-audio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border: 2px dashed #ccc;
+  border-radius: var(--radius-btn);
+  background: transparent;
+  color: var(--cor-cinza);
+  font-family: var(--font-body);
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition);
+  width: 100%;
+}
+
+.btn-audio:hover {
+  border-color: var(--cor-terracota);
+  color: var(--cor-terracota);
+}
+
+.btn-audio__icone {
+  font-size: 18px;
+}
+
+.audio-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.audio-preview audio {
+  flex: 1;
+  height: 36px;
+}
+
+.audio-preview__remover {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  background: rgba(0,0,0,.1);
+  color: var(--cor-preto);
+  border: none;
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.audio-gravando {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #fef2f2;
+  border-radius: var(--radius-btn);
+}
+
+.audio-gravando__dot {
+  width: 10px;
+  height: 10px;
+  background: #ef4444;
+  border-radius: 50%;
+  animation: piscar 1s ease infinite;
+}
+
+@keyframes piscar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .3; }
+}
+
+.btn-audio-parar {
+  margin-left: auto;
+  padding: 6px 14px;
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-btn);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 /* ---- Botao Confirmar ---- */
 .btn-confirmar {
   display: block;
@@ -739,4 +982,5 @@ body {
   .header { padding: 20px 24px 18px; }
   .header__saudacao { font-size: 22px; }
   .container { padding: 20px 24px; }
+  .tabs { top: 72px; }
 }

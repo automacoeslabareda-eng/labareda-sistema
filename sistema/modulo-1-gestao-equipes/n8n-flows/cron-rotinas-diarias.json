@@ -72,7 +72,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const now = new Date();\nconst brasilOffset = -3;\nconst brasilTime = new Date(now.getTime() + (brasilOffset * 60 * 60 * 1000 - now.getTimezoneOffset() * 60 * 1000));\nconst diaSemana = brasilTime.getDay();\nconst hoje = brasilTime.toISOString().split('T')[0];\n\nreturn [\n  {\n    json: {\n      ...$input.item.json,\n      dia_semana: diaSemana,\n      hoje: hoje\n    }\n  }\n];"
+        "jsCode": "const now = new Date();\nconst brasilOffset = -3;\nconst brasilTime = new Date(now.getTime() + (brasilOffset * 60 * 60 * 1000 - now.getTimezoneOffset() * 60 * 1000));\nconst diaSemana = brasilTime.getDay();\nconst diaMes = brasilTime.getDate();\nconst hoje = brasilTime.toISOString().split('T')[0];\n\n// Calcular inicio e fim da semana (seg-dom)\nconst seg = new Date(brasilTime);\nseg.setDate(brasilTime.getDate() - ((diaSemana + 6) % 7));\nconst dom = new Date(seg);\ndom.setDate(seg.getDate() + 6);\nconst semanaInicio = seg.toISOString().split('T')[0];\nconst semanaFim = dom.toISOString().split('T')[0];\n\n// Semana par/impar do ano (para quinzenal)\nconst inicioAno = new Date(brasilTime.getFullYear(), 0, 1);\nconst semanaAno = Math.ceil(((brasilTime - inicioAno) / 86400000 + inicioAno.getDay() + 1) / 7);\nconst semanaPar = semanaAno % 2 === 0;\n\nreturn [\n  {\n    json: {\n      ...$input.item.json,\n      dia_semana: diaSemana,\n      dia_mes: diaMes,\n      hoje: hoje,\n      semana_inicio: semanaInicio,\n      semana_fim: semanaFim,\n      semana_par: semanaPar\n    }\n  }\n];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -92,16 +92,12 @@
               "value": "=eq.{{ $json.id }}"
             },
             {
-              "name": "dia_semana",
-              "value": "=eq.{{ $json.dia_semana }}"
-            },
-            {
               "name": "ativo",
               "value": "eq.true"
             },
             {
               "name": "select",
-              "value": "*,setores(nome)"
+              "value": "*,setores(nome),colaboradores:responsavel_id(nome)"
             }
           ]
         },
@@ -132,7 +128,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const rotinas = $input.item.json;\nconst propriedade = $('Calcular Dia Semana').item.json;\n\n// Se nao retornou rotinas ou array vazio, retornar vazio\nif (!rotinas || (Array.isArray(rotinas) && rotinas.length === 0)) {\n  return [];\n}\n\n// Se retornou array, mapear cada rotina\nconst rotinasList = Array.isArray(rotinas) ? rotinas : [rotinas];\n\nreturn rotinasList.map(rotina => ({\n  json: {\n    rotina_id: rotina.id,\n    rotina_nome: rotina.nome,\n    setor_id: rotina.setor_id,\n    setor_nome: rotina.setores ? rotina.setores.nome : 'geral',\n    propriedade_id: propriedade.id,\n    propriedade_nome: propriedade.nome,\n    hoje: propriedade.hoje\n  }\n}));"
+        "jsCode": "const rotinas = $input.item.json;\nconst prop = $('Calcular Dia Semana').item.json;\n\nif (!rotinas || (Array.isArray(rotinas) && rotinas.length === 0)) {\n  return [];\n}\n\nconst lista = Array.isArray(rotinas) ? rotinas : [rotinas];\nconst resultado = [];\n\nfor (const r of lista) {\n  const freq = r.frequencia || 'semanal';\n  let disparar = false;\n\n  if (freq === 'semanal') {\n    disparar = r.dia_semana === prop.dia_semana;\n  } else if (freq === 'quinzenal') {\n    disparar = r.dia_semana === prop.dia_semana && prop.semana_par;\n  } else if (freq === 'mensal') {\n    disparar = r.dia_semana === prop.dia_semana && prop.dia_mes <= 7;\n  }\n\n  if (disparar) {\n    resultado.push({\n      json: {\n        rotina_id: r.id,\n        rotina_nome: r.nome,\n        setor_id: r.setor_id,\n        setor_nome: r.setores ? r.setores.nome : 'geral',\n        propriedade_id: prop.id,\n        propriedade_nome: prop.nome,\n        hoje: prop.hoje,\n        semana_inicio: prop.semana_inicio,\n        semana_fim: prop.semana_fim,\n        frequencia: freq,\n        responsavel_id: r.responsavel_id || null\n      }\n    });\n  }\n}\n\nreturn resultado;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -290,7 +286,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"propriedade_id\": {{ $json.propriedade_id }},\n  \"comando_original\": \"{{ $json.rotina_nome }}\",\n  \"descricao\": \"{{ $json.rotina_nome }}\",\n  \"setor_id\": {{ $json.setor_id }},\n  \"setor_interpretado\": \"{{ $json.setor_nome }}\",\n  \"status\": \"pendente\",\n  \"prioridade\": \"normal\",\n  \"origem\": \"rotina\",\n  \"rotina_id\": {{ $json.rotina_id }},\n  \"data_limite\": \"{{ $json.hoje }}\"\n}",
+        "jsonBody": "={\n  \"propriedade_id\": {{ $json.propriedade_id }},\n  \"comando_original\": \"{{ $json.rotina_nome }}\",\n  \"descricao\": \"{{ $json.rotina_nome }}\",\n  \"setor_id\": {{ $json.setor_id }},\n  \"setor_interpretado\": \"{{ $json.setor_nome }}\",\n  \"status\": \"pendente\",\n  \"prioridade\": \"normal\",\n  \"origem\": \"rotina\",\n  \"rotina_id\": {{ $json.rotina_id }},\n  \"data_limite\": \"{{ $json.semana_fim }}\",\n  \"data_inicio\": \"{{ $json.semana_inicio }}\",\n  \"data_fim\": \"{{ $json.semana_fim }}\",\n  \"frequencia\": \"{{ $json.frequencia }}\",\n  \"responsavel_id\": {{ $json.responsavel_id ? '\"' + $json.responsavel_id + '\"' : 'null' }}\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -416,6 +412,32 @@
       "position": [2000, 300],
       "id": "no-op-ja-gerou-001",
       "name": "Ja Gerou Hoje"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.sitiolabareda.com/webhook/whatsapp-tarefas",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"origem\": \"rotina\" }",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3200, 100],
+      "id": "disparar-whatsapp-001",
+      "name": "Disparar WhatsApp Tarefas"
     }
   ],
   "connections": {
@@ -610,6 +632,17 @@
       ]
     },
     "POST Criar Checklist Item": {
+      "main": [
+        [
+          {
+            "node": "Disparar WhatsApp Tarefas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disparar WhatsApp Tarefas": {
       "main": [
         [
           {

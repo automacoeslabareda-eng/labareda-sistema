@@ -320,6 +320,8 @@ function carregarPagina(pagina) {
     case 'relatorios':     carregarRelatorios(); break;
     case 'whatsapp':       carregarWhatsApp(); break;
     case 'configuracoes':  carregarConfiguracoes(); break;
+    case 'gastos':         carregarGastos(); break;
+    case 'veiculos':       carregarVeiculos(); break;
   }
 }
 
@@ -422,7 +424,8 @@ async function carregarColaboradores() {
         '<td><span class="badge badge--' + statusClass + '">' + statusText + '</span></td>' +
         '<td>' +
           '<button class="btn btn--small btn--secondary" onclick="editarColaborador(\'' + c.id + '\')">Editar</button> ' +
-          '<button class="btn btn--small btn--danger" onclick="toggleColaborador(\'' + c.id + '\',' + ativo + ')">' + (ativo ? 'Desativar' : 'Ativar') + '</button>' +
+          '<button class="btn btn--small btn--danger" onclick="toggleColaborador(\'' + c.id + '\',' + ativo + ')">' + (ativo ? 'Desativar' : 'Ativar') + '</button> ' +
+          '<button class="btn btn--small btn--danger" onclick="excluirColaborador(\'' + c.id + '\', \'' + escapeHtml(c.nome || '') + '\')" title="Excluir permanentemente">&times;</button>' +
         '</td>' +
         '</tr>';
     }).join('');
@@ -457,7 +460,6 @@ function abrirModalColaborador(id) {
     '<div class="form-group"><label>Email</label><input type="email" id="campo-email" placeholder="email@exemplo.com"></div>' +
     senhaHtml +
     '<div class="form-group"><label>Telefone *</label><input type="tel" id="campo-telefone" placeholder="+5573999999999" required></div>' +
-    '<div class="form-group"><label>WhatsApp</label><input type="tel" id="campo-whatsapp" placeholder="+5511999999999 (se diferente do telefone)"></div>' +
     '<div class="form-group"><label>Funcao *</label><input type="text" id="campo-funcao" placeholder="Ex: Auxiliar de cozinha" required></div>' +
     '<div class="form-group"><label>Setor *</label><select id="campo-setor" required><option value="">Selecione</option>' + setorOptions + '</select></div>' +
     '<div class="form-group"><label>Propriedade *</label><select id="campo-propriedade" required><option value="">Selecione</option>' + propOptions + '</select></div>';
@@ -494,8 +496,6 @@ async function carregarDadosColaboradorModal(id) {
       if (campoFunc) campoFunc.value = c.funcao || '';
       if (campoSetor) campoSetor.value = c.setor_id || '';
       if (campoProp) campoProp.value = c.propriedade_id || '';
-      var campoWpp = $('#campo-whatsapp');
-      if (campoWpp) campoWpp.value = c.whatsapp_jid || '';
     }
   } catch (err) {
     console.error('Erro ao carregar colaborador:', err);
@@ -514,6 +514,35 @@ async function toggleColaborador(id, atualmenteAtivo) {
   } catch (err) {
     console.error(err);
     mostrarToast('Erro ao alterar status', 'error');
+  }
+}
+
+async function excluirColaborador(id, nome) {
+  if (!confirm('Tem certeza que deseja excluir o colaborador "' + nome + '"?\n\nIsso ira remover permanentemente todos os avisos, tarefas e dados associados.')) return;
+  if (!confirm('CONFIRMACAO FINAL: Excluir "' + nome + '" permanentemente? Esta acao nao pode ser desfeita.')) return;
+
+  try {
+    // Remover dependencias primeiro
+    var url = CONFIG.SUPABASE_URL + '/rest/v1/';
+    var h = apiHeaders('return=minimal');
+
+    await fetch(url + 'avisos?colaborador_id=eq.' + id, { method: 'DELETE', headers: h });
+    await fetch(url + 'rotina_items?colaborador_id=eq.' + id, { method: 'DELETE', headers: h });
+    await fetch(url + 'checklist_items?colaborador_id=eq.' + id, { method: 'DELETE', headers: h });
+    await fetch(url + 'projetos?colaborador_id=eq.' + id, { method: 'DELETE', headers: h });
+    await fetch(url + 'gastos?colaborador_id=eq.' + id, { method: 'DELETE', headers: h });
+
+    // Remover rotinas onde e responsavel
+    await fetch(url + 'rotinas_semanais?responsavel_id=eq.' + id, { method: 'DELETE', headers: h });
+
+    // Remover colaborador
+    await fetch(url + 'colaboradores?id=eq.' + id, { method: 'DELETE', headers: h });
+
+    mostrarToast('Colaborador "' + nome + '" excluido permanentemente');
+    carregarColaboradores();
+  } catch (err) {
+    console.error('Erro ao excluir colaborador:', err);
+    mostrarToast('Erro ao excluir colaborador', 'error');
   }
 }
 
@@ -549,7 +578,7 @@ async function carregarTarefas() {
   try {
     preencherFiltroSetorTarefas();
 
-    var qs = '?select=*,colaboradores:responsavel_id(nome,funcao),setores:setor_id(nome,icone)&order=created_at.desc';
+    var qs = '?select=*,colaboradores:responsavel_id(nome,funcao),setores:setor_id(nome,icone),checklist_items(id,status)&order=created_at.desc';
     var statusFiltro = ($('#filtro-tarefa-status') || {}).value || '';
     var setorFiltro = ($('#filtro-tarefa-setor') || {}).value || '';
     var prioFiltro = ($('#filtro-tarefa-prio') || {}).value || '';
@@ -573,7 +602,14 @@ async function carregarTarefas() {
       var prioridade = (t.prioridade || 'normal').toLowerCase();
       var cmd = t.comando_original || t.descricao || '--';
       if (cmd.length > 60) cmd = cmd.substring(0, 57) + '...';
-      var conclusao = t.porcentagem_conclusao || 0;
+      var conclusao = 0;
+      if (t.checklist_items && t.checklist_items.length > 0) {
+        var totalItens = t.checklist_items.length;
+        var itensConcluidos = t.checklist_items.filter(function(i) { return i.status === 'concluido'; }).length;
+        conclusao = Math.round((itensConcluidos / totalItens) * 100);
+      } else {
+        conclusao = t.porcentagem_conclusao || 0;
+      }
       var responsavel = (t.colaboradores && t.colaboradores.nome) ? t.colaboradores.nome : '--';
       var setorNome = (t.setores && t.setores.nome) || t.setor_interpretado || '--';
       var setorIcone = (t.setores && t.setores.icone) || '';
@@ -1042,18 +1078,364 @@ var rotinaAbertaId = null;
 var diasSemana = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado'];
 
 async function carregarRotinas() {
+  await carregarRotinasTabela();
+  // Avisos esporadicos (se existirem)
+  carregarAvisosEsporadicos();
+}
+
+async function carregarAvisosEsporadicos() {
+  var container = document.getElementById('avisos-admin-container');
   try {
-    var qs = '?select=*,setores(nome,icone)&order=dia_semana.asc,hora_disparo.asc';
+    var qs = '?select=*,colaboradores:colaborador_id(nome)&order=created_at.desc';
+    qs = addPropFiltro(qs);
+    var data = await supaFetch('avisos' + qs);
+    if (!data || data.length === 0) {
+      container.innerHTML = '<p class="placeholder" style="font-size:13px">Nenhum aviso esporadico</p>';
+      return;
+    }
+    container.innerHTML = data.map(function(a) {
+      var colabNome = (a.colaboradores && a.colaboradores.nome) || '--';
+      return '<div class="aviso-item">' +
+        '<span class="aviso-item__num">📢</span>' +
+        '<span class="aviso-item__desc"><strong>' + escapeHtml(colabNome) + ':</strong> ' + escapeHtml(a.descricao) + '</span>' +
+        '<span class="aviso-item__acoes" style="opacity:1">' +
+          '<button class="btn btn--small btn--danger" onclick="excluirAviso(\'' + a.id + '\')">&times;</button>' +
+        '</span>' +
+      '</div>';
+    }).join('');
+  } catch (err) {
+    container.innerHTML = '<p class="placeholder">Erro ao carregar</p>';
+  }
+}
+
+async function carregarAvisosAdmin() {
+  var container = document.getElementById('avisos-admin-container');
+
+  try {
+    var qs = '?select=*,colaboradores:colaborador_id(nome,msg_aviso,setor_id,setores:setor_id(nome))&order=colaborador_id.asc,frequencia.asc,descricao.asc';
+    qs = addPropFiltro(qs);
+
+    var colabFiltro = document.getElementById('filtro-aviso-colaborador');
+    if (colabFiltro && colabFiltro.value) {
+      qs += '&colaborador_id=eq.' + colabFiltro.value;
+    }
+
+    var freqFiltro = document.getElementById('filtro-aviso-frequencia');
+    if (freqFiltro && freqFiltro.value) {
+      qs += '&frequencia=eq.' + freqFiltro.value;
+    }
+
+    // Popular select de colaboradores (primeira vez)
+    if (colabFiltro && colabFiltro.options.length <= 1) {
+      var qsC = '?select=id,nome&ativo=eq.true&order=nome.asc';
+      qsC = addPropFiltro(qsC);
+      var colabs = await supaFetch('colaboradores' + qsC);
+      colabs.forEach(function(c) {
+        var opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.nome;
+        colabFiltro.appendChild(opt);
+      });
+    }
+
+    var data = await supaFetch('avisos' + qs);
+
+    if (!data || data.length === 0) {
+      container.innerHTML =
+        '<div class="avisos-vazio">' +
+          '<div class="avisos-vazio__icon">&#128276;</div>' +
+          '<p>Nenhum aviso encontrado</p>' +
+        '</div>';
+      return;
+    }
+
+    // Mapeamentos
+    var freqLabels  = { diario: 'Diario', semanal: 'Semanal', quinzenal: 'Quinzenal', mensal: 'Mensal' };
+    var freqOrdem   = ['semanal', 'quinzenal', 'mensal', 'diario'];
+    var diasNomes   = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+
+    // Icones por setor (nome do setor em lowercase como chave)
+    var setorIcones = {
+      gado:       '&#128004;',
+      lavoura:    '&#127807;',
+      irrigacao:  '&#128167;',
+      maquinas:   '&#128663;',
+      manutencao: '&#128295;',
+      escritorio: '&#128188;',
+    };
+
+    function getSetorIcon(setorNome) {
+      if (!setorNome) return '&#128100;';
+      var slug = setorNome.toLowerCase().replace(/\s+/g, '').replace(/[^a-z]/g, '');
+      return setorIcones[slug] || '&#128100;';
+    }
+
+    function getDiaTexto(aviso) {
+      if (aviso.frequencia === 'semanal' && aviso.dia_disparo_semana !== null && aviso.dia_disparo_semana !== undefined) {
+        return diasNomes[aviso.dia_disparo_semana] || ('Dia ' + aviso.dia_disparo_semana);
+      }
+      if (aviso.dias_disparo_mes) {
+        return 'Dia ' + aviso.dias_disparo_mes;
+      }
+      return '';
+    }
+
+    // Agrupar por colaborador
+    var porColab = {};
+    var colabOrdem = [];
+
+    data.forEach(function(a) {
+      var cid = a.colaborador_id || 'sem-colab';
+      if (!porColab[cid]) {
+        var colabNome = (a.colaboradores && a.colaboradores.nome) || 'Sem colaborador';
+        var setorNome = (a.colaboradores && a.colaboradores.setores && a.colaboradores.setores.nome) || '';
+        var msgAviso = (a.colaboradores && a.colaboradores.msg_aviso) || '';
+        porColab[cid] = { nome: colabNome, setor: setorNome, msgAviso: msgAviso, avisos: [] };
+        colabOrdem.push(cid);
+      }
+      porColab[cid].avisos.push(a);
+    });
+
+    // Renderizar cards
+    var html = '<div class="avisos-grid">';
+
+    colabOrdem.forEach(function(cid) {
+      var colab = porColab[cid];
+      var total = colab.avisos.length;
+      var icon  = getSetorIcon(colab.setor);
+
+      // Dia de disparo do colaborador
+      var diasNomesCard = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado'];
+      var diaDisparo = colab.avisos[0] && colab.avisos[0].dia_disparo_semana !== null
+        ? diasNomesCard[colab.avisos[0].dia_disparo_semana]
+        : '';
+
+      // Card do colaborador
+      html +=
+        '<div class="aviso-colab-card" id="aviso-card-' + escapeHtml(cid) + '">' +
+          '<div class="aviso-colab-header" onclick="toggleAvisoCard(\'' + escapeHtml(cid) + '\')">' +
+            '<div class="aviso-colab-icon">' + icon + '</div>' +
+            '<div class="aviso-colab-info">' +
+              '<div class="aviso-colab-nome">' + escapeHtml(colab.nome) + '</div>' +
+              '<div class="aviso-colab-sub">' + escapeHtml(colab.setor || '') + (diaDisparo ? ' — toda ' + diaDisparo : '') + '</div>' +
+            '</div>' +
+            '<span class="aviso-count-badge">' + total + ' lembretes</span>' +
+            '<span class="aviso-colab-arrow">&#9660;</span>' +
+          '</div>' +
+          '<div class="aviso-colab-body">';
+
+      // Mensagem WhatsApp como conteudo principal
+      var msgTexto = colab.msgAviso || '(Nenhuma mensagem configurada — clique em Salvar para criar)';
+      html +=
+        '<div class="msg-preview" style="margin-top:0;border-top:none;padding-top:0">' +
+          '<label class="msg-preview__label">Mensagem que sera enviada via WhatsApp:</label>' +
+          '<textarea class="msg-preview__textarea" id="msg-text-' + escapeHtml(cid) + '" rows="10">' + escapeHtml(msgTexto) + '</textarea>' +
+          '<div style="display:flex;gap:8px;margin-top:8px;align-items:center">' +
+            '<button class="btn btn--small btn--primary" onclick="salvarMsgAviso(\'' + escapeHtml(cid) + '\')">Salvar mensagem</button>' +
+            '<button class="btn btn--small btn--secondary" onclick="toggleItensAviso(\'' + escapeHtml(cid) + '\')">Gerenciar itens (' + total + ')</button>' +
+          '</div>' +
+        '</div>';
+
+      // Lista de itens — escondida por padrao
+      html += '<div class="aviso-itens-gerenciar escondido" id="aviso-itens-' + escapeHtml(cid) + '">';
+      html += '<div class="aviso-itens-header">Itens individuais — edite ou exclua:</div>';
+      colab.avisos.forEach(function(a, idx) {
+        html +=
+          '<div class="aviso-item">' +
+            '<span class="aviso-item__num">' + (idx + 1) + '</span>' +
+            '<span class="aviso-item__desc">' + escapeHtml(a.descricao) + '</span>' +
+            '<span class="aviso-item__acoes">' +
+              '<button class="btn btn--small btn--secondary" onclick="abrirModalEditarAviso(\'' + a.id + '\')" title="Editar">&#9998;</button> ' +
+              '<button class="btn btn--small btn--danger" onclick="excluirAviso(\'' + a.id + '\')" title="Excluir">&times;</button>' +
+            '</span>' +
+          '</div>';
+      });
+      html += '</div>';
+
+      html += '</div></div>'; // .aviso-colab-body .aviso-colab-card
+    });
+
+    html += '</div>'; // .avisos-grid
+    container.innerHTML = html;
+
+  } catch (err) {
+    console.error('Erro ao carregar avisos:', err);
+    container.innerHTML =
+      '<div class="avisos-vazio">' +
+        '<div class="avisos-vazio__icon">&#9888;</div>' +
+        '<p>Erro ao carregar avisos. Tente novamente.</p>' +
+      '</div>';
+  }
+}
+
+function toggleAvisoCard(cid) {
+  var card = document.getElementById('aviso-card-' + cid);
+  if (card) card.classList.toggle('is-open');
+}
+
+async function excluirAviso(id) {
+  if (!confirm('Excluir este aviso?')) return;
+  try {
+    var url = CONFIG.SUPABASE_URL + '/rest/v1/avisos?id=eq.' + id;
+    await fetch(url, { method: 'DELETE', headers: apiHeaders('return=minimal') });
+    carregarAvisosAdmin();
+    mostrarToast('Aviso excluido');
+  } catch (err) {
+    mostrarToast('Erro ao excluir', 'error');
+  }
+}
+
+function montarFormAviso() {
+  return '<div class="form-group"><label>Colaborador *</label><select id="aviso-colaborador" class="input"><option value="">Carregando...</option></select></div>' +
+    '<div class="form-group"><label>Descricao do lembrete *</label><input id="aviso-descricao" class="input" placeholder="Ex: Verificar caixa d\'agua"></div>' +
+    '<div class="form-group"><label>Dia do disparo via WhatsApp *</label><select id="aviso-dia-semana" class="input">' +
+      '<option value="1">Segunda-feira</option>' +
+      '<option value="2">Terca-feira</option>' +
+      '<option value="3">Quarta-feira</option>' +
+      '<option value="4">Quinta-feira</option>' +
+      '<option value="5">Sexta-feira</option>' +
+      '<option value="6">Sabado</option>' +
+      '<option value="0">Domingo</option>' +
+    '</select></div>' +
+    '<p style="font-size:12px;color:var(--text-muted);margin-top:-8px">O lembrete sera enviado toda semana neste dia via WhatsApp.</p>';
+}
+
+function carregarColabsNoSelect(selectId) {
+  var qsC = '?select=id,nome&ativo=eq.true&order=nome.asc';
+  qsC = addPropFiltro(qsC);
+  supaFetch('colaboradores' + qsC).then(function(colabs) {
+    var sel = document.getElementById(selectId);
+    sel.innerHTML = '<option value="">-- Selecione --</option>';
+    colabs.forEach(function(c) {
+      var opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.nome;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+function abrirModalAviso() {
+  modalModo = 'aviso-novo';
+  $('#modal-titulo').textContent = 'Novo Aviso';
+
+  if (propriedadeFiltro === 'todas') {
+    mostrarToast('Selecione uma propriedade primeiro', 'error');
+    return;
+  }
+
+  $('#modal-body').innerHTML = montarFormAviso();
+  $('#modal-btn-salvar').onclick = salvarAviso;
+  $('#modal-overlay').classList.remove('escondido');
+  carregarColabsNoSelect('aviso-colaborador');
+}
+
+async function salvarAviso() {
+  var colaboradorId = document.getElementById('aviso-colaborador').value;
+  var descricao = document.getElementById('aviso-descricao').value.trim();
+
+  if (!colaboradorId || !descricao) {
+    mostrarToast('Preencha colaborador e descricao', 'error');
+    return;
+  }
+
+  try {
+    await supaInsert('avisos', {
+      propriedade_id: propriedadeFiltro,
+      colaborador_id: colaboradorId,
+      descricao: descricao,
+      frequencia: 'semanal',
+      dia_disparo_semana: parseInt(document.getElementById('aviso-dia-semana').value),
+      dias_disparo_mes: null,
+    });
+    fecharModal();
+    carregarAvisosAdmin();
+    mostrarToast('Aviso criado!');
+  } catch (err) {
+    mostrarToast('Erro ao salvar aviso', 'error');
+  }
+}
+
+function toggleItensAviso(cid) {
+  var el = document.getElementById('aviso-itens-' + cid);
+  if (el) el.classList.toggle('escondido');
+}
+
+async function salvarMsgAviso(colaboradorId) {
+  var textarea = document.getElementById('msg-text-' + colaboradorId);
+  if (!textarea) return;
+
+  try {
+    await supaUpdate('colaboradores', colaboradorId, { msg_aviso: textarea.value });
+    mostrarToast('Mensagem salva!');
+  } catch (err) {
+    mostrarToast('Erro ao salvar mensagem', 'error');
+  }
+}
+
+async function abrirModalEditarAviso(avisoId) {
+  modalModo = 'aviso-editar';
+  modalItemId = avisoId;
+  $('#modal-titulo').textContent = 'Editar Aviso';
+
+  $('#modal-body').innerHTML = montarFormAviso();
+
+  $('#modal-btn-salvar').onclick = async function() {
+    var descricao = document.getElementById('aviso-descricao').value.trim();
+    var colaboradorId = document.getElementById('aviso-colaborador').value;
+    if (!descricao || !colaboradorId) { mostrarToast('Preencha colaborador e descricao', 'error'); return; }
+
+    try {
+      await supaUpdate('avisos', avisoId, {
+        colaborador_id: colaboradorId,
+        descricao: descricao,
+        frequencia: 'semanal',
+        dia_disparo_semana: parseInt(document.getElementById('aviso-dia-semana').value),
+      });
+      fecharModal();
+      carregarAvisosAdmin();
+      mostrarToast('Aviso atualizado!');
+    } catch (err) {
+      mostrarToast('Erro ao atualizar', 'error');
+    }
+  };
+
+  $('#modal-overlay').classList.remove('escondido');
+
+  // Carregar colaboradores e preencher dados
+  carregarColabsNoSelect('aviso-colaborador');
+
+  try {
+    var avisoData = await supaFetch('avisos?id=eq.' + avisoId);
+    if (avisoData && avisoData.length > 0) {
+      var a = avisoData[0];
+      // Aguardar select popular
+      setTimeout(function() {
+        document.getElementById('aviso-colaborador').value = a.colaborador_id || '';
+      }, 500);
+      document.getElementById('aviso-descricao').value = a.descricao || '';
+      document.getElementById('aviso-dia-semana').value = (a.dia_disparo_semana !== null) ? a.dia_disparo_semana : 1;
+    }
+  } catch (err) {
+    console.error('Erro ao carregar aviso:', err);
+  }
+}
+
+async function carregarRotinasTabela() {
+  try {
+    var qs = '?select=*,setores(nome,icone),colaboradores:responsavel_id(nome)&order=dia_semana.asc,hora_disparo.asc';
     qs = addPropFiltro(qs);
 
     var data = await supaFetch('rotinas_semanais' + qs);
     var tbody = $('#tbody-rotinas');
 
     if (!data || data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="placeholder">Nenhuma rotina encontrada. Clique em "+ Nova Rotina" para criar.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="placeholder">Nenhuma rotina encontrada. Clique em "+ Nova Rotina" para criar.</td></tr>';
       $('#rotina-detalhe').classList.add('escondido');
       return;
     }
+
+    var freqLabels = { semanal: 'Semanal', quinzenal: 'Quinzenal', mensal: 'Mensal' };
 
     tbody.innerHTML = data.map(function(r) {
       var ativo = r.ativo !== false;
@@ -1062,16 +1444,29 @@ async function carregarRotinas() {
       var setorNome = (r.setores && r.setores.nome) || '--';
       var setorIcone = (r.setores && r.setores.icone) || '';
       var diaNome = (r.dia_semana !== null && r.dia_semana !== undefined) ? (diasSemana[r.dia_semana] || r.dia_semana) : '--';
-      var hora = r.hora_disparo || '--';
+      var freq = freqLabels[r.frequencia] || r.frequencia || 'Semanal';
+      var respNome = (r.colaboradores && r.colaboradores.nome) || 'Todos';
       var isAtiva = rotinaAbertaId === r.id;
+
+      // Dias de lembrete WhatsApp
+      var diasLembrete = r.dias_lembrete || 'mesmo_dia';
+      var diasTexto = '';
+      if (diasLembrete === 'mesmo_dia') {
+        diasTexto = diaNome;
+      } else {
+        diasTexto = diasLembrete.split(',').map(function(d) { return diasSemana[parseInt(d)] || d; }).join(', ');
+      }
+      var temMsg = r.msg_whatsapp ? true : false;
 
       return '<tr class="tr-clicavel' + (isAtiva ? ' tr-ativa' : '') + '" onclick="expandirRotina(\'' + r.id + '\')">' +
         '<td>' + escapeHtml(r.nome || '--') + '</td>' +
         '<td>' + escapeHtml(setorIcone + ' ' + setorNome) + '</td>' +
-        '<td>' + escapeHtml(String(diaNome)) + '</td>' +
-        '<td>' + escapeHtml(hora) + '</td>' +
+        '<td>' + freq + '</td>' +
+        '<td>' + escapeHtml(respNome) + '</td>' +
+        '<td>' + escapeHtml(diasTexto) + '</td>' +
         '<td><span class="badge badge--' + statusClass + '">' + statusText + '</span></td>' +
         '<td class="td-acoes" onclick="event.stopPropagation()">' +
+          '<button class="btn btn--small btn--secondary" onclick="mostrarMsgRotina(\'' + r.id + '\')" title="Mensagem WhatsApp">📱</button> ' +
           '<button class="btn btn--small btn--secondary" onclick="abrirModalRotina(\'' + r.id + '\')" title="Editar">&#9998;</button> ' +
           '<button class="btn btn--small btn--danger" onclick="toggleRotina(\'' + r.id + '\',' + ativo + ')" title="' + (ativo ? 'Desativar' : 'Ativar') + '">' + (ativo ? '&#10005;' : '&#10003;') + '</button>' +
         '</td>' +
@@ -1080,7 +1475,47 @@ async function carregarRotinas() {
 
   } catch (err) {
     console.error('Erro ao carregar rotinas:', err);
-    $('#tbody-rotinas').innerHTML = '<tr><td colspan="6" class="placeholder">Erro ao carregar</td></tr>';
+    $('#tbody-rotinas').innerHTML = '<tr><td colspan="7" class="placeholder">Erro ao carregar</td></tr>';
+  }
+}
+
+var rotinaWhatsappId = null;
+
+async function mostrarMsgRotina(rotinaId) {
+  try {
+    var data = await supaFetch('rotinas_semanais?id=eq.' + rotinaId + '&select=id,msg_whatsapp,dias_lembrete,nome');
+    if (!data || data.length === 0) return;
+    var r = data[0];
+    rotinaWhatsappId = rotinaId;
+
+    var diasTexto = r.dias_lembrete || 'mesmo_dia';
+    if (diasTexto !== 'mesmo_dia') {
+      diasTexto = 'Dias: ' + diasTexto.split(',').map(function(d) { return diasSemana[parseInt(d)] || d; }).join(', ');
+    } else {
+      diasTexto = 'Mesmo dia da rotina';
+    }
+
+    $('#rotina-dias-lembrete').textContent = diasTexto;
+    $('#rotina-msg-texto').value = r.msg_whatsapp || '(Sem mensagem — edite e salve)';
+    $('#rotina-dias-input').value = r.dias_lembrete || 'mesmo_dia';
+    $('#rotina-whatsapp').classList.remove('escondido');
+    $('#rotina-whatsapp').scrollIntoView({ behavior: 'smooth' });
+  } catch (err) {
+    mostrarToast('Erro ao carregar mensagem', 'error');
+  }
+}
+
+async function salvarMsgRotina() {
+  if (!rotinaWhatsappId) return;
+  try {
+    await supaUpdate('rotinas_semanais', rotinaWhatsappId, {
+      msg_whatsapp: $('#rotina-msg-texto').value,
+      dias_lembrete: $('#rotina-dias-input').value.trim() || 'mesmo_dia',
+    });
+    mostrarToast('Mensagem e dias salvos!');
+    carregarRotinasTabela();
+  } catch (err) {
+    mostrarToast('Erro ao salvar', 'error');
   }
 }
 
@@ -2529,11 +2964,6 @@ async function salvarModal() {
         propriedade_id: propriedadeId,
       };
 
-      // Handle WhatsApp
-      var wpp = (($('#campo-whatsapp') || {}).value || '').trim();
-      if (wpp) {
-        body.whatsapp_jid = wpp;
-      }
 
       // Handle password
       var senha = (($('#campo-senha') || {}).value || '').trim();
@@ -2656,6 +3086,40 @@ async function salvarModal() {
             }
           }
         }
+
+        // Disparar WhatsApp direto para cada colaborador atribuido
+        try {
+          var colabsNotificar = [];
+          if (responsavelId) {
+            // Responsavel especifico
+            var rc = await supaFetch('colaboradores?id=eq.' + responsavelId + '&select=nome,telefone,email,senha_hash');
+            if (rc && rc.length > 0) colabsNotificar.push(rc[0]);
+          } else if (colabsDoSetor && colabsDoSetor.length > 0) {
+            // Todos do setor
+            var ids = colabsDoSetor.map(function(c) { return c.id; }).join(',');
+            var rc = await supaFetch('colaboradores?id=in.(' + ids + ')&select=nome,telefone,email,senha_hash');
+            if (rc) colabsNotificar = rc;
+          }
+
+          var itensTexto = checklistModalItems.length > 0
+            ? checklistModalItems.map(function(it, i) { return '  ' + (i+1) + '. ' + it; }).join('\n')
+            : '  1. ' + desc;
+
+          for (var wi = 0; wi < colabsNotificar.length; wi++) {
+            var colab = colabsNotificar[wi];
+            var tel = (colab.telefone || '').replace(/\D/g, '');
+            if (!tel || tel.includes('00000000')) continue;
+            if (!tel.startsWith('55')) tel = '55' + tel;
+
+            var msg = '\u{1f4cb} Ola ' + colab.nome + '!\n\nVoce tem uma nova tarefa:\n\n' + itensTexto + '\n\n\u{1f449} Acesse seu painel:\nhttps://sitiolabareda.com/painel\n\n\u{1f511} Email: ' + (colab.email || '') + '\n\u{1f511} Senha: ' + (colab.senha_hash || '');
+
+            fetch('https://n8n.sitiolabareda.com/webhook/whatsapp-envio-direto', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ telefone: tel, mensagem: msg }),
+            }).catch(function(e) { console.log('WhatsApp:', e.message); });
+          }
+        } catch(e) { console.log('Erro WhatsApp:', e); }
       } else {
         await supaUpdate('tarefas', modalItemId, body);
         mostrarToast('Tarefa atualizada');
@@ -2709,8 +3173,11 @@ async function salvarModal() {
   }
 }
 
-function fecharModal(event) {
-  if (event && event.target && !event.target.classList.contains('modal-overlay')) return;
+function modalOverlayMouseDown(event) {
+  // Nao fecha ao clicar fora — so pelo botao Cancelar/Fechar
+}
+
+function fecharModal() {
   $('#modal-overlay').classList.add('escondido');
   modalModo = null;
   modalItemId = null;
@@ -2759,3 +3226,373 @@ function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+/* ================================================================== */
+/*  GASTOS                                                            */
+/* ================================================================== */
+async function carregarGastos() {
+  try {
+    var qs = '?select=*,colaboradores:colaborador_id(nome)&order=data.desc,created_at.desc';
+    qs = addPropFiltro(qs);
+
+    var tipoFiltro = document.getElementById('filtro-gasto-tipo');
+    if (tipoFiltro && tipoFiltro.value) {
+      qs += '&tipo=eq.' + tipoFiltro.value;
+    }
+
+    var mesFiltro = document.getElementById('filtro-gasto-mes');
+    if (mesFiltro && mesFiltro.value) {
+      var [ano, mes] = mesFiltro.value.split('-');
+      var inicio = ano + '-' + mes + '-01';
+      var ultimoDia = new Date(parseInt(ano), parseInt(mes), 0).getDate();
+      var fim = ano + '-' + mes + '-' + String(ultimoDia).padStart(2, '0');
+      qs += '&data=gte.' + inicio + '&data=lte.' + fim;
+    }
+
+    var data = await supaFetch('gastos' + qs);
+    var tbody = document.getElementById('tbody-gastos');
+
+    if (!data || data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="placeholder">Nenhum gasto encontrado</td></tr>';
+      document.getElementById('gastos-resumo').innerHTML = '';
+      return;
+    }
+
+    var totalEntradas = 0;
+    var totalSaidas = 0;
+
+    tbody.innerHTML = data.map(function(g) {
+      if (g.tipo === 'entrada') totalEntradas += parseFloat(g.valor) || 0;
+      else totalSaidas += parseFloat(g.valor) || 0;
+
+      var colabNome = (g.colaboradores && g.colaboradores.nome) || '--';
+      var tipoClass = g.tipo === 'entrada' ? 'badge--concluida' : 'badge--pendente';
+      var tipoLabel = g.tipo === 'entrada' ? 'Entrada' : 'Saida';
+
+      return '<tr>' +
+        '<td>' + formatarData(g.data) + '</td>' +
+        '<td><span class="badge ' + tipoClass + '">' + tipoLabel + '</span></td>' +
+        '<td>' + escapeHtml(g.descricao) + '</td>' +
+        '<td>R$ ' + parseFloat(g.valor).toFixed(2) + '</td>' +
+        '<td>' + escapeHtml(colabNome) + '</td>' +
+        '<td><button class="btn btn--small btn--danger" onclick="excluirGasto(\'' + g.id + '\')">Excluir</button></td>' +
+        '</tr>';
+    }).join('');
+
+    var saldo = totalEntradas - totalSaidas;
+    var saldoClass = saldo >= 0 ? 'color: var(--success)' : 'color: var(--pending-text)';
+    document.getElementById('gastos-resumo').innerHTML =
+      '<div style="display:flex;gap:24px;padding:16px 0;font-weight:600">' +
+        '<span style="color:var(--success)">Entradas: R$ ' + totalEntradas.toFixed(2) + '</span>' +
+        '<span style="color:var(--pending-text)">Saidas: R$ ' + totalSaidas.toFixed(2) + '</span>' +
+        '<span style="' + saldoClass + '">Saldo: R$ ' + saldo.toFixed(2) + '</span>' +
+      '</div>';
+
+  } catch (err) {
+    console.error('Erro ao carregar gastos:', err);
+    mostrarToast('Erro ao carregar gastos', 'error');
+  }
+}
+
+function abrirModalGasto() {
+  modalModo = 'criar';
+  document.getElementById('modal-titulo').textContent = 'Novo Gasto';
+
+  var colabOptions = '<option value="">-- Selecione --</option>';
+  // Will be populated after fetch
+
+  var hoje = new Date().toISOString().split('T')[0];
+
+  document.getElementById('modal-body').innerHTML =
+    '<div class="form-group"><label>Tipo</label>' +
+    '<select id="gasto-tipo" class="input"><option value="saida">Saida</option><option value="entrada">Entrada</option></select></div>' +
+    '<div class="form-group"><label>Descricao</label><input id="gasto-descricao" class="input" placeholder="Ex: Gasolina 50 reais"></div>' +
+    '<div class="form-group"><label>Valor (R$)</label><input id="gasto-valor" class="input" type="number" step="0.01" min="0"></div>' +
+    '<div class="form-group"><label>Data</label><input id="gasto-data" class="input" type="date" value="' + hoje + '"></div>' +
+    '<div class="form-group"><label>Categoria (opcional)</label><input id="gasto-categoria" class="input" placeholder="Ex: combustivel, racao"></div>' +
+    '<div class="form-group"><label>Colaborador</label><select id="gasto-colaborador" class="input"><option value="">Carregando...</option></select></div>' +
+    '<div class="form-group"><label>Observacao</label><textarea id="gasto-obs" class="input" rows="2"></textarea></div>';
+
+  document.getElementById('modal-btn-salvar').onclick = salvarGasto;
+  document.getElementById('modal-overlay').classList.remove('escondido');
+
+  // Carregar colaboradores no select
+  var qs = '?select=id,nome&ativo=eq.true&order=nome.asc';
+  qs = addPropFiltro(qs);
+  supaFetch('colaboradores' + qs).then(function(colabs) {
+    var sel = document.getElementById('gasto-colaborador');
+    sel.innerHTML = '<option value="">-- Selecione --</option>';
+    colabs.forEach(function(c) {
+      var opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.nome;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+async function salvarGasto() {
+  var tipo = document.getElementById('gasto-tipo').value;
+  var descricao = document.getElementById('gasto-descricao').value.trim();
+  var valor = parseFloat(document.getElementById('gasto-valor').value);
+  var data = document.getElementById('gasto-data').value;
+  var categoria = document.getElementById('gasto-categoria').value.trim();
+  var colaboradorId = document.getElementById('gasto-colaborador').value;
+  var obs = document.getElementById('gasto-obs').value.trim();
+
+  if (!descricao || !valor || !data) {
+    mostrarToast('Preencha descricao, valor e data', 'error');
+    return;
+  }
+
+  try {
+    var payload = {
+      tipo: tipo,
+      descricao: descricao,
+      valor: valor,
+      data: data,
+      categoria: categoria || null,
+      colaborador_id: colaboradorId || null,
+      observacao: obs || null,
+      propriedade_id: propriedadeFiltro !== 'todas' ? propriedadeFiltro : cachePropriedades[0].id,
+    };
+
+    await supaInsert('gastos', payload);
+    fecharModal();
+    carregarGastos();
+    mostrarToast('Gasto registrado!');
+  } catch (err) {
+    console.error('Erro ao salvar gasto:', err);
+    mostrarToast('Erro ao salvar gasto', 'error');
+  }
+}
+
+async function excluirGasto(id) {
+  if (!confirm('Excluir este gasto?')) return;
+  try {
+    var url = CONFIG.SUPABASE_URL + '/rest/v1/gastos?id=eq.' + id;
+    var r = await fetch(url, { method: 'DELETE', headers: apiHeaders('return=minimal') });
+    if (!r.ok) throw new Error('Erro');
+    carregarGastos();
+    mostrarToast('Gasto excluido');
+  } catch (err) {
+    mostrarToast('Erro ao excluir', 'error');
+  }
+}
+
+/* ================================================================== */
+/*  VEICULOS                                                          */
+/* ================================================================== */
+async function carregarVeiculos() {
+  try {
+    // Veiculos
+    var qsV = '?select=*&order=nome.asc';
+    qsV = addPropFiltro(qsV);
+    var veiculos = await supaFetch('veiculos' + qsV);
+
+    var container = document.getElementById('lista-veiculos');
+    if (!veiculos || veiculos.length === 0) {
+      container.innerHTML = '<p class="placeholder">Nenhum veiculo cadastrado</p>';
+    } else {
+      container.innerHTML = veiculos.map(function(v) {
+        return '<div class="lista-simples__item" style="display:flex;align-items:center;gap:12px;padding:12px">' +
+          '<span style="font-size:24px">🚗</span>' +
+          '<div style="flex:1">' +
+            '<strong>' + escapeHtml(v.nome) + '</strong>' +
+            (v.placa ? ' <small style="color:var(--text-muted)">(' + escapeHtml(v.placa) + ')</small>' : '') +
+            (v.km_atual ? '<br><small>KM atual: ' + v.km_atual + '</small>' : '') +
+          '</div>' +
+          '<span class="badge badge--' + (v.ativo ? 'concluida' : 'pendente') + '">' + (v.ativo ? 'Ativo' : 'Inativo') + '</span>' +
+        '</div>';
+      }).join('');
+    }
+
+    // Uso de veiculos
+    var qsU = '?select=*,veiculos:veiculo_id(nome),colaboradores:colaborador_id(nome)&order=saida_at.desc&limit=20';
+    qsU = addPropFiltro(qsU);
+    var usos = await supaFetch('veiculos_uso' + qsU);
+
+    var tbodyUso = document.getElementById('tbody-veiculos-uso');
+    if (!usos || usos.length === 0) {
+      tbodyUso.innerHTML = '<tr><td colspan="7" class="placeholder">Nenhum registro de uso</td></tr>';
+    } else {
+      tbodyUso.innerHTML = usos.map(function(u) {
+        var veiculoNome = (u.veiculos && u.veiculos.nome) || '--';
+        var colabNome = (u.colaboradores && u.colaboradores.nome) || '--';
+        var saida = u.saida_at ? new Date(u.saida_at).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '--';
+        var emUso = !u.entrada_at;
+        var entrada = u.entrada_at ? new Date(u.entrada_at).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '<button class="btn btn--small btn--secondary" onclick="abrirModalEntradaVeiculo(\'' + u.id + '\', \'' + escapeHtml(veiculoNome) + '\', ' + (u.km_saida || 0) + ')">Registrar Entrada</button>';
+        return '<tr' + (emUso ? ' style="background:var(--bg-warning, #fff8e1)"' : '') + '>' +
+          '<td>' + escapeHtml(veiculoNome) + '</td>' +
+          '<td>' + escapeHtml(colabNome) + '</td>' +
+          '<td>' + escapeHtml(u.destino || '--') + '</td>' +
+          '<td>' + (u.km_saida || '--') + '</td>' +
+          '<td>' + (u.km_entrada || '--') + '</td>' +
+          '<td>' + saida + '</td>' +
+          '<td>' + entrada + '</td>' +
+        '</tr>';
+      }).join('');
+    }
+
+  } catch (err) {
+    console.error('Erro ao carregar veiculos:', err);
+    mostrarToast('Erro ao carregar veiculos', 'error');
+  }
+}
+
+function abrirModalVeiculo() {
+  modalModo = 'criar';
+  document.getElementById('modal-titulo').textContent = 'Novo Veiculo';
+
+  document.getElementById('modal-body').innerHTML =
+    '<div class="form-group"><label>Nome</label><input id="veiculo-nome" class="input" placeholder="Ex: Hilux, Moto"></div>' +
+    '<div class="form-group"><label>Placa (opcional)</label><input id="veiculo-placa" class="input" placeholder="ABC-1234"></div>' +
+    '<div class="form-group"><label>KM Atual</label><input id="veiculo-km" class="input" type="number" step="0.1"></div>';
+
+  document.getElementById('modal-btn-salvar').onclick = salvarVeiculo;
+  document.getElementById('modal-overlay').classList.remove('escondido');
+}
+
+async function salvarVeiculo() {
+  var nome = document.getElementById('veiculo-nome').value.trim();
+  if (!nome) { mostrarToast('Preencha o nome', 'error'); return; }
+
+  try {
+    await supaInsert('veiculos', {
+      nome: nome,
+      placa: document.getElementById('veiculo-placa').value.trim() || null,
+      km_atual: parseFloat(document.getElementById('veiculo-km').value) || null,
+      propriedade_id: propriedadeFiltro !== 'todas' ? propriedadeFiltro : cachePropriedades[0].id,
+    });
+    fecharModal();
+    carregarVeiculos();
+    mostrarToast('Veiculo cadastrado!');
+  } catch (err) {
+    mostrarToast('Erro ao salvar veiculo', 'error');
+  }
+}
+
+function abrirModalUsoVeiculo() {
+  modalModo = 'criar';
+  document.getElementById('modal-titulo').textContent = 'Registrar Uso de Veiculo';
+
+  document.getElementById('modal-body').innerHTML =
+    '<div class="form-group"><label>Veiculo</label><select id="uso-veiculo" class="input"><option>Carregando...</option></select></div>' +
+    '<div class="form-group"><label>Colaborador</label><select id="uso-colaborador" class="input"><option>Carregando...</option></select></div>' +
+    '<div class="form-group"><label>Destino</label><input id="uso-destino" class="input" placeholder="Para onde"></div>' +
+    '<div class="form-group"><label>KM Saida</label><input id="uso-km-saida" class="input" type="number" step="0.1"></div>';
+
+  document.getElementById('modal-btn-salvar').onclick = salvarUsoVeiculo;
+  document.getElementById('modal-overlay').classList.remove('escondido');
+
+  var qsV = '?select=id,nome,km_atual&ativo=eq.true&order=nome.asc';
+  var qsC = '?select=id,nome&ativo=eq.true&order=nome.asc';
+  qsV = addPropFiltro(qsV);
+  qsC = addPropFiltro(qsC);
+
+  var cacheVeiculosKm = {};
+
+  Promise.all([supaFetch('veiculos' + qsV), supaFetch('colaboradores' + qsC)]).then(function(r) {
+    var selV = document.getElementById('uso-veiculo');
+    selV.innerHTML = '<option value="">-- Selecione --</option>';
+    r[0].forEach(function(v) {
+      var opt = document.createElement('option');
+      opt.value = v.id;
+      opt.textContent = v.nome + (v.km_atual ? ' (KM: ' + v.km_atual + ')' : '');
+      selV.appendChild(opt);
+      cacheVeiculosKm[v.id] = v.km_atual || '';
+    });
+
+    // Ao selecionar veiculo, preenche KM Saida com ultimo KM
+    selV.addEventListener('change', function() {
+      var kmInput = document.getElementById('uso-km-saida');
+      var km = cacheVeiculosKm[selV.value];
+      if (km) {
+        kmInput.value = km;
+      } else {
+        kmInput.value = '';
+      }
+    });
+
+    var selC = document.getElementById('uso-colaborador');
+    selC.innerHTML = '<option value="">-- Selecione --</option>';
+    r[1].forEach(function(c) {
+      var opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.nome;
+      selC.appendChild(opt);
+    });
+  });
+}
+
+function abrirModalEntradaVeiculo(usoId, veiculoNome, kmSaida) {
+  modalModo = 'editar';
+  document.getElementById('modal-titulo').textContent = 'Registrar Entrada — ' + veiculoNome;
+
+  document.getElementById('modal-body').innerHTML =
+    '<div class="form-group"><label>KM Entrada</label><input id="entrada-km" class="input" type="number" step="0.1" placeholder="KM ao retornar" min="' + kmSaida + '"></div>' +
+    '<p style="color:var(--text-muted);font-size:13px">KM de saida: ' + kmSaida + '</p>';
+
+  document.getElementById('modal-btn-salvar').onclick = function() { salvarEntradaVeiculo(usoId); };
+  document.getElementById('modal-overlay').classList.remove('escondido');
+
+  setTimeout(function() { document.getElementById('entrada-km').focus(); }, 100);
+}
+
+async function salvarEntradaVeiculo(usoId) {
+  var kmEntrada = parseFloat(document.getElementById('entrada-km').value);
+  if (!kmEntrada) {
+    mostrarToast('Preencha o KM de entrada', 'error');
+    return;
+  }
+
+  try {
+    await supaUpdate('veiculos_uso', usoId, {
+      km_entrada: kmEntrada,
+      entrada_at: new Date().toISOString(),
+    });
+
+    // Atualiza km_atual do veiculo
+    var uso = await supaFetch('veiculos_uso?id=eq.' + usoId + '&select=veiculo_id');
+    if (uso && uso.length > 0) {
+      await supaUpdate('veiculos', uso[0].veiculo_id, { km_atual: kmEntrada });
+    }
+
+    fecharModal();
+    carregarVeiculos();
+    mostrarToast('Entrada registrada!');
+  } catch (err) {
+    mostrarToast('Erro ao registrar entrada', 'error');
+  }
+}
+
+async function salvarUsoVeiculo() {
+  var veiculoId = document.getElementById('uso-veiculo').value;
+  var colaboradorId = document.getElementById('uso-colaborador').value;
+  if (!veiculoId || !colaboradorId) {
+    mostrarToast('Selecione veiculo e colaborador', 'error');
+    return;
+  }
+
+  try {
+    var kmSaida = parseFloat(document.getElementById('uso-km-saida').value) || null;
+    await supaInsert('veiculos_uso', {
+      veiculo_id: veiculoId,
+      colaborador_id: colaboradorId,
+      destino: document.getElementById('uso-destino').value.trim() || null,
+      km_saida: kmSaida,
+      propriedade_id: propriedadeFiltro !== 'todas' ? propriedadeFiltro : cachePropriedades[0].id,
+    });
+
+    // Atualiza km_atual do veiculo com o KM de saida
+    if (kmSaida) {
+      await supaUpdate('veiculos', veiculoId, { km_atual: kmSaida });
+    }
+
+    fecharModal();
+    carregarVeiculos();
+    mostrarToast('Uso registrado!');
+  } catch (err) {
+    mostrarToast('Erro ao registrar uso', 'error');
+  }
+}

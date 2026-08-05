@@ -41,3 +41,8 @@ usuario das dashboards:
 
 usuario: marcos@sitiolabareda.com
 senha: labareda2026
+
+
+token facebook: 
+
+EAAWRGvnr7lYBR4BRrM7lYPTMk2xTIXKMkwYf4kwYWEHgHqJFCYlNx6iZBiIzenVDbABkdyRMW2hXrcctI6ZCI65giAHtFrJsVyZA2jXs6GZCjMX6pzrUI3ik7q8E2VZCuNmZAZAKXAZClG9v99b164c026J7U3wVpiVRX0gclOi8qQ1xG3ET0CCm53xZC8fXBI20qbwZDZD

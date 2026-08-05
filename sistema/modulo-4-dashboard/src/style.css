@@ -1515,6 +1515,258 @@ body.propriedade-saomiguel .sidebar__select {
 .badge--urgente { background: #2c0a00; color: #ff6b3d; }
 
 /* ================================================================== */
+/*  SECTION-CARD HEADER (usado em avisos, rotinas, etc.)             */
+/* ================================================================== */
+.section-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-card__header .section-card__title {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.filters-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.filters-row select {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card-bg);
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  min-width: 160px;
+}
+
+/* ================================================================== */
+/*  AVISOS — CARDS COLAPSAVEIS POR COLABORADOR                       */
+/* ================================================================== */
+
+/* Grade de cards */
+.avisos-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Card de colaborador */
+.aviso-colab-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: box-shadow var(--transition);
+}
+
+.aviso-colab-card:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+/* Cabecalho clicavel */
+.aviso-colab-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--card-bg);
+  transition: background var(--transition);
+  border-bottom: 1px solid transparent;
+}
+
+.aviso-colab-card.is-open .aviso-colab-header {
+  border-bottom-color: var(--border);
+  background: #fafaf8;
+}
+
+.aviso-colab-header:hover {
+  background: #fafaf8;
+}
+
+/* Icone do setor */
+.aviso-colab-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-light);
+  color: var(--danger);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+/* Info do colaborador */
+.aviso-colab-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.aviso-colab-nome {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aviso-colab-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Badge de total */
+.aviso-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
+  background: var(--danger-light);
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Seta de expand */
+.aviso-colab-arrow {
+  color: var(--text-muted);
+  font-size: 12px;
+  transition: transform var(--transition);
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.aviso-colab-card.is-open .aviso-colab-arrow {
+  transform: rotate(180deg);
+}
+
+/* Corpo colapsavel */
+.aviso-colab-body {
+  display: none;
+  padding: 16px 18px;
+  background: var(--card-bg);
+}
+
+.aviso-colab-card.is-open .aviso-colab-body {
+  display: block;
+}
+
+/* Grupo de frequencia dentro do card */
+.aviso-freq-group {
+  margin-bottom: 14px;
+}
+
+.aviso-freq-group:last-child {
+  margin-bottom: 0;
+}
+
+.aviso-freq-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--border);
+}
+
+/* Lista de avisos dentro do grupo */
+.aviso-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Item individual de aviso */
+.aviso-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  transition: border-color var(--transition);
+}
+
+.aviso-item:hover {
+  border-color: var(--sidebar-active);
+}
+
+.aviso-item__freq {
+  flex-shrink: 0;
+}
+
+.aviso-item__desc {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.aviso-item__dia {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.aviso-item__acoes {
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.aviso-item:hover .aviso-item__acoes {
+  opacity: 1;
+}
+
+/* Badge de frequencia */
+.badge--semanal   { background: #e3eef7; color: #4A7FB5; }
+.badge--quinzenal { background: var(--warning-light); color: var(--warning); }
+.badge--mensal    { background: var(--success-light); color: var(--success); }
+.badge--diario    { background: var(--danger-light);  color: var(--danger); }
+
+/* Estado vazio */
+.avisos-vazio {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.avisos-vazio__icon {
+  font-size: 36px;
+  margin-bottom: 10px;
+  opacity: 0.4;
+}
+
+/* ================================================================== */
 /*  RESPONSIVE                                                        */
 /* ================================================================== */
 @media (max-width: 768px) {
@@ -1604,4 +1856,307 @@ body.propriedade-saomiguel .sidebar__select {
   .cards-resumo {
     grid-template-columns: 1fr;
   }
+}
+
+/* ---- Avisos: Cards Colapsaveis ---- */
+.avisos-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.aviso-colab-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--card-border, #e0e0e0);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: box-shadow .2s;
+}
+
+.aviso-colab-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+
+.aviso-colab-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: background .15s;
+}
+
+.aviso-colab-header:hover {
+  background: rgba(0,0,0,.02);
+}
+
+.aviso-colab-icon {
+  font-size: 22px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg, #f5f5f5);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.aviso-colab-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.aviso-colab-nome {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.aviso-colab-sub {
+  font-size: 12px;
+  color: var(--text-muted, #777);
+  text-transform: capitalize;
+}
+
+.aviso-count-badge {
+  background: var(--accent, #C45D3E);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  padding: 0 7px;
+}
+
+.aviso-colab-arrow {
+  font-size: 11px;
+  color: var(--text-muted, #777);
+  transition: transform .2s;
+  flex-shrink: 0;
+}
+
+.aviso-colab-card.is-open .aviso-colab-arrow {
+  transform: rotate(180deg);
+}
+
+.aviso-colab-body {
+  display: none;
+  padding: 0 16px 16px;
+}
+
+.aviso-colab-card.is-open .aviso-colab-body {
+  display: block;
+}
+
+.aviso-freq-group {
+  margin-bottom: 12px;
+}
+
+.aviso-freq-group:last-child {
+  margin-bottom: 0;
+}
+
+.aviso-freq-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: var(--text-muted, #777);
+  padding: 6px 0 4px;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 4px;
+}
+
+.aviso-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  border-bottom: 1px solid #f5f5f5;
+  font-size: 14px;
+}
+
+.aviso-item:last-child {
+  border-bottom: none;
+}
+
+.aviso-item:hover {
+  background: rgba(0,0,0,.015);
+}
+
+.aviso-item__num {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg, #f5f5f5);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted, #777);
+}
+
+.aviso-item__freq {
+  flex-shrink: 0;
+  font-size: 10px;
+  padding: 2px 6px;
+}
+
+.aviso-item__desc {
+  flex: 1;
+  min-width: 0;
+}
+
+.aviso-item__dia {
+  font-size: 12px;
+  color: var(--text-muted, #777);
+  flex-shrink: 0;
+}
+
+.aviso-item__acoes {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  opacity: 0.3;
+  transition: opacity .15s;
+}
+
+.aviso-item:hover .aviso-item__acoes {
+  opacity: 1;
+}
+
+.avisos-vazio {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted, #777);
+}
+
+.avisos-vazio__icon {
+  font-size: 36px;
+  margin-bottom: 8px;
+}
+
+/* Badge cores por frequencia */
+.badge--semanal {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge--quinzenal {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.badge--mensal {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.badge--diario {
+  background: #fce7f3;
+  color: #9d174d;
+}
+
+/* Filters row */
+.filters-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.filters-row select {
+  padding: 8px 12px;
+  border: 1px solid var(--card-border, #e0e0e0);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  background: #fff;
+}
+
+/* ---- Gerenciar itens aviso ---- */
+.aviso-itens-gerenciar {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+}
+
+.aviso-itens-header {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted, #777);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 8px;
+}
+
+.msg-preview__label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted, #777);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 6px;
+}
+
+/* ---- Preview Mensagem WhatsApp ---- */
+.msg-preview {
+  margin-top: 16px;
+  border-top: 1px solid #eee;
+  padding-top: 12px;
+}
+
+.msg-preview__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 6px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent, #C45D3E);
+}
+
+.msg-preview__toggle {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted, #777);
+  text-decoration: underline;
+}
+
+.msg-preview__body {
+  margin-top: 8px;
+}
+
+.msg-preview__textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 200px;
+  background: #fefefe;
+  color: var(--text, #222);
+  white-space: pre-wrap;
+}
+
+.msg-preview__textarea:focus {
+  outline: none;
+  border-color: var(--accent, #C45D3E);
+}
+
+/* Gastos resumo */
+.gastos-resumo {
+  border-top: 1px solid #eee;
 }

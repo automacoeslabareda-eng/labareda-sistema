@@ -7,7 +7,7 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 23 * * 5"
+              "expression": "30 20 * * 5"
             }
           ]
         }
@@ -16,7 +16,7 @@
       "typeVersion": 1.2,
       "position": [-600, 300],
       "id": "cron-relatorio-001",
-      "name": "Cron Sexta 20h00 Brasilia"
+      "name": "Cron Sexta 17h30 Brasilia"
     },
     {
       "parameters": {

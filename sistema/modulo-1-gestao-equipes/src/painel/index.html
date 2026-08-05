@@ -78,6 +78,14 @@
   </div>
 
   <!-- ============================================================ -->
+  <!--  TABS DE NAVEGACAO                                            -->
+  <!-- ============================================================ -->
+  <nav class="tabs escondido" id="tabs-nav" role="tablist" aria-label="Secoes do painel">
+    <button class="tab tab--ativo" role="tab" data-tab="tarefas" aria-selected="true">Tarefas</button>
+    <button class="tab" role="tab" data-tab="avisos" aria-selected="false">Avisos</button>
+  </nav>
+
+  <!-- ============================================================ -->
   <!--  TELA: LOADING                                                -->
   <!-- ============================================================ -->
   <main id="tela-loading" class="loading" role="status" aria-label="Carregando tarefas">
@@ -99,11 +107,20 @@
   </div>
 
   <!-- ============================================================ -->
-  <!--  TELA: PRINCIPAL (Lista de Tarefas)                           -->
+  <!--  TELA: PRINCIPAL                                              -->
   <!-- ============================================================ -->
   <div id="tela-principal" class="escondido">
     <div class="container">
-      <div id="lista-tarefas" role="list" aria-label="Lista de tarefas"></div>
+      <!-- ABA: TAREFAS -->
+      <div id="aba-tarefas" class="aba" role="tabpanel">
+        <div id="lista-tarefas" role="list" aria-label="Lista de tarefas"></div>
+      </div>
+
+      <!-- ABA: AVISOS -->
+      <div id="aba-avisos" class="aba escondido" role="tabpanel">
+        <div id="lista-avisos" aria-label="Lista de avisos"></div>
+      </div>
+
     </div>
   </div>
 
@@ -143,6 +160,26 @@
             <div class="foto-preview" id="foto-preview">
               <img id="foto-img" alt="Preview da foto">
               <button class="foto-preview__remover" id="btn-remover-foto" type="button" aria-label="Remover foto">&times;</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Audio -->
+        <div class="modal__campo">
+          <label class="modal__label">Audio (opcional)</label>
+          <div class="audio-area">
+            <button class="btn-audio" id="btn-gravar-audio" type="button">
+              <span class="btn-audio__icone" id="icone-audio">&#127908;</span>
+              <span id="texto-audio">Gravar audio</span>
+            </button>
+            <div class="audio-preview escondido" id="audio-preview">
+              <audio id="audio-player" controls></audio>
+              <button class="audio-preview__remover" id="btn-remover-audio" type="button" aria-label="Remover audio">&times;</button>
+            </div>
+            <div class="audio-gravando escondido" id="audio-gravando">
+              <span class="audio-gravando__dot"></span>
+              <span id="audio-timer">00:00</span>
+              <button class="btn-audio-parar" id="btn-parar-audio" type="button">Parar</button>
             </div>
           </div>
         </div>

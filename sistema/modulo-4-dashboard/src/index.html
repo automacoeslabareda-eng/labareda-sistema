@@ -78,7 +78,15 @@
       </button>
       <button class="sidebar__link" data-page="rotinas" onclick="navegarPara('rotinas')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <span>Rotinas</span>
+        <span>Avisos</span>
+      </button>
+      <button class="sidebar__link" data-page="gastos" onclick="navegarPara('gastos')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <span>Gastos</span>
+      </button>
+      <button class="sidebar__link" data-page="veiculos" onclick="navegarPara('veiculos')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        <span>Veiculos</span>
       </button>
       <button class="sidebar__link" data-page="relatorios" onclick="navegarPara('relatorios')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
@@ -266,41 +274,75 @@
       </div>
     </section>
 
-    <!-- ROTINAS -->
+    <!-- TAREFAS & AVISOS -->
     <section class="page page--hidden" id="page-rotinas">
-      <div class="page__header">
-        <h2 class="page__title">Rotinas Semanais</h2>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn--secondary" onclick="gerarTarefasDoDia()" id="btn-gerar-tarefas" title="Cria tarefas a partir das rotinas ativas para hoje">&#9889; Gerar Tarefas de Hoje</button>
-          <button class="btn btn--primary" onclick="abrirModalRotina()">+ Nova Rotina</button>
-        </div>
-      </div>
-      <div class="table-wrapper">
-        <table class="tabela" id="tabela-rotinas">
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Setor</th>
-              <th>Dia</th>
-              <th>Hora</th>
-              <th>Status</th>
-              <th>Acoes</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-rotinas">
-            <tr><td colspan="6" class="placeholder">Carregando...</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="section-card escondido" id="rotina-detalhe">
-        <div class="tarefa-detalhe-header">
-          <h3 class="section-card__title" id="rotina-detalhe-titulo" style="margin:0;border:none;padding:0">Itens da Rotina</h3>
-          <div class="tarefa-detalhe-acoes">
-            <button class="btn btn--small btn--secondary" onclick="adicionarItemRotina()">+ Item</button>
-            <button class="btn btn--small btn--secondary" onclick="fecharDetalheRotina()">Fechar</button>
+
+      <!-- TAREFAS/ROTINAS -->
+      <div class="section-card">
+        <div class="section-card__header">
+          <h3 class="section-card__title">Tarefas / Rotinas</h3>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn--secondary" onclick="gerarTarefasDoDia()" id="btn-gerar-tarefas">&#9889; Gerar Tarefas</button>
+            <button class="btn btn--primary" onclick="abrirModalRotina()">+ Nova Rotina</button>
           </div>
         </div>
-        <div id="rotina-items"></div>
+        <div class="table-wrapper">
+          <table class="tabela" id="tabela-rotinas">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Setor</th>
+                <th>Frequencia</th>
+                <th>Responsavel</th>
+                <th>Lembrete WhatsApp</th>
+                <th>Status</th>
+                <th>Acoes</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-rotinas">
+              <tr><td colspan="7" class="placeholder">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-card escondido" id="rotina-detalhe">
+          <div class="tarefa-detalhe-header">
+            <h3 class="section-card__title" id="rotina-detalhe-titulo" style="margin:0;border:none;padding:0">Itens da Rotina</h3>
+            <div class="tarefa-detalhe-acoes">
+              <button class="btn btn--small btn--secondary" onclick="adicionarItemRotina()">+ Item</button>
+              <button class="btn btn--small btn--secondary" onclick="fecharDetalheRotina()">Fechar</button>
+            </div>
+          </div>
+          <div id="rotina-items"></div>
+        </div>
+
+        <!-- Mensagem WhatsApp da rotina selecionada -->
+        <div class="section-card escondido" id="rotina-whatsapp" style="margin-top:12px">
+          <div class="tarefa-detalhe-header">
+            <h3 class="section-card__title" style="margin:0;border:none;padding:0">📱 Mensagem WhatsApp</h3>
+            <div class="tarefa-detalhe-acoes">
+              <span style="font-size:12px;color:var(--text-muted)" id="rotina-dias-lembrete"></span>
+              <button class="btn btn--small btn--primary" onclick="salvarMsgRotina()">Salvar</button>
+              <button class="btn btn--small btn--secondary" onclick="$('#rotina-whatsapp').classList.add('escondido')">Fechar</button>
+            </div>
+          </div>
+          <textarea class="msg-preview__textarea" id="rotina-msg-texto" rows="10" style="margin-top:8px"></textarea>
+          <div style="margin-top:8px">
+            <label style="font-size:12px;font-weight:600;color:var(--text-muted)">Dias de lembrete (ex: 1,5 = Segunda e Sexta):</label>
+            <input class="input" id="rotina-dias-input" placeholder="1,5" style="max-width:200px;margin-top:4px">
+          </div>
+        </div>
+      </div>
+
+      <!-- AVISOS ESPORADICOS -->
+      <div class="section-card" style="margin-top:24px">
+        <div class="section-card__header">
+          <h3 class="section-card__title">Avisos Esporadicos</h3>
+          <button class="btn btn--primary" onclick="abrirModalAviso()">+ Novo Aviso</button>
+        </div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Alertas pontuais (ex: hospede chega dia X, aviso especial). Nao sao recorrentes.</p>
+        <div id="avisos-admin-container">
+          <p class="placeholder" style="font-size:13px">Nenhum aviso esporadico</p>
+        </div>
       </div>
     </section>
 
@@ -360,6 +402,81 @@
       </div>
     </section>
 
+    <!-- GASTOS -->
+    <section class="page page--hidden" id="page-gastos">
+      <h2 class="page__title">Gastos</h2>
+      <div class="section-card">
+        <div class="section-card__header">
+          <h3 class="section-card__title">Entradas e Saidas</h3>
+          <button class="btn btn--primary" onclick="abrirModalGasto()">+ Novo Gasto</button>
+        </div>
+        <div class="filters-row">
+          <select id="filtro-gasto-tipo" onchange="carregarGastos()">
+            <option value="">Todos</option>
+            <option value="entrada">Entradas</option>
+            <option value="saida">Saidas</option>
+          </select>
+          <input type="month" id="filtro-gasto-mes" onchange="carregarGastos()">
+        </div>
+        <div class="table-wrapper">
+          <table class="tabela" id="tabela-gastos">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Tipo</th>
+                <th>Descricao</th>
+                <th>Valor</th>
+                <th>Colaborador</th>
+                <th>Acoes</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-gastos">
+              <tr><td colspan="6" class="placeholder">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="gastos-resumo" id="gastos-resumo"></div>
+      </div>
+    </section>
+
+    <!-- VEICULOS -->
+    <section class="page page--hidden" id="page-veiculos">
+      <h2 class="page__title">Veiculos</h2>
+
+      <div class="section-card">
+        <div class="section-card__header">
+          <h3 class="section-card__title">Frota</h3>
+          <button class="btn btn--primary" onclick="abrirModalVeiculo()">+ Novo Veiculo</button>
+        </div>
+        <div id="lista-veiculos"></div>
+      </div>
+
+      <div class="section-card">
+        <div class="section-card__header">
+          <h3 class="section-card__title">Registro de Uso</h3>
+          <button class="btn btn--primary" onclick="abrirModalUsoVeiculo()">+ Registrar Uso</button>
+        </div>
+        <div class="table-wrapper">
+          <table class="tabela">
+            <thead>
+              <tr>
+                <th>Veiculo</th>
+                <th>Colaborador</th>
+                <th>Destino</th>
+                <th>KM Saida</th>
+                <th>KM Entrada</th>
+                <th>Saida</th>
+                <th>Entrada</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-veiculos-uso">
+              <tr><td colspan="7" class="placeholder">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <!-- CONFIGURACOES -->
     <section class="page page--hidden" id="page-configuracoes">
       <h2 class="page__title">Configuracoes</h2>
@@ -397,8 +514,8 @@
   </div><!-- /app-wrapper -->
 
   <!-- MODAL -->
-  <div class="modal-overlay escondido" id="modal-overlay" onclick="fecharModal(event)">
-    <div class="modal" onclick="event.stopPropagation()">
+  <div class="modal-overlay escondido" id="modal-overlay" onmousedown="modalOverlayMouseDown(event)">
+    <div class="modal" onmousedown="event.stopPropagation()">
       <div class="modal__header">
         <h3 class="modal__title" id="modal-titulo">Titulo</h3>
         <button class="modal__close" onclick="fecharModal()">&times;</button>
