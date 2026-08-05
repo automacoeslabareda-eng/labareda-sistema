@@ -29,12 +29,32 @@ var GESTAO_SUPABASE_URL = 'https://tidngxclgaspltzqoemi.supabase.co';
 var GESTAO_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE';
 
 /* ================================================================== */
+/*  CAMADA SEGURA (admin-api) — dados sensiveis via chave secreta      */
+/* ================================================================== */
+var ADMIN_API_URL = 'https://sitiolabareda.com/.netlify/functions/admin-api';
+var adminToken = null;
+
+async function adminApi(action, params) {
+  var headers = { 'Content-Type': 'application/json' };
+  if (adminToken) headers['Authorization'] = 'Bearer ' + adminToken;
+  var r = await fetch(ADMIN_API_URL, {
+    method: 'POST',
+    headers: headers,
+    body: JSON.stringify(Object.assign({ action: action }, params || {})),
+  });
+  var data = await r.json();
+  if (!r.ok || (data && data.erro)) throw new Error((data && data.erro) || ('Erro ' + r.status));
+  return data;
+}
+
+/* ================================================================== */
 /*  LOGIN / LOGOUT                                                    */
 /* ================================================================== */
 function verificarSessao() {
   try {
     var dados = sessionStorage.getItem('labareda_shop_usuario');
-    if (dados) { usuarioLogado = JSON.parse(dados); return true; }
+    var tok = sessionStorage.getItem('labareda_shop_token');
+    if (dados && tok) { usuarioLogado = JSON.parse(dados); adminToken = tok; return true; }
   } catch (e) { console.error(e); }
   return false;
 }
@@ -65,24 +85,16 @@ async function realizarLogin(event) {
   btnEl.textContent = 'Entrando...';
 
   try {
-    var url = GESTAO_SUPABASE_URL + '/rest/v1/usuarios_admin?email=eq.' + encodeURIComponent(email) + '&senha_hash=eq.' + encodeURIComponent(senha) + '&ativo=eq.true&select=*';
-    var r = await fetch(url, { headers: { 'apikey': GESTAO_SUPABASE_KEY, 'Authorization': 'Bearer ' + GESTAO_SUPABASE_KEY } });
-    if (!r.ok) throw new Error('Erro de conexao');
-    var data = await r.json();
-
-    if (!data || data.length === 0) {
-      errorEl.textContent = 'Email ou senha incorretos';
-      errorEl.classList.remove('escondido');
-      btnEl.disabled = false; btnEl.textContent = 'Entrar';
-      return;
-    }
-
-    usuarioLogado = { id: data[0].id, nome: data[0].nome, email: data[0].email, role: data[0].role };
+    // Login pela camada segura: valida no servidor e devolve um token assinado.
+    var resp = await adminApi('login', { email: email, senha: senha });
+    usuarioLogado = resp.usuario;
+    adminToken = resp.token;
     sessionStorage.setItem('labareda_shop_usuario', JSON.stringify(usuarioLogado));
+    sessionStorage.setItem('labareda_shop_token', adminToken);
     mostrarApp();
     initDashboard();
   } catch (err) {
-    errorEl.textContent = 'Erro ao conectar. Tente novamente.';
+    errorEl.textContent = (err && /incorret/i.test(err.message)) ? 'Email ou senha incorretos' : 'Erro ao conectar. Tente novamente.';
     errorEl.classList.remove('escondido');
   }
   btnEl.disabled = false; btnEl.textContent = 'Entrar';
@@ -90,7 +102,9 @@ async function realizarLogin(event) {
 
 function realizarLogout() {
   sessionStorage.removeItem('labareda_shop_usuario');
+  sessionStorage.removeItem('labareda_shop_token');
   usuarioLogado = null;
+  adminToken = null;
   var e = document.getElementById('login-email'); if (e) e.value = '';
   var s = document.getElementById('login-senha'); if (s) s.value = '';
   var err = document.getElementById('login-error'); if (err) err.classList.add('escondido');
@@ -300,29 +314,19 @@ function carregarPagina(pagina) {
 /* ================================================================== */
 async function carregarVisaoGeral() {
   try {
-    var [totalProdutos, pedidosPendentes, msgNaoLidas, reservasNovas, pedidos, estoqueBaixo] = await Promise.all([
-      supaCount('produtos', 'ativo=eq.true'),
-      supaCount('pedidos', 'status=eq.pendente'),
-      supaCount('mensagens_contato', 'lida=eq.false'),
-      supaCount('reservas', 'status=eq.nova'),
-      supaFetch('pedidos?select=total&status=in.(pago,preparando,enviado,entregue)'),
-      supaFetch('produtos?select=id,nome_pt,estoque&ativo=eq.true&estoque=lte.5&order=estoque.asc'),
-    ]);
+    var vg = await adminApi('visao-geral');
 
-    $('#stat-produtos').textContent = totalProdutos;
-    $('#stat-pedidos-pendentes').textContent = pedidosPendentes;
-    $('#stat-mensagens').textContent = msgNaoLidas;
+    $('#stat-produtos').textContent = vg.produtos;
+    $('#stat-pedidos-pendentes').textContent = vg.pedidos_pendentes;
+    $('#stat-mensagens').textContent = vg.mensagens_nao_lidas;
 
     var statReservas = $('#stat-reservas');
-    if (statReservas) statReservas.textContent = reservasNovas;
+    if (statReservas) statReservas.textContent = vg.reservas_novas;
 
-    var receita = 0;
-    if (pedidos && pedidos.length > 0) {
-      pedidos.forEach(function(p) { receita += (p.total || 0); });
-    }
-    $('#stat-receita').textContent = formatarMoeda(receita);
+    $('#stat-receita').textContent = formatarMoeda(vg.receita);
 
     // Estoque baixo
+    var estoqueBaixo = vg.estoque_baixo || [];
     var alertaContainer = $('#alerta-estoque');
     var listaContainer = $('#lista-estoque-baixo');
     if (estoqueBaixo && estoqueBaixo.length > 0) {
@@ -527,11 +531,9 @@ async function toggleProduto(id, atualmenteAtivo) {
 /* ================================================================== */
 async function carregarPedidos() {
   try {
-    var qs = '?select=*,clientes(nome,email)&order=created_at.desc';
     var statusFiltro = $('#filtro-pedido-status').value;
-    if (statusFiltro) qs += '&status=eq.' + statusFiltro;
-
-    var data = await supaFetch('pedidos' + qs);
+    var resp = await adminApi('pedidos', statusFiltro ? { status: statusFiltro } : {});
+    var data = resp.pedidos || [];
     var tbody = $('#tbody-pedidos');
 
     if (!data || data.length === 0) {
@@ -575,7 +577,8 @@ async function carregarPedidos() {
 
 async function expandirPedido(pedidoId) {
   try {
-    var items = await supaFetch('pedido_itens?pedido_id=eq.' + pedidoId + '&select=*,produtos(nome_pt)');
+    var respItens = await adminApi('pedido-itens', { pedido_id: pedidoId });
+    var items = respItens.itens || [];
     var detalhe = $('#pedido-detalhe');
     var container = $('#pedido-itens');
 
@@ -608,7 +611,7 @@ async function expandirPedido(pedidoId) {
 
 async function mudarStatusPedido(pedidoId, novoStatus) {
   try {
-    await supaUpdate('pedidos', pedidoId, { status: novoStatus });
+    await adminApi('update-pedido-status', { pedido_id: pedidoId, status: novoStatus });
     mostrarToast('Status atualizado para ' + novoStatus);
     carregarPedidos();
   } catch (err) {
