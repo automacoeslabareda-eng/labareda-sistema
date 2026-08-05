@@ -1719,76 +1719,32 @@
       cep: document.getElementById('checkout-cep').value.trim(),
     };
 
-    var subtotal = cart.reduce(function (sum, item) { return sum + item.preco * item.quantidade; }, 0);
-    var freteVal = selectedFrete ? selectedFrete.valor : 0;
-    var total = subtotal + freteVal;
+    /* A loja NAO grava mais direto no banco. Manda o carrinho + dados do
+       cliente para a funcao SEGURA no servidor, que cria o pedido (com a
+       chave secreta, validando precos) e devolve o link do Mercado Pago. */
+    var itensCarrinho = cart.map(function (item) {
+      return { produto_id: item.produto_id, quantidade: item.quantidade };
+    });
 
-    /* Step 1: Upsert cliente */
-    supabaseUpsert('clientes', {
-      nome: nome,
-      email: email,
-      telefone: telefone,
-      cpf: cpf,
-      endereco_rua: endereco.rua,
-      endereco_numero: endereco.numero,
-      endereco_complemento: endereco.complemento,
-      endereco_bairro: endereco.bairro,
-      endereco_cidade: endereco.cidade,
-      endereco_estado: endereco.estado,
-      endereco_cep: endereco.cep,
-    }, 'email')
-      .then(function (clienteData) {
-        var clienteId = clienteData && clienteData.length > 0 ? clienteData[0].id : null;
-
-        /* Step 2: Create pedido */
-        return supabaseInsertReturning('pedidos', {
-          cliente_id: clienteId,
-          status: 'pendente',
-          subtotal: subtotal,
-          frete: freteVal,
-          total: total,
-          metodo_pagamento: 'mercadopago_pendente',
-          endereco_entrega: endereco,
-        });
-      })
-      .then(function (pedidoData) {
-        var pedido = pedidoData[0];
-
-        /* Step 3: Create pedido_itens */
-        var itens = cart.map(function (item) {
-          return {
-            pedido_id: pedido.id,
-            produto_id: item.produto_id,
-            nome_produto: item.nome,
-            quantidade: item.quantidade,
-            preco_unitario: item.preco,
-            subtotal: item.preco * item.quantidade,
-          };
-        });
-
-        return supabaseInsert('pedido_itens', itens).then(function () {
-          return pedido;
-        });
-      })
-      .then(function (pedido) {
-        /* Pedido criado (pendente). Agora cria o pagamento no Mercado Pago
-           e redireciona o cliente para pagar (Pix, cartao ou boleto). */
-        return fetch('/.netlify/functions/criar-pagamento', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pedido_id: pedido.id }),
-        }).then(function (r) {
-          return r.json().then(function (data) {
-            if (!r.ok || !data.ok) {
-              throw new Error((data && data.erro) || 'Falha ao iniciar o pagamento');
-            }
-            var link = data.init_point || data.sandbox_init_point;
-            if (!link) throw new Error('Link de pagamento nao recebido');
-            /* O pedido ja existe no banco: limpa o carrinho e vai ao Mercado Pago */
-            saveCart([]);
-            updateCartBadge();
-            window.location.href = link;
-          });
+    fetch('/.netlify/functions/criar-pagamento', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cliente: { nome: nome, email: email, telefone: telefone, cpf: cpf, endereco: endereco },
+        itens: itensCarrinho,
+        frete: selectedFrete ? { regiao: selectedFrete.regiao, valor: selectedFrete.valor } : { valor: 0 },
+      }),
+    })
+      .then(function (r) {
+        return r.json().then(function (data) {
+          if (!r.ok || !data.ok) {
+            throw new Error((data && data.erro) || 'Falha ao iniciar o pagamento');
+          }
+          var link = data.init_point || data.sandbox_init_point;
+          if (!link) throw new Error('Link de pagamento nao recebido');
+          saveCart([]);
+          updateCartBadge();
+          window.location.href = link;
         });
       })
       .catch(function (err) {
