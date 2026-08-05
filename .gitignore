@@ -29,3 +29,9 @@ Nova pasta/
 
 # Local Netlify folder
 .netlify
+
+# Arquivos de design (PSD/AI/pasta de identidade) — grandes demais para o GitHub
+# (limite de 100MB/arquivo). Ficam de backup no PC + OneDrive.
+IDENTIDADE VISUAL/
+*.psd
+*.ai
