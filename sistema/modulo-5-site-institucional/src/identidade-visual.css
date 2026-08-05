@@ -1,0 +1,201 @@
+/* ==========================================================================
+   IDENTIDADE VISUAL LABAREDA — camada de repaginação (ITERAÇÃO 1)
+   Fontes da marca + paleta do PSD. Aditiva (carrega depois do style.css).
+   ========================================================================== */
+
+/* ---------- Fontes da marca ---------- */
+@font-face {
+  font-family: 'Costa';
+  src: url('fonts/Costa.otf') format('opentype');
+  font-weight: normal; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Ocotillo';
+  src: url('fonts/OCOTILLO.otf') format('opentype');
+  font-weight: normal; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Modern Ephemera';
+  src: url('fonts/WS_MODERNEPHEMERA.otf') format('opentype');
+  font-weight: normal; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts/JetBrainsMono-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 800; font-style: normal; font-display: swap;
+}
+
+/* ---------- Paleta da marca (sobrescreve os tokens do style.css) ---------- */
+:root {
+  --preto: #2E2624;          /* cacau escuro (texto/fundos escuros) */
+  --branco: #F3E9D2;         /* creme quente (era quase-branco) */
+  --creme: #EFE6D2;          /* creme (fundo shop) */
+  --terracota: #AA3424;      /* vermelho tijolo (cor principal) */
+  --terracota-escuro: #8A2A1B;
+  --verde: #3D5A3A;          /* verde mata */
+  --verde-claro: #5F8A5A;
+  --areia: #E9BF91;          /* tan/areia (fundo journal) */
+  --dourado: #C8531E;        /* laranja/terra (destaques) */
+  --turquesa: #2E9B94;       /* turquesa (detalhes) */
+  --cacau: #2E2624;
+  --cinza: #6b5f56;
+  --cinza-claro: #9a8b7d;
+
+  --font-display: 'Ocotillo', 'Costa', Georgia, 'Times New Roman', serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+}
+
+/* ---------- Tipografia da marca ---------- */
+h1, h2, h3,
+.section-title,
+.hero-headline,
+.hero-title,
+.logo-text {
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
+}
+
+/* Rótulos, olho editorial, navegação e botões em mono maiúsculo */
+.section-label,
+.eyebrow,
+.nav-link,
+.mobile-nav-link,
+.btn,
+.hero-location,
+.frete-option__region {
+  font-family: var(--font-mono);
+  letter-spacing: 0.14em;
+}
+
+/* Detalhe turquesa em divisores/linhas de destaque */
+.section-label,
+.eyebrow {
+  color: var(--turquesa);
+}
+
+/* Favicon/estrela e acentos herdam o novo terracota automaticamente
+   pois usam var(--terracota). */
+
+/* ==========================================================================
+   ITERAÇÃO 2 — texturas por seção, molduras, cards de rádio, padrões
+   ========================================================================== */
+
+/* ---- Texturas de fundo por seção (do PSD) ---- */
+.section--experience,
+.section--about,
+.section--book {
+  background-color: var(--terracota);
+  background-image: url('img/textures/VERMELHO.jpg');
+  background-size: cover;
+  background-position: center;
+  color: var(--branco);
+}
+.section--radio {
+  background-color: var(--cacau);
+  background-image: url('img/textures/CACAU.jpg');
+  background-size: cover;
+  background-position: center;
+  color: var(--branco);
+}
+.section--shop {
+  background-color: var(--creme);
+  background-image: url('img/textures/BEGE.jpg');
+  background-size: cover;
+  background-position: center;
+  color: var(--preto);
+}
+.section--journal {
+  background-color: var(--areia);
+  background-image: url('img/textures/AREIA.jpg');
+  background-size: cover;
+  background-position: center;
+  color: var(--preto);
+}
+
+/* Títulos claros nas seções escuras (vermelho/cacau) */
+.section--about .section-title,
+.section--about .about-description,
+.section--book .section-title,
+.section--book .book-description,
+.section--radio .section-title,
+.section--radio .section-subtitle,
+.section--experience .section-title,
+.section--experience .section-subtitle { color: var(--branco); }
+
+/* ---- Divisor pontilhado turquesa (assinatura do PSD) ---- */
+.section-header::after {
+  content: '';
+  display: block;
+  width: 130px;
+  margin: 22px auto 0;
+  border-top: 2px dotted var(--turquesa);
+  opacity: .75;
+}
+
+/* ---- Cards de rádio coloridos: creme / laranja / turquesa / vermelho ---- */
+.radio-card { border-radius: 10px; padding: 26px 22px; }
+.radio-grid > .radio-card:nth-child(1) { background: var(--creme); color: var(--preto); }
+.radio-grid > .radio-card:nth-child(2) { background: var(--dourado); color: var(--branco); }
+.radio-grid > .radio-card:nth-child(3) { background: var(--turquesa); color: #10302e; }
+.radio-grid > .radio-card:nth-child(4) { background: var(--terracota); color: var(--branco); }
+.radio-card-title { font-family: var(--font-mono); letter-spacing: .12em; }
+
+/* ---- Molduras finas nas fotos (estilo editorial do PSD) ---- */
+.book-slide img,
+.about-image,
+.about-video,
+.product-card img,
+.section--journal img {
+  border: 1px solid rgba(46, 38, 36, .5);
+  box-shadow: 0 0 0 5px rgba(255, 255, 255, .05), 0 12px 30px rgba(0, 0, 0, .18);
+}
+.section--shop .product-card { background: transparent; }
+
+/* ---- Botões: contorno, cantos quase-retos ---- */
+.btn { border-radius: 3px; }
+.btn--primary { background: var(--terracota); color: var(--branco); }
+.btn--secondary, .btn--outline { background: transparent; border: 1.5px solid currentColor; }
+
+/* ---- Padrões gráficos como detalhe decorativo no Manifesto ---- */
+.section--about { position: relative; overflow: hidden; }
+.section--about::before,
+.section--about::after {
+  content: '';
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 130px; height: 130px;
+  background-repeat: no-repeat; background-size: contain; background-position: center;
+  opacity: .30; pointer-events: none;
+}
+.section--about::before { left: 2.5%; background-image: url('img/patterns/padrao-passaros.png'); }
+.section--about::after  { right: 2.5%; background-image: url('img/patterns/padrao-coqueiro.png'); }
+
+/* ---- Rodapé / contato em cacau escuro ---- */
+.site-footer,
+.section--contact { background: var(--cacau); color: var(--branco); }
+
+/* ==========================================================================
+   ITERAÇÃO 3 — correções (conteúdo sempre visível + refinos)
+   ========================================================================== */
+
+/* CONTEÚDO SEMPRE VISÍVEL: o efeito "reveal" deixava seções (ex: Manifesto,
+   O QUE VOCÊ VAI VIVER) vazias/vermelhas até rolar. Garante que apareçam. */
+.reveal,
+.reveal--delay-1,
+.reveal--delay-2,
+.reveal--delay-3 {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* Cards claros (experience / shop) legíveis sobre o vermelho/creme */
+.section--experience .exp-card,
+.section--experience [class*="card"] {
+  background: var(--creme);
+  color: var(--preto);
+}
+
+/* Molduras de produto: quando sem foto, mostra um fundo suave (evita moldura vazia crua) */
+.product-card__img,
+.product-card img {
+  background: rgba(46, 38, 36, .06);
+}
