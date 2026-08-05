@@ -1,0 +1,77 @@
+/* ==========================================================================
+   IDENTIDADE VISUAL LABAREDA — camada de repaginação (ITERAÇÃO 1)
+   Fontes da marca + paleta do PSD. Aditiva (carrega depois do style.css).
+   ========================================================================== */
+
+/* ---------- Fontes da marca ---------- */
+@font-face {
+  font-family: 'Costa';
+  src: url('fonts/Costa.otf') format('opentype');
+  font-weight: normal; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Ocotillo';
+  src: url('fonts/OCOTILLO.otf') format('opentype');
+  font-weight: normal; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Modern Ephemera';
+  src: url('fonts/WS_MODERNEPHEMERA.otf') format('opentype');
+  font-weight: normal; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts/JetBrainsMono-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 800; font-style: normal; font-display: swap;
+}
+
+/* ---------- Paleta da marca (sobrescreve os tokens do style.css) ---------- */
+:root {
+  --preto: #2E2624;          /* cacau escuro (texto/fundos escuros) */
+  --branco: #F3E9D2;         /* creme quente (era quase-branco) */
+  --creme: #EFE6D2;          /* creme (fundo shop) */
+  --terracota: #AA3424;      /* vermelho tijolo (cor principal) */
+  --terracota-escuro: #8A2A1B;
+  --verde: #3D5A3A;          /* verde mata */
+  --verde-claro: #5F8A5A;
+  --areia: #E9BF91;          /* tan/areia (fundo journal) */
+  --dourado: #C8531E;        /* laranja/terra (destaques) */
+  --turquesa: #2E9B94;       /* turquesa (detalhes) */
+  --cacau: #2E2624;
+  --cinza: #6b5f56;
+  --cinza-claro: #9a8b7d;
+
+  --font-display: 'Ocotillo', 'Costa', Georgia, 'Times New Roman', serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+}
+
+/* ---------- Tipografia da marca ---------- */
+h1, h2, h3,
+.section-title,
+.hero-headline,
+.hero-title,
+.logo-text {
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
+}
+
+/* Rótulos, olho editorial, navegação e botões em mono maiúsculo */
+.section-label,
+.eyebrow,
+.nav-link,
+.mobile-nav-link,
+.btn,
+.hero-location,
+.frete-option__region {
+  font-family: var(--font-mono);
+  letter-spacing: 0.14em;
+}
+
+/* Detalhe turquesa em divisores/linhas de destaque */
+.section-label,
+.eyebrow {
+  color: var(--turquesa);
+}
+
+/* Favicon/estrela e acentos herdam o novo terracota automaticamente
+   pois usam var(--terracota). */
