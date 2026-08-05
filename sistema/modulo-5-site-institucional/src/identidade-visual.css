@@ -75,3 +75,100 @@ h1, h2, h3,
 
 /* Favicon/estrela e acentos herdam o novo terracota automaticamente
    pois usam var(--terracota). */
+
+/* ==========================================================================
+   ITERAÇÃO 2 — texturas por seção, molduras, cards de rádio, padrões
+   ========================================================================== */
+
+/* ---- Texturas de fundo por seção (do PSD) ---- */
+.section--experience,
+.section--about,
+.section--book {
+  background-color: var(--terracota);
+  background-image: url('img/textures/VERMELHO.jpg');
+  background-size: cover;
+  background-position: center;
+  color: var(--branco);
+}
+.section--radio {
+  background-color: var(--cacau);
+  background-image: url('img/textures/CACAU.jpg');
+  background-size: cover;
+  background-position: center;
+  color: var(--branco);
+}
+.section--shop {
+  background-color: var(--creme);
+  background-image: url('img/textures/BEGE.jpg');
+  background-size: cover;
+  background-position: center;
+  color: var(--preto);
+}
+.section--journal {
+  background-color: var(--areia);
+  background-image: url('img/textures/AREIA.jpg');
+  background-size: cover;
+  background-position: center;
+  color: var(--preto);
+}
+
+/* Títulos claros nas seções escuras (vermelho/cacau) */
+.section--about .section-title,
+.section--about .about-description,
+.section--book .section-title,
+.section--book .book-description,
+.section--radio .section-title,
+.section--radio .section-subtitle,
+.section--experience .section-title,
+.section--experience .section-subtitle { color: var(--branco); }
+
+/* ---- Divisor pontilhado turquesa (assinatura do PSD) ---- */
+.section-header::after {
+  content: '';
+  display: block;
+  width: 130px;
+  margin: 22px auto 0;
+  border-top: 2px dotted var(--turquesa);
+  opacity: .75;
+}
+
+/* ---- Cards de rádio coloridos: creme / laranja / turquesa / vermelho ---- */
+.radio-card { border-radius: 10px; padding: 26px 22px; }
+.radio-grid > .radio-card:nth-child(1) { background: var(--creme); color: var(--preto); }
+.radio-grid > .radio-card:nth-child(2) { background: var(--dourado); color: var(--branco); }
+.radio-grid > .radio-card:nth-child(3) { background: var(--turquesa); color: #10302e; }
+.radio-grid > .radio-card:nth-child(4) { background: var(--terracota); color: var(--branco); }
+.radio-card-title { font-family: var(--font-mono); letter-spacing: .12em; }
+
+/* ---- Molduras finas nas fotos (estilo editorial do PSD) ---- */
+.book-slide img,
+.about-image,
+.about-video,
+.product-card img,
+.section--journal img {
+  border: 1px solid rgba(46, 38, 36, .5);
+  box-shadow: 0 0 0 5px rgba(255, 255, 255, .05), 0 12px 30px rgba(0, 0, 0, .18);
+}
+.section--shop .product-card { background: transparent; }
+
+/* ---- Botões: contorno, cantos quase-retos ---- */
+.btn { border-radius: 3px; }
+.btn--primary { background: var(--terracota); color: var(--branco); }
+.btn--secondary, .btn--outline { background: transparent; border: 1.5px solid currentColor; }
+
+/* ---- Padrões gráficos como detalhe decorativo no Manifesto ---- */
+.section--about { position: relative; overflow: hidden; }
+.section--about::before,
+.section--about::after {
+  content: '';
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 130px; height: 130px;
+  background-repeat: no-repeat; background-size: contain; background-position: center;
+  opacity: .30; pointer-events: none;
+}
+.section--about::before { left: 2.5%; background-image: url('img/patterns/padrao-passaros.png'); }
+.section--about::after  { right: 2.5%; background-image: url('img/patterns/padrao-coqueiro.png'); }
+
+/* ---- Rodapé / contato em cacau escuro ---- */
+.site-footer,
+.section--contact { background: var(--cacau); color: var(--branco); }
