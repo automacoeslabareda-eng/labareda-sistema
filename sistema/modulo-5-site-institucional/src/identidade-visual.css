@@ -468,3 +468,10 @@ header.site-header.sticky {
 @media (max-width: 600px) {
   .section--journal .journal-grid { grid-template-columns: 1fr; max-width: 380px; margin: 0 auto; }
 }
+
+/* ==========================================================================
+   ITERAÇÃO 8 — depoimentos ocultos + imagem de contato maior
+   ========================================================================== */
+.section--testimonials { display: none !important; }
+/* imagem do contato maior (era max-width 220px) */
+.contact-image { max-width: 340px; }
