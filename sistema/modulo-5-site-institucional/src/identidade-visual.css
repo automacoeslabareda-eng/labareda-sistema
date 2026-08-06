@@ -99,14 +99,15 @@ h1, h2, h3,
 }
 .section--shop {
   background-color: var(--creme);
-  background-image: url('img/textures/BEGE.jpg');
+  /* clareia a textura com um véu creme por cima => fundo claro igual ao exemplo */
+  background-image: linear-gradient(rgba(243, 236, 219, .78), rgba(243, 236, 219, .78)), url('img/textures/BEGE.jpg');
   background-size: cover;
   background-position: center;
   color: var(--preto);
 }
 .section--journal {
-  background-color: var(--areia);
-  background-image: url('img/textures/AREIA.jpg');
+  background-color: #DBBD92;                       /* tan/kraft correto (igual ao exemplo) */
+  background-image: url('img/textures/BEGE.jpg');  /* AREIA.jpg era creme claro demais */
   background-size: cover;
   background-position: center;
   color: var(--preto);
@@ -133,12 +134,23 @@ h1, h2, h3,
 }
 
 /* ---- Cards de rádio coloridos: creme / laranja / turquesa / vermelho ---- */
-.radio-card { border-radius: 10px; padding: 26px 22px; }
+.radio-card {
+  border-radius: 10px;
+  padding: 26px 22px;
+  display: flex;               /* alinha o conteudo em coluna */
+  flex-direction: column;
+  height: 100%;                /* preenche a celula do grid (todos iguais) */
+}
 .radio-grid > .radio-card:nth-child(1) { background: var(--creme); color: var(--preto); }
 .radio-grid > .radio-card:nth-child(2) { background: var(--dourado); color: var(--branco); }
 .radio-grid > .radio-card:nth-child(3) { background: var(--turquesa); color: #10302e; }
 .radio-grid > .radio-card:nth-child(4) { background: var(--terracota); color: var(--branco); }
 .radio-card-title { font-family: var(--font-mono); letter-spacing: .12em; }
+/* empurra botao + player para a base => todos os players alinhados na mesma linha */
+.radio-open-btn { margin-top: auto; }
+/* garante o player inteiro visivel, sem corte */
+.radio-embed { overflow: visible; border-radius: 12px; }
+.radio-embed iframe { width: 100%; display: block; border-radius: 12px; }
 
 /* ---- Molduras finas nas fotos (estilo editorial do PSD) ---- */
 .book-slide img,
@@ -240,3 +252,219 @@ header.site-header.sticky {
 
 /* Linha turquesa embaixo do hero (assinatura do PSD) */
 .hero { border-bottom: 7px solid var(--turquesa); }
+
+/* Remove a estrela ao lado de "LABAREDA" no menu (nao existe no PSD) */
+.site-header .logo-star { display: none !important; }
+/* Alinha o wordmark LABAREDA sem o espaco da estrela */
+.site-header .logo { gap: 0; }
+
+/* Player de radio e botao do WhatsApp sempre por cima ao rolar */
+.mini-player { z-index: 9998 !important; }
+.whatsapp-float { z-index: 9997 !important; position: fixed !important; }
+
+/* ==========================================================================
+   ITERAÇÃO 5 — PARTE 2 (tagline + galeria emoldurada + manifesto), do PSD
+   ========================================================================== */
+.section--experience { padding-top: 70px; padding-bottom: 90px; }
+
+/* --- Tagline --- */
+.p2-tagline { text-align: center; }
+.p2-tagline-texto {
+  color: var(--branco);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  letter-spacing: 0.03em;
+  line-height: 2;
+  max-width: 780px;
+  margin: 0 auto 20px;
+}
+.p2-microbar {
+  display: flex; flex-wrap: wrap; gap: 16px;
+  justify-content: center; align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.78rem; letter-spacing: 0.14em;
+  color: var(--branco);
+}
+.p2-microbar .p2-sep { color: var(--turquesa); }
+
+/* --- Galeria (carrossel com moldura preta) --- */
+.p2-galeria { margin: 46px auto 0; }
+.p2-frame {
+  max-width: 1000px;
+  margin: 0 auto;
+  background: #0f0f0d;              /* moldura preta */
+  padding: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .35);
+}
+.p2-track { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; }
+.p2-img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  opacity: 0; transition: opacity 0.8s ease;
+}
+.p2-img.active { opacity: 1; }
+/* Bolinhas embaixo (escolher foto) */
+.p2-dots {
+  display: flex; gap: 12px; justify-content: center;
+  margin-top: 22px;
+}
+.p2-dot {
+  width: 11px; height: 11px; padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(243, 233, 210, .55);
+  background: transparent; cursor: pointer;
+  transition: background 0.2s;
+}
+.p2-dot.active { background: var(--branco); border-color: var(--branco); }
+
+/* --- Manifesto --- */
+.p2-manifesto {
+  display: flex; align-items: center; justify-content: center;
+  gap: 44px; max-width: 940px; margin: 80px auto 0;
+  text-align: center;
+}
+.p2-selo { width: 120px; height: auto; flex: 0 0 auto; opacity: .9; }
+.p2-manifesto-titulo {
+  font-family: var(--font-display);
+  color: var(--branco);
+  font-size: 1.7rem; letter-spacing: .06em;
+  margin-bottom: 20px;
+}
+.p2-manifesto-texto p {
+  color: var(--branco);
+  font-family: var(--font-mono);
+  font-size: 0.92rem; line-height: 1.95; letter-spacing: .02em;
+  max-width: 520px; margin: 0 auto;
+}
+.p2-manifesto-fecho { margin-top: 20px; }
+
+@media (max-width: 720px) {
+  .p2-selo { width: 80px; }
+  .p2-manifesto { gap: 18px; }
+}
+
+/* ==========================================================================
+   ITERAÇÃO 6 — PARTE 3 (galeria emoldurada + frase + botão RESERVAR), do PSD
+   ========================================================================== */
+/* normaliza a seção (o CSS antigo era display:grid + min-height:100vh) */
+.section--book {
+  display: block !important;
+  min-height: 0 !important;
+  padding-top: 18px;      /* fininha tarja vermelha em cima, igual ao exemplo */
+  padding-bottom: 90px;
+  overflow: hidden;       /* evita scroll horizontal do full-bleed */
+}
+.section--book .p2-galeria { margin: 0; }
+
+/* --- Galeria da parte 3: full-bleed (borda a borda, sem moldura preta) --- */
+.section--book .p2-frame {
+  max-width: none;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);   /* quebra o container e ocupa a tela toda */
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+.section--book .p2-track {
+  aspect-ratio: auto;
+  height: 84vh;                    /* imagem grande e imersiva, como no exemplo */
+  max-height: 860px;
+}
+.section--book .p2-dots { margin-top: 26px; }
+.section--book .p2-dot {
+  border-color: rgba(243, 233, 210, .7);
+}
+
+.p3-reserva { text-align: center; margin-top: 44px; }
+.p3-frase {
+  color: var(--branco);
+  font-family: var(--font-mono);
+  font-size: 0.95rem; line-height: 2; letter-spacing: .03em;
+  max-width: 640px; margin: 0 auto 28px;
+}
+.p3-btn-reservar {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.85rem; letter-spacing: .2em;
+  color: var(--branco);
+  border: 1.5px solid var(--branco);
+  padding: 14px 44px;
+  transition: background .2s, color .2s;
+}
+.p3-btn-reservar:hover { background: var(--branco); color: var(--terracota); }
+
+/* ==========================================================================
+   ITERAÇÃO 7 — JOURNAL (cards emoldurados, estilo editorial do PSD)
+   ========================================================================== */
+.section--journal .journal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 44px 40px;
+  align-items: start;
+}
+/* card emoldurado */
+.j-card {
+  background: transparent !important;
+  overflow: visible !important;
+  border-radius: 0 !important;
+  cursor: pointer;
+  text-align: center;
+  transition: transform .3s ease;
+}
+.j-card:hover { transform: translateY(-4px); }
+.j-frame {
+  border: 1px solid rgba(46, 38, 36, .5);    /* linha externa fina */
+  padding: 15px;                             /* passe-partout largo */
+  background: #EADFC6;                        /* moldura bege claro (igual ao exemplo) */
+}
+.j-frame-inner {
+  border: 1px solid rgba(46, 38, 36, .4);    /* linha fina em volta da foto */
+  overflow: hidden;
+  background: #EADFC6;
+}
+.j-img, .j-ph {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  transition: transform .6s var(--ease-in-out, ease);
+}
+.j-ph {
+  background: linear-gradient(135deg,
+    hsl(var(--j-hue, 28), 40%, 42%), hsl(var(--j-hue, 28), 35%, 30%));
+}
+.j-card:hover .j-img { transform: scale(1.05); }
+.j-title {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-size: 1rem;
+  color: var(--cacau, #2E2624);
+  margin: 22px 0 10px;
+}
+.j-desc {
+  font-family: var(--font-mono);
+  font-size: .82rem;
+  line-height: 1.75;
+  color: #5b4a3c;
+  max-width: 310px;
+  margin: 0 auto 16px;
+}
+.j-plus {
+  width: 34px; height: 34px; padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(46, 38, 36, .6);
+  background: transparent;
+  color: var(--cacau, #2E2624);
+  font-size: 1.15rem; line-height: 1; cursor: pointer;
+  transition: background .2s, color .2s;
+}
+.j-plus:hover { background: var(--cacau, #2E2624); color: var(--areia, #E9BF91); }
+
+@media (max-width: 900px) {
+  .section--journal .journal-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .section--journal .journal-grid { grid-template-columns: 1fr; max-width: 380px; margin: 0 auto; }
+}

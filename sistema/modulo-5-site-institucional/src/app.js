@@ -620,6 +620,15 @@
     return hueMap[categorySlug] || 15;
   }
 
+  /* Troca imagem quebrada de produto por um placeholder colorido (evita ícone de imagem quebrada) */
+  window.__prodImgError = function (img) {
+    var hue = img.getAttribute('data-hue') || '15';
+    var ph = document.createElement('div');
+    ph.className = 'product-image-placeholder';
+    ph.style.setProperty('--product-hue', hue);
+    if (img.parentNode) img.parentNode.replaceChild(ph, img);
+  };
+
   function renderProducts(produtos) {
     var shopGrid = document.getElementById('shop-grid');
     var catContainer = document.querySelector('.shop-categories');
@@ -694,7 +703,9 @@
       var imageHTML;
       var firstImage = (p.imagens && p.imagens.length > 0) ? p.imagens[0] : p.imagem_url;
       if (firstImage) {
-        imageHTML = '<img src="' + firstImage + '" alt="' + productName + '" class="product-img" loading="lazy">';
+        /* onerror: se a URL da imagem estiver quebrada, troca por um placeholder colorido */
+        imageHTML = '<img src="' + firstImage + '" alt="' + productName + '" class="product-img" loading="lazy"'
+          + ' data-hue="' + hue + '" onerror="window.__prodImgError && window.__prodImgError(this)">';
       } else {
         imageHTML = '<div class="product-image-placeholder" style="--product-hue: ' + hue + ';"></div>';
       }
@@ -807,36 +818,28 @@
 
     var gridHTML = '';
     var delays = ['', ' reveal--delay-1', ' reveal--delay-2', ' reveal--delay-3'];
-    var hues = [130, 15, 200, 45, 100, 350, 80, 260];
+    var hues = [28, 15, 200, 130];
 
     posts.forEach(function (post, idx) {
       var title = currentLang === 'pt' ? (post.titulo_pt || post.titulo) : (post.titulo_en || post.titulo_pt || post.titulo);
       var excerpt = currentLang === 'pt' ? (post.resumo_pt || post.resumo) : (post.resumo_en || post.resumo_pt || post.resumo);
-      var date = formatDate(post.published_at || post.created_at);
-      var isoDate = post.published_at || post.created_at || '';
       var delayClass = delays[idx % 4];
-
-      /* First post is large, 5th is wide */
-      var sizeClass = '';
-      if (idx === 0) sizeClass = ' journal-card--large';
-      else if (idx === 4) sizeClass = ' journal-card--wide';
+      var slug = post.slug || post.id;
+      var destino = 'journal.html?slug=' + encodeURIComponent(slug);
 
       var imageHTML;
       if (post.imagem_capa) {
-        imageHTML = '<img src="' + post.imagem_capa + '" alt="' + title + '" class="journal-img" loading="lazy">';
+        imageHTML = '<img src="' + post.imagem_capa + '" alt="' + title + '" class="j-img" loading="lazy"'
+          + ' data-hue="' + hues[idx % hues.length] + '" onerror="window.__journalImgError && window.__journalImgError(this)">';
       } else {
-        var hue = hues[idx % hues.length];
-        var sat = 30 + (idx * 5) % 20;
-        imageHTML = '<div class="journal-image-placeholder" style="--journal-hue: ' + hue + '; --journal-sat: ' + sat + '%;"></div>';
+        imageHTML = '<div class="j-ph" style="--j-hue: ' + hues[idx % hues.length] + ';"></div>';
       }
 
-      gridHTML += '<article class="journal-card' + sizeClass + ' reveal' + delayClass + '" data-journal-idx="' + idx + '" onclick="window.__abrirJournalPost(' + idx + ')">'
-        + '<div class="journal-card-image">' + imageHTML + '</div>'
-        + '<div class="journal-card-content">'
-        + '<time class="journal-date" datetime="' + isoDate.substring(0, 10) + '">' + date + '</time>'
-        + '<h3 class="journal-card-title">' + title + '</h3>'
-        + (excerpt ? '<p class="journal-card-excerpt">' + excerpt + '</p>' : '')
-        + '</div>'
+      gridHTML += '<article class="j-card reveal' + delayClass + '" onclick="location.href=\'' + destino + '\'">'
+        + '<div class="j-frame"><div class="j-frame-inner">' + imageHTML + '</div></div>'
+        + '<h3 class="j-title">' + title + '</h3>'
+        + (excerpt ? '<p class="j-desc">' + excerpt + '</p>' : '')
+        + '<button class="j-plus" aria-label="Abrir journal" onclick="event.stopPropagation();location.href=\'' + destino + '\'">+</button>'
         + '</article>';
     });
 
@@ -844,12 +847,28 @@
     refreshScrollReveal();
   }
 
+  /* imagem de capa quebrada -> placeholder colorido */
+  window.__journalImgError = function (img) {
+    var hue = img.getAttribute('data-hue') || '28';
+    var ph = document.createElement('div');
+    ph.className = 'j-ph';
+    ph.style.setProperty('--j-hue', hue);
+    if (img.parentNode) img.parentNode.replaceChild(ph, img);
+  };
+
   function loadJournal() {
-    supabaseFetch('journal_posts', '?publicado=eq.true&select=*&order=destaque.desc,published_at.desc')
+    /* Só os posts favoritados (destaque=true) vão para o site */
+    supabaseFetch('journal_posts', '?publicado=eq.true&destaque=eq.true&select=*&order=published_at.desc')
       .then(function (data) {
-        if (data && data.length > 0) {
-          loadedJournalPosts = data;
-          renderJournal(data);
+        loadedJournalPosts = data || [];
+        if (loadedJournalPosts.length > 0) {
+          renderJournal(loadedJournalPosts);
+        } else {
+          /* nenhum post favoritado -> esconde a seção inteira */
+          var grid = document.querySelector('.journal-grid');
+          if (grid) grid.innerHTML = '';
+          var sec = document.getElementById('journal');
+          if (sec) sec.style.display = 'none';
         }
       })
       .catch(function (err) {
@@ -896,7 +915,7 @@
         ? '<div class="radio-embed">'
           + '<iframe title="' + title + '" style="border-radius:12px" '
           + 'src="' + embedSrc + '" '
-          + 'width="100%" height="152" frameBorder="0" '
+          + 'width="100%" height="352" frameBorder="0" '
           + 'allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" '
           + 'loading="lazy"></iframe>'
           + '</div>'

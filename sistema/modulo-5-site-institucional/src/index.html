@@ -52,7 +52,7 @@
 
       <nav class="main-nav" id="main-nav" role="navigation" aria-label="Menu principal">
         <ul class="nav-list">
-          <li><a href="#about" class="nav-link" data-i18n="nav_about">ABOUT</a></li>
+          <li><a href="#experience" class="nav-link" data-i18n="nav_about">ABOUT</a></li>
           <li><a href="#book" class="nav-link" data-i18n="nav_book">BOOK</a></li>
           <li><a href="#radio" class="nav-link" data-i18n="nav_radio">RADIO</a></li>
           <li><a href="#shop" class="nav-link" data-i18n="nav_shop">SHOP</a></li>
@@ -104,7 +104,7 @@
   <div class="mobile-menu-overlay" id="mobile-menu" role="dialog" aria-modal="true" aria-label="Menu de navegação">
     <nav class="mobile-nav">
       <ul class="mobile-nav-list">
-        <li><a href="#about" class="mobile-nav-link" data-i18n="nav_about">ABOUT</a></li>
+        <li><a href="#experience" class="mobile-nav-link" data-i18n="nav_about">ABOUT</a></li>
         <li><a href="#book" class="mobile-nav-link" data-i18n="nav_book">BOOK</a></li>
         <li><a href="#radio" class="mobile-nav-link" data-i18n="nav_radio">RADIO</a></li>
         <li><a href="#shop" class="mobile-nav-link" data-i18n="nav_shop">SHOP</a></li>
@@ -126,7 +126,7 @@
         <div class="hero-overlay"></div>
       </div>
       <div class="hero-content">
-        <img class="hero-logo" src="./img/logo-labareda.png" alt="Labareda — Roça &amp; Arte" width="340" />
+        <img class="hero-logo" src="./img/logo-labareda.svg" alt="Labareda — Roça &amp; Arte" width="340" />
       </div>
       <a href="#experience" class="hero-scroll-indicator" aria-label="Scroll down">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
@@ -136,106 +136,85 @@
     </section>
 
     <!-- ===== EXPERIENCE PILLARS ===== -->
-    <section class="section section--experience" id="experience" aria-labelledby="experience-title">
+    <section class="section section--experience" id="experience" aria-label="Sobre o Sítio Labareda">
       <div class="container">
-        <div class="section-header reveal">
-          <span class="section-label" data-i18n="experience_label">Aqui o dia tem outro ritmo</span>
-          <h2 class="section-title" id="experience-title" data-i18n="experience_title">O que você vai viver</h2>
+        <!-- Tagline -->
+        <div class="p2-tagline">
+          <p class="p2-tagline-texto">Um santuário de roça e arte no coração da Costa do Cacau.<br>Mata viva, lagoas cristalinas, praia logo ali — e o café da manhã que a terra deu de manhã.</p>
+          <div class="p2-microbar">
+            <span>RESERVA DIRETA</span><span class="p2-sep">·</span>
+            <span>CAFÉ DA ROÇA INCLUSO</span><span class="p2-sep">·</span>
+            <span>POUCAS UNIDADES</span>
+          </div>
         </div>
-        <div class="pillars-grid">
-          <div class="pillar-card reveal">
-            <span class="pillar-icon" aria-hidden="true">&#127807;</span>
-            <h3 class="pillar-title" data-i18n="pillar_1_title">A roça acorda primeiro</h3>
-            <p class="pillar-text" data-i18n="pillar_1_text">Café da manhã colhido a poucos passos da sua rede.</p>
+
+        <!-- Galeria (carrossel emoldurado) -->
+        <div class="p2-galeria">
+          <div class="p2-frame">
+            <div class="p2-track" id="p2-track">
+              <img src="./img/galeria/g1.jpg" alt="Sítio Labareda" class="p2-img active">
+              <img src="./img/galeria/g2.jpg" alt="Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/galeria/g3.jpg" alt="Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/galeria/g4.jpg" alt="Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/galeria/g5.jpg" alt="Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/galeria/g6.jpg" alt="Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/galeria/g7.jpg" alt="Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/galeria/g8.jpg" alt="Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/galeria/g9.jpg" alt="Sítio Labareda" class="p2-img" loading="lazy">
+            </div>
           </div>
-          <div class="pillar-card reveal reveal--delay-1">
-            <span class="pillar-icon" aria-hidden="true">&#128167;</span>
-            <h3 class="pillar-title" data-i18n="pillar_2_title">Água doce e salgada</h3>
-            <p class="pillar-text" data-i18n="pillar_2_text">Lagoas cristalinas e praias selvagens de Serra Grande, Itacaré e Maraú.</p>
+          <div class="p2-dots" id="p2-dots" role="tablist" aria-label="Escolher foto"></div>
+        </div>
+
+        <!-- Manifesto -->
+        <div class="p2-manifesto">
+          <img src="./img/selo-esq.png" alt="" class="p2-selo" aria-hidden="true">
+          <div class="p2-manifesto-texto">
+            <h2 class="p2-manifesto-titulo">MANIFESTO</h2>
+            <p>Nossa agrofloresta é um organismo vivo no meio da Mata Atlântica. É dela que vem a fruta do seu café, o cheiro do nosso creme, a cor que vira arte. Quando você caminha entre o cacau, está caminhando dentro da fonte.</p>
+            <p class="p2-manifesto-fecho">Sem cenário. Sem fachada. Só o que se vive.</p>
           </div>
-          <div class="pillar-card reveal reveal--delay-2">
-            <span class="pillar-icon" aria-hidden="true">&#127912;</span>
-            <h3 class="pillar-title" data-i18n="pillar_3_title">Arte que nasce aqui</h3>
-            <p class="pillar-text" data-i18n="pillar_3_text">O Estúdio Tartaruga revela, tinge e imprime à mão.</p>
-          </div>
-          <div class="pillar-card reveal reveal--delay-3">
-            <span class="pillar-icon" aria-hidden="true">&#128293;</span>
-            <h3 class="pillar-title" data-i18n="pillar_4_title">Calor de verdade</h3>
-            <p class="pillar-text" data-i18n="pillar_4_text">Poucas unidades, atenção que é gente, não protocolo.</p>
-          </div>
+          <img src="./img/selo-dir.png" alt="" class="p2-selo" aria-hidden="true">
         </div>
       </div>
     </section>
 
-    <!-- ===== ABOUT ===== -->
-    <section class="section section--about" id="about" aria-labelledby="about-title">
-      <div class="container">
-        <div class="section-grid section-grid--about">
-          <div class="about-text reveal">
-            <span class="section-label" data-i18n="about_label">A terra</span>
-            <h2 class="section-title" id="about-title" data-i18n="about_title">A terra aqui não é paisagem — é despensa, é remédio, é começo de tudo.</h2>
-            <p class="about-description" data-i18n="about_p1">
-              Nossa agrofloresta é um organismo vivo no meio da Mata Atlântica. É dela que vem a fruta do seu café, o cheiro do nosso creme, a cor que vira arte. Quando você caminha entre o cacau, está caminhando dentro da fonte.
-            </p>
-            <p class="about-description" data-i18n="about_p2">
-              Sem cenário. Sem fachada. Só o que se vive.
-            </p>
-          </div>
-          <div class="about-visual reveal reveal--delay-1">
-            <!-- Video embed (carregado do Supabase Storage via site_config.about_video_url) -->
-            <div class="about-video" id="about-video-container">
-              <img src="./img/lounge-redes.jpg" alt="Lounge com telhado de palha, redes e puffs entre palmeiras no Sítio Labareda" class="about-image" loading="lazy" id="about-fallback-img">
-            </div>
-            <div class="about-detail">
-              <span class="detail-label" data-i18n="about_detail_label">Localização</span>
-              <span class="detail-value" data-i18n="about_detail_value">Serra Grande, Uruçuca — BA</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+    <!-- ===== ABOUT (removido — manifesto agora na Parte 2 acima) ===== -->
 
     <!-- ===== BOOK ===== -->
     <section class="section section--book" id="book" aria-labelledby="book-title">
-      <div class="book-gallery">
-        <div class="book-gallery-track" id="book-gallery-track">
-          <div class="book-slide" aria-label="Quarto com varanda">
-            <img src="./img/quarto-varanda.jpg" alt="Quarto rustico com cortinas brancas e varanda com cadeira no Sitio Labareda" loading="lazy">
+      <div class="container">
+        <!-- Galeria emoldurada (carrossel) -->
+        <div class="p2-galeria">
+          <div class="p2-frame">
+            <div class="p2-track" id="p3-track">
+              <img src="./img/reserva/r1.jpg" alt="Hospedagem Sítio Labareda" class="p2-img active">
+              <img src="./img/reserva/r2.jpg" alt="Hospedagem Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/reserva/r3.jpg" alt="Hospedagem Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/reserva/r4.jpg" alt="Hospedagem Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/reserva/r5.jpg" alt="Hospedagem Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/reserva/r6.jpg" alt="Hospedagem Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/reserva/r7.jpg" alt="Hospedagem Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/reserva/r8.jpg" alt="Hospedagem Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/reserva/r9.jpg" alt="Hospedagem Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/reserva/r10.jpg" alt="Hospedagem Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/reserva/r11.jpg" alt="Hospedagem Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/reserva/r12.jpg" alt="Hospedagem Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/reserva/r13.jpg" alt="Hospedagem Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/reserva/r14.jpg" alt="Hospedagem Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/reserva/r15.jpg" alt="Hospedagem Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/reserva/r16.jpg" alt="Hospedagem Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/reserva/r17.jpg" alt="Hospedagem Sítio Labareda" class="p2-img" loading="lazy">
+              <img src="./img/reserva/r18.jpg" alt="Hospedagem Sítio Labareda" class="p2-img" loading="lazy">
+            </div>
           </div>
-          <div class="book-slide" aria-label="Detalhe do quarto">
-            <img src="./img/quarto-detalhe.jpg" alt="Cama com dossel branco, luminaria artesanal e mesa com frutas" loading="lazy">
-          </div>
-          <div class="book-slide" aria-label="Rede na varanda">
-            <img src="./img/rede-varanda.jpg" alt="Rede branca na varanda de madeira com vista para a mata" loading="lazy">
-          </div>
-          <div class="book-slide" aria-label="Mesa com vista">
-            <img src="./img/mesa-janela.jpg" alt="Mesa de madeira com cadeiras e luminaria artesanal junto a janela com vista para a mata" loading="lazy">
-          </div>
-          <div class="book-slide" aria-label="Deck e piscina">
-            <img src="./img/deck-piscina.jpg" alt="Deck de madeira com espreguicadeiras listradas ao lado da piscina" loading="lazy">
-          </div>
+          <div class="p2-dots" id="p3-dots" role="tablist" aria-label="Escolher foto"></div>
         </div>
-        <div class="book-gallery-dots" role="tablist" aria-label="Galeria de fotos">
-          <button class="gallery-dot active" role="tab" aria-selected="true" aria-label="Foto 1" data-slide="0"></button>
-          <button class="gallery-dot" role="tab" aria-selected="false" aria-label="Foto 2" data-slide="1"></button>
-          <button class="gallery-dot" role="tab" aria-selected="false" aria-label="Foto 3" data-slide="2"></button>
-          <button class="gallery-dot" role="tab" aria-selected="false" aria-label="Foto 4" data-slide="3"></button>
-          <button class="gallery-dot" role="tab" aria-selected="false" aria-label="Foto 5" data-slide="4"></button>
-        </div>
-      </div>
-      <div class="book-content reveal">
-        <span class="section-label" data-i18n="book_label">Hospedagem</span>
-        <h2 class="section-title" id="book-title" data-i18n="book_title">Sua data está esperando.</h2>
-        <p class="book-description" data-i18n="book_description">
-          Escolha quando quer viver a roça e a arte. Poucas unidades, atenção de verdade — os melhores períodos costumam fechar cedo.
-        </p>
-        <div class="book-ctas">
-          <a href="#" class="btn btn--primary btn--large" data-i18n="book_cta" onclick="abrirBookingModal(); return false;">
-            Ver disponibilidade e reservar
-          </a>
-          <a href="https://wa.me/5573999999999" class="btn btn--whatsapp" target="_blank" rel="noopener noreferrer" data-i18n="book_cta_whatsapp">
-            Prefere conversar? Chame no WhatsApp
-          </a>
+
+        <!-- Frase + botao Reservar -->
+        <div class="p3-reserva">
+          <p class="p3-frase">Escolha quando quer viver a roça e a arte.<br>Poucas unidades, atenção de verdade — os melhores períodos costumam fechar cedo.</p>
+          <a href="https://www.airbnb.com.br/" target="_blank" rel="noopener noreferrer" class="p3-btn-reservar" id="btn-reservar-airbnb">RESERVAR</a>
         </div>
       </div>
     </section>
@@ -264,7 +243,7 @@
                 title="Playlist Manhãs na Roça"
                 style="border-radius:12px"
                 src="https://open.spotify.com/embed/playlist/37i9dQZF1DX0FOF1IUWK1W?utm_source=generator&theme=0"
-                width="100%" height="152"
+                width="100%" height="352"
                 frameBorder="0"
                 allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                 loading="lazy">
@@ -286,7 +265,7 @@
                 title="Playlist Tropicália Eterna"
                 style="border-radius:12px"
                 src="https://open.spotify.com/embed/playlist/37i9dQZF1DX1MusMBbaPpF?utm_source=generator&theme=0"
-                width="100%" height="152"
+                width="100%" height="352"
                 frameBorder="0"
                 allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                 loading="lazy">
@@ -308,7 +287,7 @@
                 title="Playlist Noites de Fogueira"
                 style="border-radius:12px"
                 src="https://open.spotify.com/embed/playlist/37i9dQZF1DWTwzVdyRpXm1?utm_source=generator&theme=0"
-                width="100%" height="152"
+                width="100%" height="352"
                 frameBorder="0"
                 allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                 loading="lazy">
@@ -330,7 +309,7 @@
                 title="Playlist Cacau & Jazz"
                 style="border-radius:12px"
                 src="https://open.spotify.com/embed/playlist/37i9dQZF1DX4wta20PHgwo?utm_source=generator&theme=0"
-                width="100%" height="152"
+                width="100%" height="352"
                 frameBorder="0"
                 allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                 loading="lazy">
@@ -703,7 +682,7 @@
         <nav class="footer-nav" aria-label="Links do footer">
           <h3 class="footer-nav-title" data-i18n="footer_nav_title">Navegação</h3>
           <ul class="footer-nav-list">
-            <li><a href="#about" data-i18n="nav_about">ABOUT</a></li>
+            <li><a href="#experience" data-i18n="nav_about">ABOUT</a></li>
             <li><a href="#book" data-i18n="nav_book">BOOK</a></li>
             <li><a href="#radio" data-i18n="nav_radio">RADIO</a></li>
             <li><a href="#shop" data-i18n="nav_shop">SHOP</a></li>
@@ -978,5 +957,42 @@
   </div>
 
   <script src="app.js"></script>
+
+  <!-- Carrossel reutilizavel (troca a cada 5s + bolinhas) — Parte 2 e Parte 3 -->
+  <script>
+    function initCarrossel(trackId, dotsId) {
+      var track = document.getElementById(trackId);
+      var dotsWrap = document.getElementById(dotsId);
+      if (!track || !dotsWrap) return;
+      var imgs = track.querySelectorAll('.p2-img');
+      if (!imgs.length) return;
+      var cur = 0, timer;
+      for (var i = 0; i < imgs.length; i++) {
+        (function (n) {
+          var d = document.createElement('button');
+          d.className = 'p2-dot' + (n === 0 ? ' active' : '');
+          d.setAttribute('role', 'tab');
+          d.setAttribute('aria-label', 'Foto ' + (n + 1));
+          d.addEventListener('click', function () { ir(n); reiniciar(); });
+          dotsWrap.appendChild(d);
+        })(i);
+      }
+      var dots = dotsWrap.querySelectorAll('.p2-dot');
+      function ir(n) {
+        imgs[cur].classList.remove('active');
+        dots[cur].classList.remove('active');
+        cur = (n + imgs.length) % imgs.length;
+        imgs[cur].classList.add('active');
+        dots[cur].classList.add('active');
+      }
+      function reiniciar() {
+        clearInterval(timer);
+        timer = setInterval(function () { ir(cur + 1); }, 5000);
+      }
+      reiniciar();
+    }
+    initCarrossel('p2-track', 'p2-dots');
+    initCarrossel('p3-track', 'p3-dots');
+  </script>
 </body>
 </html>

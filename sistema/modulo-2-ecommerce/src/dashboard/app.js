@@ -213,6 +213,26 @@ async function uploadImagem(file, pasta, nomeArquivo) {
   return CONFIG.SUPABASE_URL + '/storage/v1/object/public/imagens/' + path;
 }
 
+/* Upload de video para o bucket 'videos' (limite 50MB no plano atual) */
+async function uploadVideoArquivo(file, nomeArquivo) {
+  var path = 'journal/' + nomeArquivo;
+  var resp = await fetch(CONFIG.SUPABASE_URL + '/storage/v1/object/videos/' + path, {
+    method: 'POST',
+    headers: {
+      'apikey': CONFIG.SUPABASE_KEY,
+      'Authorization': 'Bearer ' + CONFIG.SUPABASE_KEY,
+      'Content-Type': file.type,
+      'x-upsert': 'true',
+    },
+    body: file,
+  });
+  if (!resp.ok) {
+    var txt = await resp.text();
+    throw new Error('Upload de video falhou: ' + txt);
+  }
+  return CONFIG.SUPABASE_URL + '/storage/v1/object/public/videos/' + path;
+}
+
 /* ================================================================== */
 /*  DOM HELPERS                                                       */
 /* ================================================================== */
@@ -672,19 +692,33 @@ function abrirModalJournal(id) {
   $('#modal-titulo').textContent = id ? 'Editar Post' : 'Novo Post';
 
   $('#modal-body').innerHTML =
-    '<div class="form-group"><label>Titulo (PT)</label><input type="text" id="campo-journal-titulo-pt" placeholder="Titulo do post em portugues"></div>' +
-    '<div class="form-group"><label>Titulo (EN)</label><input type="text" id="campo-journal-titulo-en" placeholder="Post title in english"></div>' +
-    '<div class="form-group"><label>Resumo (PT)</label><textarea id="campo-journal-resumo-pt" rows="2" placeholder="Resumo em portugues"></textarea></div>' +
-    '<div class="form-group"><label>Resumo (EN)</label><textarea id="campo-journal-resumo-en" rows="2" placeholder="Summary in english"></textarea></div>' +
-    '<div class="form-group"><label>Conteudo (PT)</label><textarea id="campo-journal-conteudo-pt" rows="8" placeholder="Conteudo completo em portugues"></textarea></div>' +
-    '<div class="form-group"><label>Conteudo (EN)</label><textarea id="campo-journal-conteudo-en" rows="8" placeholder="Full content in english"></textarea></div>' +
-    '<div class="form-group"><label>Imagem de Capa</label>' +
+    '<p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Estes campos aparecem no <b>card do journal no site</b>. O título tambem e usado como titulo da pagina do journal.</p>' +
+    '<div class="form-group"><label>Imagem de capa (vai para o card no site)</label>' +
       '<input type="file" id="campo-journal-imagem-file" accept="image/*">' +
       '<div id="campo-journal-imagem-preview" style="margin-top:8px"></div>' +
     '</div>' +
-    '<div class="form-group"><label>Tags (separadas por virgula)</label><input type="text" id="campo-journal-tags" placeholder="tag1, tag2, tag3"></div>' +
-    '<div class="form-group"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="campo-journal-destaque"> Post Destaque</label></div>' +
-    '<div class="form-group"><label>Slug</label><input type="text" id="campo-journal-slug" placeholder="gerado-automaticamente" style="color:var(--text-muted)"></div>';
+    '<div class="form-group"><label>Titulo (PT)</label><input type="text" id="campo-journal-titulo-pt" placeholder="Ex: Feira da Serra"></div>' +
+    '<div class="form-group"><label>Titulo (EN)</label><input type="text" id="campo-journal-titulo-en" placeholder="Post title in english"></div>' +
+    '<div class="form-group"><label>Descricao do card (PT)</label><textarea id="campo-journal-resumo-pt" rows="2" placeholder="Texto curto que aparece embaixo do card no site"></textarea></div>' +
+    '<div class="form-group"><label>Descricao do card (EN)</label><textarea id="campo-journal-resumo-en" rows="2" placeholder="Short text in english"></textarea></div>' +
+
+    '<hr style="border:none;border-top:1px solid var(--border);margin:18px 0">' +
+    '<p style="font-size:13px;font-weight:600;margin-bottom:4px">Imagens do journal (pagina interna)</p>' +
+    '<p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Adicione quantas quiser. Cada imagem precisa de um arquivo (ou URL) e uma descricao. Se nao adicionar nenhuma, a pagina mostra so o video.</p>' +
+    '<div id="journal-imgs"></div>' +
+    '<button type="button" class="btn btn--small btn--secondary" onclick="journalAddImagemRow()">+ Adicionar imagem</button>' +
+
+    '<hr style="border:none;border-top:1px solid var(--border);margin:18px 0">' +
+    '<p style="font-size:13px;font-weight:600;margin-bottom:4px">Video (opcional, sempre no rodape da pagina)</p>' +
+    '<div class="form-group"><label>Link do YouTube</label><input type="text" id="campo-journal-video-url" placeholder="https://youtube.com/watch?v=..."></div>' +
+    '<div class="form-group"><label>Ou envie um arquivo de video (ate 50MB)</label>' +
+      '<input type="file" id="campo-journal-video-file" accept="video/*">' +
+      '<div id="campo-journal-video-preview" style="margin-top:6px;font-size:12px;color:var(--text-muted)"></div>' +
+    '</div>' +
+
+    '<hr style="border:none;border-top:1px solid var(--border);margin:18px 0">' +
+    '<div class="form-group"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="campo-journal-destaque"> Favoritar (mostrar este journal no site)</label></div>' +
+    '<div class="form-group"><label>Slug (endereco da pagina)</label><input type="text" id="campo-journal-slug" placeholder="gerado-automaticamente" style="color:var(--text-muted)"></div>';
 
   // Auto-gerar slug ao digitar titulo PT
   var tituloPtInput = $('#campo-journal-titulo-pt');
@@ -693,7 +727,7 @@ function abrirModalJournal(id) {
     slugInput.value = gerarSlug(tituloPtInput.value);
   });
 
-  // Preview de imagem
+  // Preview da capa
   var fileInput = $('#campo-journal-imagem-file');
   fileInput.addEventListener('change', function() {
     var preview = $('#campo-journal-imagem-preview');
@@ -706,11 +740,56 @@ function abrirModalJournal(id) {
     }
   });
 
+  // Nome do arquivo de video selecionado
+  var videoFile = $('#campo-journal-video-file');
+  videoFile.addEventListener('change', function() {
+    var prev = $('#campo-journal-video-preview');
+    if (videoFile.files && videoFile.files[0]) {
+      var f = videoFile.files[0];
+      var mb = (f.size / 1048576).toFixed(1);
+      prev.innerHTML = f.name + ' (' + mb + ' MB)' + (f.size > 52428800 ? ' <b style="color:#c0392b">— maior que 50MB, use o YouTube</b>' : '');
+    } else { prev.innerHTML = ''; }
+  });
+
   if (id) {
     carregarDadosJournalModal(id);
+  } else {
+    journalAddImagemRow(); // comeca com uma linha vazia
   }
 
   $('#modal-overlay').classList.remove('escondido');
+}
+
+/* Adiciona uma linha de imagem de conteudo do journal (imagem/url + descricao PT/EN) */
+function journalAddImagemRow(dados) {
+  dados = dados || {};
+  var cont = document.getElementById('journal-imgs');
+  if (!cont) return;
+  var row = document.createElement('div');
+  row.className = 'jimg-row';
+  row.style.cssText = 'border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px';
+  row.innerHTML =
+    '<div class="jimg-prev" style="margin-bottom:8px">' +
+      (dados.url ? '<img src="' + escapeHtml(dados.url) + '" style="max-width:160px;max-height:120px;border-radius:6px">' : '') +
+    '</div>' +
+    '<input type="file" accept="image/*" class="jimg-file" style="margin-bottom:6px;display:block">' +
+    '<input type="text" class="jimg-url input" placeholder="ou cole a URL da imagem" value="' + escapeHtml(dados.url || '') + '" style="margin-bottom:6px;display:block;width:100%">' +
+    '<textarea class="jimg-dpt" rows="2" placeholder="Descricao da imagem (PT)" style="margin-bottom:6px;display:block;width:100%">' + escapeHtml(dados.descricao_pt || '') + '</textarea>' +
+    '<textarea class="jimg-den" rows="2" placeholder="Image description (EN)" style="margin-bottom:8px;display:block;width:100%">' + escapeHtml(dados.descricao_en || '') + '</textarea>' +
+    '<button type="button" class="btn btn--small btn--danger jimg-rm">Remover imagem</button>';
+  cont.appendChild(row);
+
+  // preview ao escolher arquivo
+  row.querySelector('.jimg-file').addEventListener('change', function() {
+    var prev = row.querySelector('.jimg-prev');
+    if (this.files && this.files[0]) {
+      var reader = new FileReader();
+      reader.onload = function(e) { prev.innerHTML = '<img src="' + e.target.result + '" style="max-width:160px;max-height:120px;border-radius:6px">'; };
+      reader.readAsDataURL(this.files[0]);
+    }
+  });
+  // remover linha
+  row.querySelector('.jimg-rm').addEventListener('click', function() { row.remove(); });
 }
 
 async function carregarDadosJournalModal(id) {
@@ -723,25 +802,29 @@ async function carregarDadosJournalModal(id) {
       if (el('#campo-journal-titulo-en')) el('#campo-journal-titulo-en').value = p.titulo_en || '';
       if (el('#campo-journal-resumo-pt')) el('#campo-journal-resumo-pt').value = p.resumo_pt || '';
       if (el('#campo-journal-resumo-en')) el('#campo-journal-resumo-en').value = p.resumo_en || '';
-      if (el('#campo-journal-conteudo-pt')) el('#campo-journal-conteudo-pt').value = p.conteudo_pt || '';
-      if (el('#campo-journal-conteudo-en')) el('#campo-journal-conteudo-en').value = p.conteudo_en || '';
       if (el('#campo-journal-destaque')) el('#campo-journal-destaque').checked = !!p.destaque;
       if (el('#campo-journal-slug')) el('#campo-journal-slug').value = p.slug || '';
-
-      // Tags
-      if (el('#campo-journal-tags')) {
-        var tags = p.tags;
-        if (Array.isArray(tags)) {
-          el('#campo-journal-tags').value = tags.join(', ');
-        } else if (typeof tags === 'string') {
-          el('#campo-journal-tags').value = tags;
-        }
-      }
+      if (el('#campo-journal-video-url')) el('#campo-journal-video-url').value = (p.video_url && !/\/storage\/v1\/object\/public\/videos\//.test(p.video_url)) ? p.video_url : (p.video_url || '');
 
       // Imagem de capa existente
       if (p.imagem_capa) {
         var preview = $('#campo-journal-imagem-preview');
         if (preview) preview.innerHTML = '<img src="' + escapeHtml(p.imagem_capa) + '" style="max-width:200px;max-height:150px;border-radius:8px"><p style="font-size:12px;color:var(--text-muted);margin-top:4px">Imagem atual. Selecione outra para substituir.</p>';
+      }
+
+      // Imagens de conteudo existentes
+      var imagens = p.imagens;
+      if (typeof imagens === 'string') { try { imagens = JSON.parse(imagens); } catch(e) { imagens = []; } }
+      if (!Array.isArray(imagens)) imagens = [];
+      var cont = document.getElementById('journal-imgs');
+      if (cont) cont.innerHTML = '';
+      if (imagens.length === 0) {
+        journalAddImagemRow();
+      } else {
+        imagens.forEach(function(it) {
+          if (typeof it === 'string') journalAddImagemRow({ url: it });
+          else journalAddImagemRow({ url: it.url || it.imagem || '', descricao_pt: it.descricao_pt || it.descricao || '', descricao_en: it.descricao_en || '' });
+        });
       }
     }
   } catch (err) {
@@ -1482,6 +1565,11 @@ async function salvarModal() {
         return;
       }
 
+      if (!(($('#campo-prod-categoria') || {}).value || '').trim()) {
+        mostrarToast('Selecione uma categoria', 'error');
+        return;
+      }
+
       var body = {
         nome_pt: nomePt,
         nome_en: ($('#campo-prod-nome-en') || {}).value || '',
@@ -1538,32 +1626,62 @@ async function salvarModal() {
         titulo_en: ($('#campo-journal-titulo-en') || {}).value || '',
         resumo_pt: ($('#campo-journal-resumo-pt') || {}).value || '',
         resumo_en: ($('#campo-journal-resumo-en') || {}).value || '',
-        conteudo_pt: ($('#campo-journal-conteudo-pt') || {}).value || '',
-        conteudo_en: ($('#campo-journal-conteudo-en') || {}).value || '',
         destaque: ($('#campo-journal-destaque') || {}).checked || false,
         slug: ($('#campo-journal-slug') || {}).value || gerarSlug(tituloPt),
       };
 
-      // Tags
-      var tagsStr = ($('#campo-journal-tags') || {}).value || '';
-      if (tagsStr.trim()) {
-        body.tags = tagsStr.split(',').map(function(t) { return t.trim(); }).filter(function(t) { return t.length > 0; });
-      } else {
-        body.tags = [];
-      }
-
       // Upload de imagem de capa se selecionado
       var fileInput = $('#campo-journal-imagem-file');
       if (fileInput && fileInput.files && fileInput.files[0]) {
-        mostrarToast('Enviando imagem...', 'success');
+        mostrarToast('Enviando capa...', 'success');
         var file = fileInput.files[0];
         var nomeArq = gerarNomeArquivo(file);
-        var urlPublica = await uploadImagem(file, 'journal', nomeArq);
-        body.imagem_capa = urlPublica;
+        body.imagem_capa = await uploadImagem(file, 'journal', nomeArq);
+      }
+
+      // Imagens de conteudo (cada linha: arquivo OU url + descricao PT/EN)
+      var linhas = document.querySelectorAll('#journal-imgs .jimg-row');
+      var imagensArr = [];
+      for (var i = 0; i < linhas.length; i++) {
+        var linha = linhas[i];
+        var arq = linha.querySelector('.jimg-file');
+        var urlCampo = linha.querySelector('.jimg-url');
+        var dpt = linha.querySelector('.jimg-dpt');
+        var den = linha.querySelector('.jimg-den');
+        var urlFinal = (urlCampo && urlCampo.value || '').trim();
+        if (arq && arq.files && arq.files[0]) {
+          mostrarToast('Enviando imagem ' + (i + 1) + '...', 'success');
+          urlFinal = await uploadImagem(arq.files[0], 'journal', gerarNomeArquivo(arq.files[0]));
+        }
+        if (!urlFinal) continue; // linha sem imagem -> ignora
+        imagensArr.push({
+          url: urlFinal,
+          descricao_pt: (dpt && dpt.value || '').trim(),
+          descricao_en: (den && den.value || '').trim(),
+        });
+      }
+      body.imagens = imagensArr;
+
+      // Video: arquivo (upload) tem prioridade; senao usa o link colado (YouTube)
+      var videoFile = $('#campo-journal-video-file');
+      var videoUrlCampo = ($('#campo-journal-video-url') || {}).value || '';
+      if (videoFile && videoFile.files && videoFile.files[0]) {
+        var vf = videoFile.files[0];
+        if (vf.size > 52428800) {
+          mostrarToast('Video maior que 50MB. Use um link do YouTube.', 'error');
+          return;
+        }
+        mostrarToast('Enviando video...', 'success');
+        body.video_url = await uploadVideoArquivo(vf, gerarNomeArquivo(vf));
+      } else if (videoUrlCampo.trim()) {
+        body.video_url = videoUrlCampo.trim();
+      } else {
+        body.video_url = null;
       }
 
       if (modalModo === 'journal-novo') {
-        body.publicado = false;
+        body.publicado = true;
+        body.published_at = new Date().toISOString();
         await supaInsert('journal_posts', body);
         mostrarToast('Post criado com sucesso');
       } else {

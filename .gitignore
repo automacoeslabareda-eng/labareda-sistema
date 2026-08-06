@@ -35,3 +35,7 @@ Nova pasta/
 IDENTIDADE VISUAL/
 *.psd
 *.ai
+
+# Imagens-fonte cruas (já processadas em src/img/) e locks do LibreOffice
+Imagens/
+.~lock.*#
