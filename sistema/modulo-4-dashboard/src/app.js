@@ -1851,6 +1851,37 @@ async function gerarTarefasDoDia() {
         }
       }
 
+      // Disparar WhatsApp para colaboradores atribuidos nesta rotina
+      try {
+        var colabsNotificar = [];
+        if (colabsSetor && colabsSetor.length > 0) {
+          var idsColab = colabsSetor.map(function(c) { return c.id; }).join(',');
+          colabsNotificar = await supaFetch('colaboradores?id=in.(' + idsColab + ')&ativo=eq.true&select=nome,telefone,email,senha_hash');
+        }
+
+        var itensTexto = '';
+        if (rotItems && rotItems.length > 0) {
+          itensTexto = rotItems.map(function(ri, idx) { return '  ' + (idx+1) + '. ' + ri.descricao; }).join('\n');
+        } else {
+          itensTexto = '  1. ' + (rot.descricao || rot.nome);
+        }
+
+        for (var wi = 0; wi < (colabsNotificar || []).length; wi++) {
+          var colab = colabsNotificar[wi];
+          var tel = (colab.telefone || '').replace(/\D/g, '');
+          if (!tel || tel.includes('00000000')) continue;
+          if (!tel.startsWith('55')) tel = '55' + tel;
+
+          var msgWa = '\u{1f4cb} Ola ' + colab.nome + '!\n\nVoce tem tarefas de rotina hoje:\n\n' + itensTexto + '\n\n\u{1f449} Acesse seu painel:\nhttps://labareda-gestao.netlify.app\n\n\u{1f511} Email: ' + (colab.email || '') + '\n\u{1f511} Senha: ' + (colab.senha_hash || '');
+
+          fetch('https://n8n.sitiolabareda.com/webhook/whatsapp-envio-direto', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ telefone: tel, mensagem: msgWa }),
+          }).catch(function(e) { console.log('WhatsApp rotina:', e.message); });
+        }
+      } catch(e) { console.log('Erro WhatsApp rotina:', e); }
+
       criadas++;
     }
 
@@ -3378,24 +3409,65 @@ async function carregarGastos() {
 
     var totalEntradas = 0;
     var totalSaidas = 0;
+    var nomesMeses = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-    tbody.innerHTML = data.map(function(g) {
-      if (g.tipo === 'entrada') totalEntradas += parseFloat(g.valor) || 0;
-      else totalSaidas += parseFloat(g.valor) || 0;
+    // Agrupar por mes/ano
+    var mesesMap = {};
+    data.forEach(function(g) {
+      var val = parseFloat(g.valor) || 0;
+      if (g.tipo === 'entrada') totalEntradas += val;
+      else totalSaidas += val;
 
-      var colabNome = (g.colaboradores && g.colaboradores.nome) || '--';
-      var tipoClass = g.tipo === 'entrada' ? 'badge--concluida' : 'badge--pendente';
-      var tipoLabel = g.tipo === 'entrada' ? 'Entrada' : 'Saida';
+      var partes = g.data.split('-');
+      var chave = partes[0] + '-' + partes[1]; // "2026-08"
+      if (!mesesMap[chave]) mesesMap[chave] = { entradas: 0, saidas: 0, itens: [] };
+      mesesMap[chave].itens.push(g);
+      if (g.tipo === 'entrada') mesesMap[chave].entradas += val;
+      else mesesMap[chave].saidas += val;
+    });
 
-      return '<tr>' +
-        '<td>' + formatarData(g.data) + '</td>' +
-        '<td><span class="badge ' + tipoClass + '">' + tipoLabel + '</span></td>' +
-        '<td>' + escapeHtml(g.descricao) + '</td>' +
-        '<td>R$ ' + parseFloat(g.valor).toFixed(2) + '</td>' +
-        '<td>' + escapeHtml(colabNome) + '</td>' +
-        '<td><button class="btn btn--small btn--danger" onclick="excluirGasto(\'' + g.id + '\')">Excluir</button></td>' +
-        '</tr>';
-    }).join('');
+    var mesesOrdenados = Object.keys(mesesMap).sort(function(a, b) { return b.localeCompare(a); });
+
+    var html = '';
+    mesesOrdenados.forEach(function(chave) {
+      var grupo = mesesMap[chave];
+      var partes = chave.split('-');
+      var nomeMes = nomesMeses[parseInt(partes[1]) - 1] + ' ' + partes[0];
+      var saldoMes = grupo.entradas - grupo.saidas;
+      var saldoMesClass = saldoMes >= 0 ? 'color:var(--success)' : 'color:var(--pending-text)';
+
+      html += '<tr class="mes-separador">' +
+        '<td colspan="6" style="background:var(--bg-secondary,#f5f0eb);padding:12px 16px;font-weight:700;font-size:1.05em;border-bottom:2px solid var(--border,#e0d6cc)">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">' +
+            '<span>' + nomeMes + '</span>' +
+            '<span style="font-size:0.85em;font-weight:500;display:flex;gap:16px">' +
+              '<span style="color:var(--success)">Entradas: R$ ' + grupo.entradas.toFixed(2) + '</span>' +
+              '<span style="color:var(--pending-text)">Saidas: R$ ' + grupo.saidas.toFixed(2) + '</span>' +
+              '<span style="' + saldoMesClass + '">Saldo: R$ ' + saldoMes.toFixed(2) + '</span>' +
+            '</span>' +
+          '</div>' +
+        '</td></tr>';
+
+      grupo.itens.forEach(function(g) {
+        var colabNome = (g.colaboradores && g.colaboradores.nome) || '--';
+        var tipoClass = g.tipo === 'entrada' ? 'badge--concluida' : 'badge--pendente';
+        var tipoLabel = g.tipo === 'entrada' ? 'Entrada' : 'Saida';
+
+        html += '<tr>' +
+          '<td>' + formatarData(g.data) + '</td>' +
+          '<td><span class="badge ' + tipoClass + '">' + tipoLabel + '</span></td>' +
+          '<td>' + escapeHtml(g.descricao) + '</td>' +
+          '<td>R$ ' + parseFloat(g.valor).toFixed(2) + '</td>' +
+          '<td>' + escapeHtml(colabNome) + '</td>' +
+          '<td style="display:flex;gap:6px">' +
+            '<button class="btn btn--small" onclick="editarGasto(\'' + g.id + '\')" style="background:var(--accent,#b8860b);color:#fff">Editar</button>' +
+            '<button class="btn btn--small btn--danger" onclick="excluirGasto(\'' + g.id + '\')">Excluir</button>' +
+          '</td>' +
+          '</tr>';
+      });
+    });
+
+    tbody.innerHTML = html;
 
     var saldo = totalEntradas - totalSaidas;
     var saldoClass = saldo >= 0 ? 'color: var(--success)' : 'color: var(--pending-text)';
@@ -3412,24 +3484,32 @@ async function carregarGastos() {
   }
 }
 
-function abrirModalGasto() {
-  modalModo = 'criar';
-  document.getElementById('modal-titulo').textContent = 'Novo Gasto';
+var gastoEditandoId = null;
 
-  var colabOptions = '<option value="">-- Selecione --</option>';
-  // Will be populated after fetch
+function abrirModalGasto(dados) {
+  var editando = dados && dados.id;
+  modalModo = editando ? 'editar' : 'criar';
+  gastoEditandoId = editando ? dados.id : null;
+  document.getElementById('modal-titulo').textContent = editando ? 'Editar Lancamento' : 'Novo Lancamento';
 
   var hoje = new Date().toISOString().split('T')[0];
+  var tipoVal = (dados && dados.tipo) || 'saida';
+  var descVal = (dados && dados.descricao) || '';
+  var valorVal = (dados && dados.valor) || '';
+  var dataVal = (dados && dados.data) || hoje;
+  var catVal = (dados && dados.categoria) || '';
+  var obsVal = (dados && dados.observacao) || '';
+  var colabVal = (dados && dados.colaborador_id) || '';
 
   document.getElementById('modal-body').innerHTML =
     '<div class="form-group"><label>Tipo</label>' +
-    '<select id="gasto-tipo" class="input"><option value="saida">Saida</option><option value="entrada">Entrada</option></select></div>' +
-    '<div class="form-group"><label>Descricao</label><input id="gasto-descricao" class="input" placeholder="Ex: Gasolina 50 reais"></div>' +
-    '<div class="form-group"><label>Valor (R$)</label><input id="gasto-valor" class="input" type="number" step="0.01" min="0"></div>' +
-    '<div class="form-group"><label>Data</label><input id="gasto-data" class="input" type="date" value="' + hoje + '"></div>' +
-    '<div class="form-group"><label>Categoria (opcional)</label><input id="gasto-categoria" class="input" placeholder="Ex: combustivel, racao"></div>' +
+    '<select id="gasto-tipo" class="input"><option value="saida"' + (tipoVal === 'saida' ? ' selected' : '') + '>Saida</option><option value="entrada"' + (tipoVal === 'entrada' ? ' selected' : '') + '>Entrada</option></select></div>' +
+    '<div class="form-group"><label>Descricao</label><input id="gasto-descricao" class="input" placeholder="Ex: Gasolina 50 reais" value="' + escapeHtml(descVal) + '"></div>' +
+    '<div class="form-group"><label>Valor (R$)</label><input id="gasto-valor" class="input" type="number" step="0.01" min="0" value="' + valorVal + '"></div>' +
+    '<div class="form-group"><label>Data</label><input id="gasto-data" class="input" type="date" value="' + dataVal + '"></div>' +
+    '<div class="form-group"><label>Categoria (opcional)</label><input id="gasto-categoria" class="input" placeholder="Ex: combustivel, racao" value="' + escapeHtml(catVal) + '"></div>' +
     '<div class="form-group"><label>Colaborador</label><select id="gasto-colaborador" class="input"><option value="">Carregando...</option></select></div>' +
-    '<div class="form-group"><label>Observacao</label><textarea id="gasto-obs" class="input" rows="2"></textarea></div>';
+    '<div class="form-group"><label>Observacao</label><textarea id="gasto-obs" class="input" rows="2">' + escapeHtml(obsVal) + '</textarea></div>';
 
   document.getElementById('modal-btn-salvar').onclick = salvarGasto;
   document.getElementById('modal-overlay').classList.remove('escondido');
@@ -3444,9 +3524,21 @@ function abrirModalGasto() {
       var opt = document.createElement('option');
       opt.value = c.id;
       opt.textContent = c.nome;
+      if (c.id === colabVal) opt.selected = true;
       sel.appendChild(opt);
     });
   });
+}
+
+async function editarGasto(id) {
+  try {
+    var dados = await supaFetch('gastos?id=eq.' + id + '&select=*');
+    if (dados && dados.length > 0) {
+      abrirModalGasto(dados[0]);
+    }
+  } catch (err) {
+    mostrarToast('Erro ao carregar dados', 'error');
+  }
 }
 
 async function salvarGasto() {
@@ -3475,10 +3567,16 @@ async function salvarGasto() {
       propriedade_id: propriedadeFiltro !== 'todas' ? propriedadeFiltro : cachePropriedades[0].id,
     };
 
-    await supaInsert('gastos', payload);
+    if (gastoEditandoId) {
+      var urlPatch = CONFIG.SUPABASE_URL + '/rest/v1/gastos?id=eq.' + gastoEditandoId;
+      var r = await fetch(urlPatch, { method: 'PATCH', headers: apiHeaders('return=minimal'), body: JSON.stringify(payload) });
+      if (!r.ok) throw new Error('Erro ao atualizar');
+    } else {
+      await supaInsert('gastos', payload);
+    }
     fecharModal();
     carregarGastos();
-    mostrarToast('Gasto registrado!');
+    mostrarToast(gastoEditandoId ? 'Lancamento atualizado!' : 'Lancamento registrado!');
   } catch (err) {
     console.error('Erro ao salvar gasto:', err);
     mostrarToast('Erro ao salvar gasto', 'error');
