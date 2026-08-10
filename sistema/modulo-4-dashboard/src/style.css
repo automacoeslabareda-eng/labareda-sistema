@@ -31,8 +31,6 @@
   --sidebar-w: 240px;
   --topbar-h: 56px;
   --font: 'DM Sans', system-ui, -apple-system, sans-serif;
-  --texture: url("data:image/svg+xml,%3Csvg width='6' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='.6' fill='%23fff' fill-opacity='.35'/%3E%3C/svg%3E");
-  --texture-dark: url("data:image/svg+xml,%3Csvg width='6' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='.6' fill='%23fff' fill-opacity='.06'/%3E%3C/svg%3E");
 }
 
 /* ---- Reset ---- */
@@ -41,7 +39,6 @@ html { font-size: 16px; -webkit-text-size-adjust: 100%; }
 body {
   font-family: var(--font);
   background: var(--bg);
-  background-image: var(--texture);
   color: var(--text);
   line-height: 1.55;
   min-height: 100dvh;
@@ -112,7 +109,6 @@ textarea:focus-visible {
 
 .login-card__header {
   background: var(--sidebar-bg);
-  background-image: var(--texture-dark);
   padding: 36px 32px 28px;
   text-align: center;
 }
@@ -218,7 +214,6 @@ textarea:focus-visible {
   width: var(--sidebar-w);
   height: 100vh;
   background: var(--sidebar-bg);
-  background-image: var(--texture-dark);
   color: var(--sidebar-text);
   display: flex;
   flex-direction: column;
@@ -232,7 +227,6 @@ textarea:focus-visible {
   gap: 12px;
   padding: 20px 20px 16px;
   border-bottom: 1px solid rgba(255,255,255,.08);
-  background-image: var(--texture-dark);
 }
 
 .sidebar__logo {
@@ -284,7 +278,6 @@ textarea:focus-visible {
 
 .sidebar__link--active {
   background-color: rgba(196,93,62,.18);
-  background-image: var(--texture-dark);
   color: #fff;
   border-left-color: var(--sidebar-active);
   font-weight: 600;
@@ -351,7 +344,6 @@ textarea:focus-visible {
   right: 0;
   height: var(--topbar-h);
   background: var(--sidebar-bg);
-  background-image: var(--texture-dark);
   color: #fff;
   align-items: center;
   padding: 0 16px;
@@ -459,7 +451,6 @@ textarea:focus-visible {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background-image: var(--texture);
 }
 
 .card-resumo__icon--info    { background-color: var(--info-light);    color: var(--info); }
@@ -521,7 +512,6 @@ textarea:focus-visible {
 
 .tabela thead {
   background: #f0ece4;
-  background-image: var(--texture);
   border-bottom: 1px solid var(--border);
 }
 
@@ -635,7 +625,6 @@ textarea:focus-visible {
 
 .btn--primary {
   background-color: var(--sidebar-active);
-  background-image: var(--texture);
   color: #fff;
   box-shadow: 0 1px 3px rgba(196,93,62,.25);
 }
@@ -983,7 +972,6 @@ textarea:focus-visible {
   text-align: center;
   color: #fff;
   background: var(--sidebar-bg);
-  background-image: var(--texture-dark);
 }
 
 body.propriedade-labareda .propriedade-banner,
@@ -992,35 +980,23 @@ body.propriedade-saomiguel .propriedade-banner {
 }
 
 /* Labareda: terracota */
-body.propriedade-labareda .sidebar__header {
-  background-color: #C45D3E;
-  background-image: var(--texture);
-}
-
 body.propriedade-labareda .propriedade-banner {
-  background-color: #C45D3E;
-  background-image: var(--texture);
+  background: #C45D3E;
 }
 
 body.propriedade-labareda .sidebar__select {
   border-color: #C45D3E;
-  background: rgba(196,93,62,.25);
+  background: rgba(196,93,62,.12);
 }
 
 /* Sao Miguel: verde */
-body.propriedade-saomiguel .sidebar__header {
-  background-color: #3D6B4F;
-  background-image: var(--texture);
-}
-
 body.propriedade-saomiguel .propriedade-banner {
-  background-color: #3D6B4F;
-  background-image: var(--texture);
+  background: #3D6B4F;
 }
 
 body.propriedade-saomiguel .sidebar__select {
   border-color: #3D6B4F;
-  background: rgba(61,107,79,.25);
+  background: rgba(61,107,79,.12);
 }
 
 /* Badge de login */
@@ -2328,7 +2304,6 @@ body.propriedade-saomiguel .sidebar__select {
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--card-bg);
-  background-image: var(--texture);
 }
 
 .gastos-resumo-item--entrada {
