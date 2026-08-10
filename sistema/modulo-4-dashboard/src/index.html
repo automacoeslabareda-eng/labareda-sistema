@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#1a1a1a">
-  <title>Labareda Gestao - Dashboard</title>
+  <title>Dashboard Gestao</title>
 
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,5 61,35 95,35 67,55 78,85 50,67 22,85 33,55 5,35 39,35' fill='%23C45D3E'/></svg>">
 
@@ -50,7 +50,7 @@
       <svg class="sidebar__logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
         <polygon points="50,5 61,35 95,35 67,55 78,85 50,67 22,85 33,55 5,35 39,35" fill="#C45D3E"/>
       </svg>
-      <span class="sidebar__brand">LABAREDA GESTAO</span>
+      <span class="sidebar__brand">DASHBOARD GESTAO</span>
     </div>
 
     <!-- Seletor de propriedade -->
@@ -402,23 +402,32 @@
       </div>
     </section>
 
-    <!-- GASTOS -->
+    <!-- FINANCEIRO -->
     <section class="page page--hidden" id="page-gastos">
-      <h2 class="page__title">Financeiro</h2>
+      <div class="page__header">
+        <h2 class="page__title">Financeiro</h2>
+        <button class="btn btn--primary" onclick="abrirModalGasto()">+ Novo Lancamento</button>
+      </div>
+
+      <div class="gastos-resumo" id="gastos-resumo"></div>
+
       <div class="section-card">
-        <div class="section-card__header">
-          <h3 class="section-card__title">Entradas e Saidas</h3>
-          <button class="btn btn--primary" onclick="abrirModalGasto()">+ Novo Gasto</button>
-        </div>
-        <div class="filters-row">
-          <select id="filtro-gasto-tipo" onchange="carregarGastos()">
-            <option value="">Todos</option>
+        <div class="fin-toolbar">
+          <div class="fin-mes-nav">
+            <button class="fin-mes-btn" onclick="navegarMes(-1)" title="Mes anterior">&larr;</button>
+            <span class="fin-mes-label" id="mes-nav-label">Agosto 2026</span>
+            <button class="fin-mes-btn" onclick="navegarMes(1)" title="Proximo mes">&rarr;</button>
+            <button class="fin-mes-btn fin-mes-btn--limpar" onclick="limparFiltroMes()" title="Ver todos">Todos</button>
+          </div>
+          <select id="filtro-gasto-tipo" class="filtro-select" onchange="carregarGastos()">
+            <option value="">Todos os tipos</option>
             <option value="entrada">Entradas</option>
             <option value="saida">Saidas</option>
           </select>
-          <input type="month" id="filtro-gasto-mes" onchange="carregarGastos()">
+          <input type="month" id="filtro-gasto-mes" onchange="atualizarMesLabel(); carregarGastos()" class="escondido">
         </div>
-        <div class="table-wrapper">
+
+        <div class="table-wrapper" style="border:none;box-shadow:none">
           <table class="tabela" id="tabela-gastos">
             <thead>
               <tr>
@@ -435,7 +444,6 @@
             </tbody>
           </table>
         </div>
-        <div class="gastos-resumo" id="gastos-resumo"></div>
       </div>
     </section>
 

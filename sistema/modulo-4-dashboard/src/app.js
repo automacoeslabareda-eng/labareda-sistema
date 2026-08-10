@@ -320,7 +320,7 @@ function carregarPagina(pagina) {
     case 'relatorios':     carregarRelatorios(); break;
     case 'whatsapp':       carregarWhatsApp(); break;
     case 'configuracoes':  carregarConfiguracoes(); break;
-    case 'gastos':         carregarGastos(); break;
+    case 'gastos':         initMesNavegacao(); carregarGastos(); break;
     case 'veiculos':       carregarVeiculos(); break;
   }
 }
@@ -3379,6 +3379,50 @@ document.addEventListener('DOMContentLoaded', init);
 /* ================================================================== */
 /*  GASTOS                                                            */
 /* ================================================================== */
+var nomesMesesCurto = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+var nomesMeses = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+function initMesNavegacao() {
+  var mesInput = document.getElementById('filtro-gasto-mes');
+  if (!mesInput) return;
+  var hoje = new Date();
+  var mesAtual = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
+  mesInput.value = mesAtual;
+  atualizarMesLabel();
+}
+
+function atualizarMesLabel() {
+  var mesInput = document.getElementById('filtro-gasto-mes');
+  var label = document.getElementById('mes-nav-label');
+  if (!label || !mesInput) return;
+  if (!mesInput.value) {
+    label.textContent = 'Todos os meses';
+    return;
+  }
+  var partes = mesInput.value.split('-');
+  label.textContent = nomesMeses[parseInt(partes[1]) - 1] + ' ' + partes[0];
+}
+
+function navegarMes(direcao) {
+  var mesInput = document.getElementById('filtro-gasto-mes');
+  if (!mesInput.value) {
+    var hoje = new Date();
+    mesInput.value = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
+  }
+  var partes = mesInput.value.split('-');
+  var d = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1 + direcao, 1);
+  mesInput.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  atualizarMesLabel();
+  carregarGastos();
+}
+
+function limparFiltroMes() {
+  var mesInput = document.getElementById('filtro-gasto-mes');
+  mesInput.value = '';
+  atualizarMesLabel();
+  carregarGastos();
+}
+
 async function carregarGastos() {
   try {
     var qs = '?select=*,colaboradores:colaborador_id(nome)&order=data.desc,created_at.desc';
@@ -3409,73 +3453,36 @@ async function carregarGastos() {
 
     var totalEntradas = 0;
     var totalSaidas = 0;
-    var nomesMeses = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-    // Agrupar por mes/ano
-    var mesesMap = {};
-    data.forEach(function(g) {
+    tbody.innerHTML = data.map(function(g) {
       var val = parseFloat(g.valor) || 0;
       if (g.tipo === 'entrada') totalEntradas += val;
       else totalSaidas += val;
 
-      var partes = g.data.split('-');
-      var chave = partes[0] + '-' + partes[1]; // "2026-08"
-      if (!mesesMap[chave]) mesesMap[chave] = { entradas: 0, saidas: 0, itens: [] };
-      mesesMap[chave].itens.push(g);
-      if (g.tipo === 'entrada') mesesMap[chave].entradas += val;
-      else mesesMap[chave].saidas += val;
-    });
+      var colabNome = (g.colaboradores && g.colaboradores.nome) || '--';
+      var tipoClass = g.tipo === 'entrada' ? 'badge--concluida' : 'badge--pendente';
+      var tipoLabel = g.tipo === 'entrada' ? 'Entrada' : 'Saida';
 
-    var mesesOrdenados = Object.keys(mesesMap).sort(function(a, b) { return b.localeCompare(a); });
-
-    var html = '';
-    mesesOrdenados.forEach(function(chave) {
-      var grupo = mesesMap[chave];
-      var partes = chave.split('-');
-      var nomeMes = nomesMeses[parseInt(partes[1]) - 1] + ' ' + partes[0];
-      var saldoMes = grupo.entradas - grupo.saidas;
-      var saldoMesClass = saldoMes >= 0 ? 'color:var(--success)' : 'color:var(--pending-text)';
-
-      html += '<tr class="mes-separador">' +
-        '<td colspan="6" style="background:var(--bg-secondary,#f5f0eb);padding:12px 16px;font-weight:700;font-size:1.05em;border-bottom:2px solid var(--border,#e0d6cc)">' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">' +
-            '<span>' + nomeMes + '</span>' +
-            '<span style="font-size:0.85em;font-weight:500;display:flex;gap:16px">' +
-              '<span style="color:var(--success)">Entradas: R$ ' + grupo.entradas.toFixed(2) + '</span>' +
-              '<span style="color:var(--pending-text)">Saidas: R$ ' + grupo.saidas.toFixed(2) + '</span>' +
-              '<span style="' + saldoMesClass + '">Saldo: R$ ' + saldoMes.toFixed(2) + '</span>' +
-            '</span>' +
-          '</div>' +
-        '</td></tr>';
-
-      grupo.itens.forEach(function(g) {
-        var colabNome = (g.colaboradores && g.colaboradores.nome) || '--';
-        var tipoClass = g.tipo === 'entrada' ? 'badge--concluida' : 'badge--pendente';
-        var tipoLabel = g.tipo === 'entrada' ? 'Entrada' : 'Saida';
-
-        html += '<tr>' +
-          '<td>' + formatarData(g.data) + '</td>' +
-          '<td><span class="badge ' + tipoClass + '">' + tipoLabel + '</span></td>' +
-          '<td>' + escapeHtml(g.descricao) + '</td>' +
-          '<td>R$ ' + parseFloat(g.valor).toFixed(2) + '</td>' +
-          '<td>' + escapeHtml(colabNome) + '</td>' +
-          '<td style="display:flex;gap:6px">' +
-            '<button class="btn btn--small" onclick="editarGasto(\'' + g.id + '\')" style="background:var(--accent,#b8860b);color:#fff">Editar</button>' +
-            '<button class="btn btn--small btn--danger" onclick="excluirGasto(\'' + g.id + '\')">Excluir</button>' +
-          '</td>' +
-          '</tr>';
-      });
-    });
-
-    tbody.innerHTML = html;
+      return '<tr>' +
+        '<td>' + formatarData(g.data) + '</td>' +
+        '<td><span class="badge ' + tipoClass + '">' + tipoLabel + '</span></td>' +
+        '<td>' + escapeHtml(g.descricao) + '</td>' +
+        '<td class="valor-col">R$ ' + val.toFixed(2) + '</td>' +
+        '<td>' + escapeHtml(colabNome) + '</td>' +
+        '<td class="td-acoes">' +
+          '<button class="btn btn--small btn--secondary" onclick="editarGasto(\'' + g.id + '\')">Editar</button> ' +
+          '<button class="btn btn--small btn--danger" onclick="excluirGasto(\'' + g.id + '\')">Excluir</button>' +
+        '</td>' +
+        '</tr>';
+    }).join('');
 
     var saldo = totalEntradas - totalSaidas;
-    var saldoClass = saldo >= 0 ? 'color: var(--success)' : 'color: var(--pending-text)';
+    var saldoClass = saldo >= 0 ? 'color: var(--success)' : 'color: var(--danger)';
     document.getElementById('gastos-resumo').innerHTML =
-      '<div style="display:flex;gap:24px;padding:16px 0;font-weight:600">' +
-        '<span style="color:var(--success)">Entradas: R$ ' + totalEntradas.toFixed(2) + '</span>' +
-        '<span style="color:var(--pending-text)">Saidas: R$ ' + totalSaidas.toFixed(2) + '</span>' +
-        '<span style="' + saldoClass + '">Saldo: R$ ' + saldo.toFixed(2) + '</span>' +
+      '<div class="gastos-resumo-cards">' +
+        '<div class="gastos-resumo-item gastos-resumo-item--entrada"><span class="gastos-resumo-label">Entradas</span><span class="gastos-resumo-valor">R$ ' + totalEntradas.toFixed(2) + '</span></div>' +
+        '<div class="gastos-resumo-item gastos-resumo-item--saida"><span class="gastos-resumo-label">Saidas</span><span class="gastos-resumo-valor">R$ ' + totalSaidas.toFixed(2) + '</span></div>' +
+        '<div class="gastos-resumo-item gastos-resumo-item--saldo"><span class="gastos-resumo-label">Saldo</span><span class="gastos-resumo-valor" style="' + saldoClass + '">R$ ' + saldo.toFixed(2) + '</span></div>' +
       '</div>';
 
   } catch (err) {
