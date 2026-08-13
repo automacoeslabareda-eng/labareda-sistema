@@ -1,0 +1,10 @@
+{
+  "name": "labareda-site",
+  "version": "1.0.0",
+  "description": "Site institucional Sitio Labareda + loja (Shop) com pagamento Mercado Pago via Vercel Functions",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "mercadopago": "^2.0.15"
+  }
+}

@@ -31,7 +31,7 @@ var GESTAO_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 /* ================================================================== */
 /*  CAMADA SEGURA (admin-api) — dados sensiveis via chave secreta      */
 /* ================================================================== */
-var ADMIN_API_URL = 'https://sitiolabareda.com/.netlify/functions/admin-api';
+var ADMIN_API_URL = 'https://sitiolabareda.com/api/admin-api';
 var adminToken = null;
 
 async function adminApi(action, params) {

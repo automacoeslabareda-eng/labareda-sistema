@@ -1780,7 +1780,7 @@
       return { produto_id: item.produto_id, quantidade: item.quantidade };
     });
 
-    fetch('/.netlify/functions/criar-pagamento', {
+    fetch('/api/criar-pagamento', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
