@@ -1,5 +1,5 @@
 {
-  "name": "WhatsApp - Notificar Tarefas aos Colaboradores",
+  "name": "WhatsApp - Notificar Rotinas aos Colaboradores",
   "nodes": [
     {
       "parameters": {
@@ -7,7 +7,7 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "15 10 * * *"
+              "expression": "15 10 * * 1-6"
             }
           ]
         }
@@ -16,7 +16,7 @@
       "typeVersion": 1.2,
       "position": [-400, 300],
       "id": "cron-whats-001",
-      "name": "Cron 07h15 Brasilia"
+      "name": "Cron 07h15 Brasilia (Seg-Sab)"
     },
     {
       "parameters": {
@@ -29,7 +29,7 @@
       "typeVersion": 2,
       "position": [-400, 500],
       "id": "webhook-whats-001",
-      "name": "Webhook Disparo Imediato",
+      "name": "Webhook Disparo Manual",
       "webhookId": "whatsapp-tarefas"
     },
     {
@@ -105,7 +105,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/checklist_items",
+        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/rotinas_semanais",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
@@ -114,20 +114,12 @@
               "value": "=eq.{{ $json.id }}"
             },
             {
-              "name": "status",
-              "value": "eq.pendente"
-            },
-            {
-              "name": "whatsapp_enviado",
-              "value": "eq.false"
+              "name": "ativo",
+              "value": "eq.true"
             },
             {
               "name": "select",
-              "value": "id,descricao,colaborador_id,tarefa_id,tarefas(descricao,data_limite,data_inicio,data_fim,origem),colaboradores(nome,telefone,whatsapp_jid,email,senha_hash)"
-            },
-            {
-              "name": "order",
-              "value": "colaborador_id.asc"
+              "value": "id,nome,frequencia,dias_lembrete,msg_whatsapp,responsavel_id,colaboradores!rotinas_semanais_responsavel_id_fkey(nome,telefone,whatsapp_jid,email,senha_hash)"
             }
           ]
         },
@@ -153,18 +145,18 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [620, 400],
-      "id": "get-items-pendentes-001",
-      "name": "GET Itens Pendentes Nao Enviados"
+      "id": "get-rotinas-001",
+      "name": "GET Rotinas Semanais Ativas"
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.item.json;\nconst prop = $('Set Propriedade').item.json;\n\n// items pode ser array ou objeto unico\nconst itemsList = Array.isArray(items) ? items : (items && items.id ? [items] : []);\n\nif (itemsList.length === 0) {\n  return [];\n}\n\n// Agrupar por colaborador\nconst porColab = {};\nconst itemIds = [];\n\nfor (const item of itemsList) {\n  const colabId = item.colaborador_id;\n  if (!colabId) continue;\n  \n  const colab = item.colaboradores || {};\n  const tarefa = item.tarefas || {};\n  const telefone = colab.whatsapp_jid || colab.telefone || '';\n  \n  if (!telefone || telefone.includes('00000000')) continue;\n  \n  if (!porColab[colabId]) {\n    porColab[colabId] = {\n      colaborador_id: colabId,\n      colaborador_nome: colab.nome || 'Colaborador',\n      telefone: telefone,\n      email: colab.email || '',\n      senha: colab.senha_hash || 'mudar123',\n      itens: [],\n      item_ids: []\n    };\n  }\n  \n  const desc = item.descricao || tarefa.descricao || 'Tarefa sem descricao';\n  porColab[colabId].itens.push(desc);\n  porColab[colabId].item_ids.push(item.id);\n  itemIds.push(item.id);\n}\n\nconst resultados = Object.values(porColab).map(colab => {\n  // Formatar telefone\n  let tel = colab.telefone.replace(/\\D/g, '');\n  if (!tel.startsWith('55')) tel = '55' + tel;\n  \n  // Montar mensagem listando cada tarefa\n  const listaItens = colab.itens.map((item, i) => `  ${i + 1}. ${item}`).join('\\n');\n  \n  const mensagem = `\\u{1f4cb} Ola ${colab.colaborador_nome}!\\n\\nVoce tem ${colab.itens.length} ${colab.itens.length === 1 ? 'tarefa pendente' : 'tarefas pendentes'}:\\n\\n${listaItens}\\n\\n\\u{1f449} Acesse seu painel:\\nhttps://sitiolabareda.com/painel\\n\\n\\u{1f511} Email: ${colab.email}\\n\\u{1f511} Senha: ${colab.senha}\\n\\n\\u{23f0} Preencher ate sexta-feira 16:30!`;\n  \n  return {\n    json: {\n      telefone: tel,\n      mensagem: mensagem,\n      colaborador_nome: colab.colaborador_nome,\n      item_ids: colab.item_ids,\n      evolution_api_url: prop.evolution_api_url || 'https://apiwhats.sitiolabareda.com',\n      evolution_api_key: prop.evolution_instance_token || prop.evolution_api_key,\n      propriedade_id: prop.id\n    }\n  };\n});\n\nreturn resultados.length > 0 ? resultados : [];"
+        "jsCode": "const rotinas = $input.all().map(i => i.json);\nconst prop = $('Set Propriedade').item.json;\n\nif (rotinas.length === 0) return [];\n\n// Dia da semana ISO (1=Seg, 7=Dom)\nconst hoje = new Date();\nconst jsDay = hoje.getDay(); // 0=Dom\nconst diaSemanaISO = jsDay === 0 ? 7 : jsDay;\nconst diaDoMes = hoje.getDate();\n\n// Semana do ano (para quinzenal)\nconst startOfYear = new Date(hoje.getFullYear(), 0, 1);\nconst weekNum = Math.ceil(((hoje - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);\nconst isSemanaPar = weekNum % 2 === 0;\n\nconst resultados = [];\n\nfor (const rotina of rotinas) {\n  if (!rotina.responsavel_id) continue;\n  if (!rotina.msg_whatsapp) continue;\n  \n  const colab = rotina.colaboradores || {};\n  const telefone = colab.whatsapp_jid || colab.telefone || '';\n  if (!telefone || telefone.includes('00000000')) continue;\n  \n  // Verificar se hoje eh dia de lembrete\n  const diasLembrete = (rotina.dias_lembrete || '').toString();\n  const freq = (rotina.frequencia || 'semanal').toLowerCase();\n  \n  let deveEnviar = false;\n  \n  if (diasLembrete === 'mesmo_dia') {\n    deveEnviar = true;\n  } else {\n    const diasArr = diasLembrete.split(',').map(d => parseInt(d.trim(), 10)).filter(d => !isNaN(d));\n    const hojeNoDias = diasArr.includes(diaSemanaISO);\n    \n    if (freq === 'semanal' && hojeNoDias) {\n      deveEnviar = true;\n    } else if (freq === 'quinzenal' && hojeNoDias && isSemanaPar) {\n      deveEnviar = true;\n    } else if (freq === 'mensal' && (diaDoMes === 1 || diaDoMes === 15)) {\n      deveEnviar = true;\n    }\n  }\n  \n  if (!deveEnviar) continue;\n  \n  // Mensagem da rotina (corrigir URL do painel)\n  let mensagem = rotina.msg_whatsapp;\n  mensagem = mensagem.replace(/https?:\\/\\/sitiolabareda\\.com\\/painel/g, 'https://labareda-gestao.netlify.app');\n  \n  // Formatar telefone\n  let tel = telefone.replace(/\\D/g, '');\n  if (!tel.startsWith('55')) tel = '55' + tel;\n  \n  resultados.push({\n    json: {\n      telefone: tel,\n      mensagem: mensagem,\n      colaborador_nome: colab.nome || 'Colaborador',\n      rotina_nome: rotina.nome,\n      evolution_api_url: prop.evolution_api_url || 'https://apiwhats.sitiolabareda.com',\n      evolution_api_key: prop.evolution_instance_token || prop.evolution_api_key,\n      propriedade_id: prop.id\n    }\n  });\n}\n\nreturn resultados.length > 0 ? resultados : [];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [860, 400],
-      "id": "agrupar-por-colab-001",
-      "name": "Agrupar por Colaborador e Montar Mensagem"
+      "id": "filtrar-rotinas-001",
+      "name": "Filtrar Rotinas de Hoje e Montar Mensagens"
     },
     {
       "parameters": {
@@ -223,62 +215,8 @@
       "typeVersion": 4.2,
       "position": [1340, 300],
       "id": "enviar-whatsapp-001",
-      "name": "Enviar WhatsApp via Evolution Go"
-    },
-    {
-      "parameters": {
-        "jsCode": "const data = $input.item.json;\nconst prev = $('Agrupar por Colaborador e Montar Mensagem').item.json;\n\n// Montar lista de IDs para marcar como enviado\nconst itemIds = prev.item_ids || [];\n\nreturn [{\n  json: {\n    item_ids: itemIds,\n    colaborador_nome: prev.colaborador_nome,\n    enviado: true\n  }\n}];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1580, 300],
-      "id": "preparar-update-001",
-      "name": "Preparar IDs para Update"
-    },
-    {
-      "parameters": {
-        "method": "PATCH",
-        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/checklist_items",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "id",
-              "value": "=in.({{ $json.item_ids.join(',') }})"
-            }
-          ]
-        },
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            },
-            {
-              "name": "Authorization",
-              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=minimal"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"whatsapp_enviado\": true,\n  \"whatsapp_enviado_at\": \"{{ new Date().toISOString() }}\"\n}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1820, 300],
-      "id": "marcar-enviado-001",
-      "name": "Marcar whatsapp_enviado = true"
+      "name": "Enviar WhatsApp via Evolution Go",
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {},
@@ -291,18 +229,18 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: true, message: 'Disparos processados' }) }}",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Rotinas enviadas com sucesso' }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [2060, 400],
+      "position": [400, 600],
       "id": "respond-webhook-001",
       "name": "Responder Webhook"
     }
   ],
   "connections": {
-    "Cron 07h15 Brasilia": {
+    "Cron 07h15 Brasilia (Seg-Sab)": {
       "main": [
         [
           {
@@ -313,7 +251,7 @@
         ]
       ]
     },
-    "Webhook Disparo Imediato": {
+    "Webhook Disparo Manual": {
       "main": [
         [
           {
@@ -343,6 +281,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Responder Webhook",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -350,25 +295,25 @@
       "main": [
         [
           {
-            "node": "GET Itens Pendentes Nao Enviados",
+            "node": "GET Rotinas Semanais Ativas",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "GET Itens Pendentes Nao Enviados": {
+    "GET Rotinas Semanais Ativas": {
       "main": [
         [
           {
-            "node": "Agrupar por Colaborador e Montar Mensagem",
+            "node": "Filtrar Rotinas de Hoje e Montar Mensagens",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Agrupar por Colaborador e Montar Mensagem": {
+    "Filtrar Rotinas de Hoje e Montar Mensagens": {
       "main": [
         [
           {
@@ -401,28 +346,6 @@
       "main": [
         [
           {
-            "node": "Preparar IDs para Update",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Preparar IDs para Update": {
-      "main": [
-        [
-          {
-            "node": "Marcar whatsapp_enviado = true",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Marcar whatsapp_enviado = true": {
-      "main": [
-        [
-          {
             "node": "Loop Propriedades",
             "type": "main",
             "index": 0
@@ -449,6 +372,6 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 2,
-  "updatedAt": "2026-07-30T00:00:00.000Z",
-  "versionId": "2"
+  "updatedAt": "2026-08-11T00:00:00.000Z",
+  "versionId": "3"
 }

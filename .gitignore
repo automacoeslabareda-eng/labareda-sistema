@@ -39,3 +39,4 @@ IDENTIDADE VISUAL/
 # Imagens-fonte cruas (já processadas em src/img/) e locks do LibreOffice
 Imagens/
 .~lock.*#
+.vercel

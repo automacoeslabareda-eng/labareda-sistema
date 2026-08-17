@@ -14,6 +14,11 @@ vps:
 ssh: 157.90.165.123
 senha:LjVCvNEu7Uh3
 
+Vps 2 hermes
+
+ssh:77.42.21.21
+senha:mKXk3ecL4nEm
+
 
 portainer:
 

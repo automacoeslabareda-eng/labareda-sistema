@@ -109,6 +109,15 @@
     }
 
     .jp-figure { margin:0 auto; }
+    /* texto do conteúdo */
+    .jp-texto {
+      max-width:620px; margin:0 auto 52px;
+      font-size:.88rem; line-height:2; color:#3a3028;
+      text-align:justify;
+    }
+    .jp-texto p { margin-bottom:1.4em; }
+    .jp-texto p:last-child { margin-bottom:0; }
+
     .jp-figure--hero { max-width:560px; margin:0 auto 52px; }
     /* primeira imagem: comprida/vertical (retrato) */
     .jp-figure--hero .jp-frame img { aspect-ratio:4/5; object-fit:cover; }
@@ -186,6 +195,7 @@
     <section class="jp-body" id="jp-body">
       <h1 class="jp-title" id="jp-title">—</h1>
       <div id="jp-imagens"></div>
+      <div id="jp-texto" class="jp-texto"></div>
     </section>
 
     <!-- Vídeo -->
@@ -303,6 +313,16 @@
             html += '</div>';
           }
           imgWrap.innerHTML = html;
+        }
+
+        /* ----- texto do conteúdo ----- */
+        var conteudo = pick(post, 'conteudo');
+        var textoEl = document.getElementById('jp-texto');
+        if (conteudo) {
+          var paragrafos = conteudo.split(/\n\s*\n/);
+          textoEl.innerHTML = paragrafos.map(function (p) {
+            return '<p>' + esc(p.trim()) + '</p>';
+          }).filter(function (p) { return p !== '<p></p>'; }).join('');
         }
 
         /* ----- vídeo ----- */

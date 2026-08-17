@@ -6,16 +6,8 @@
         "rule": {
           "interval": [
             {
-              "triggerAtDay": 5,
-              "triggerAtHour": 7
-            },
-            {
-              "triggerAtDay": 15,
-              "triggerAtHour": 7
-            },
-            {
-              "triggerAtDay": 25,
-              "triggerAtHour": 7
+              "field": "cronExpression",
+              "expression": "0 10 5,15,25 * *"
             }
           ]
         }
