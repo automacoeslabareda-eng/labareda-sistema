@@ -411,6 +411,9 @@ header.site-header.sticky {
   grid-template-columns: repeat(3, 1fr);
   gap: 44px 40px;
   align-items: start;
+  justify-items: center;
+  max-width: 1100px;
+  margin: 0 auto;
 }
 /* card emoldurado */
 .j-card {
@@ -445,16 +448,16 @@ header.site-header.sticky {
 }
 .j-card:hover .j-img { transform: scale(1.05); }
 .j-title {
-  font-family: var(--font-mono);
+  font-family: var(--font-display);
   text-transform: uppercase;
-  letter-spacing: .12em;
-  font-size: 1rem;
+  letter-spacing: .06em;
+  font-size: 1.15rem;
   color: var(--cacau, #2E2624);
   margin: 22px 0 10px;
 }
 .j-desc {
-  font-family: var(--font-mono);
-  font-size: .82rem;
+  font-family: var(--font-display);
+  font-size: .88rem;
   line-height: 1.75;
   color: #5b4a3c;
   max-width: 310px;

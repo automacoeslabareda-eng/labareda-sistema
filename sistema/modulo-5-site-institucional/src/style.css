@@ -1917,7 +1917,7 @@ address {
 }
 
 .journal-modal__title {
-  font-family: 'Instrument Serif', Georgia, serif;
+  font-family: var(--font-display, 'Ocotillo'), Georgia, serif;
   font-size: 2rem;
   line-height: 1.2;
   margin-bottom: 24px;
