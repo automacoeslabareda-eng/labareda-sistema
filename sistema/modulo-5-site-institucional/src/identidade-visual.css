@@ -245,9 +245,9 @@ header.site-header.sticky {
   justify-content: center;
 }
 .hero-logo {
-  width: min(280px, 50vw);
+  width: min(160px, 32vw);
   height: auto;
-  filter: drop-shadow(0 8px 22px rgba(0, 0, 0, .5));
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, .4));
 }
 
 /* Linha turquesa embaixo do hero (assinatura do PSD) */
