@@ -86,30 +86,34 @@ h1, h2, h3,
 .section--book {
   background-color: var(--terracota);
   background-image: url('img/textures/VERMELHO.jpg');
-  background-size: cover;
-  background-position: center;
+  background-size: 1920px auto;
+  background-position: center top;
+  background-repeat: repeat;
   color: var(--branco);
 }
 .section--radio {
   background-color: var(--cacau);
   background-image: url('img/textures/CACAU.jpg');
-  background-size: cover;
-  background-position: center;
+  background-size: 1920px auto;
+  background-position: center top;
+  background-repeat: repeat;
   color: var(--branco);
 }
 .section--shop {
   background-color: var(--creme);
   /* clareia a textura com um véu creme por cima => fundo claro igual ao exemplo */
   background-image: linear-gradient(rgba(243, 236, 219, .78), rgba(243, 236, 219, .78)), url('img/textures/BEGE.jpg');
-  background-size: cover;
-  background-position: center;
+  background-size: 1920px auto;
+  background-position: center top;
+  background-repeat: repeat;
   color: var(--preto);
 }
 .section--journal {
   background-color: #DBBD92;                       /* tan/kraft correto (igual ao exemplo) */
   background-image: url('img/textures/BEGE.jpg');  /* AREIA.jpg era creme claro demais */
-  background-size: cover;
-  background-position: center;
+  background-size: 1920px auto;
+  background-position: center top;
+  background-repeat: repeat;
   color: var(--preto);
 }
 
@@ -225,8 +229,9 @@ header.site-header.solid,
 header.site-header.sticky {
   background-color: var(--terracota) !important;
   background-image: url('img/textures/VERMELHO.jpg') !important;
-  background-size: cover !important;
-  background-position: center !important;
+  background-size: 1920px auto !important;
+  background-position: center top !important;
+  background-repeat: repeat !important;
   box-shadow: 0 2px 12px rgba(0, 0, 0, .18);
   border-bottom: none;
 }
