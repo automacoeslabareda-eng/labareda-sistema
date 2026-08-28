@@ -475,3 +475,17 @@ header.site-header.sticky {
 .section--testimonials { display: none !important; }
 /* imagem do contato maior (era max-width 220px) */
 .contact-image { max-width: 340px; }
+
+/* Estrela original no footer (substituiu SVG genérico) */
+.footer-star-img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+}
+
+/* Contato sem foto: grid 2 colunas */
+.contact-grid { grid-template-columns: 1fr !important; }
+@media (min-width: 768px) {
+  .contact-grid { grid-template-columns: 1fr 1fr !important; gap: 48px; }
+}
