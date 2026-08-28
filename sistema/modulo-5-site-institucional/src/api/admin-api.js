@@ -130,9 +130,29 @@ const handler = async (event) => {
         return resposta(200, { ok: true, itens: data || [] });
       }
       case 'update-pedido-status': {
-        const { error } = await db.from('pedidos').update({ status: body.status }).eq('id', body.pedido_id);
+        const patch = { status: body.status };
+        if (body.status === 'enviado' && body.codigo_rastreio) {
+          patch.codigo_rastreio = body.codigo_rastreio;
+          patch.rastreio_url = 'https://www.linkcorreios.com.br/?id=' + body.codigo_rastreio;
+          patch.enviado_at = new Date().toISOString();
+        }
+        const { error } = await db.from('pedidos').update(patch).eq('id', body.pedido_id);
         if (error) throw error;
         return resposta(200, { ok: true });
+      }
+      case 'update-pedido-rastreio': {
+        if (!body.pedido_id || !body.codigo_rastreio) return resposta(400, { erro: 'pedido_id e codigo_rastreio obrigatorios' });
+        const rastreioUrl = 'https://www.linkcorreios.com.br/?id=' + body.codigo_rastreio;
+        const { error } = await db.from('pedidos').update({
+          codigo_rastreio: body.codigo_rastreio,
+          rastreio_url: rastreioUrl,
+          status: 'enviado',
+          enviado_at: new Date().toISOString(),
+        }).eq('id', body.pedido_id);
+        if (error) throw error;
+        // Buscar dados do pedido + cliente para notificacao
+        const { data: pedidoData } = await db.from('pedidos').select('*,clientes(nome,email,telefone)').eq('id', body.pedido_id).single();
+        return resposta(200, { ok: true, pedido: pedidoData, rastreio_url: rastreioUrl });
       }
       case 'mensagens': {
         const { data, error } = await db.from('mensagens_contato').select('*').order('created_at', { ascending: false });

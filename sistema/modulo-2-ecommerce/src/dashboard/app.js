@@ -621,6 +621,16 @@ async function expandirPedido(pedidoId) {
       container.innerHTML = html;
     }
 
+    // Adiciona campo de rastreio
+    var rastreioHtml = '<div style="margin-top:16px;padding:14px;border:1px solid #ddd;border-radius:6px;background:#fafaf5">'
+      + '<label style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:8px">Codigo de Rastreio (Correios)</label>'
+      + '<div style="display:flex;gap:8px">'
+      + '<input type="text" id="input-rastreio-' + pedidoId + '" placeholder="Ex: AB123456789BR" style="flex:1;padding:10px;border:1px solid #ccc;font-family:monospace;font-size:14px;letter-spacing:.1em">'
+      + '<button class="btn btn--primary" onclick="salvarRastreio(\'' + pedidoId + '\')" style="white-space:nowrap">Salvar Rastreio</button>'
+      + '</div>'
+      + '</div>';
+    container.innerHTML += rastreioHtml;
+
     detalhe.classList.remove('escondido');
     detalhe.scrollIntoView({ behavior: 'smooth' });
 
@@ -629,9 +639,28 @@ async function expandirPedido(pedidoId) {
   }
 }
 
+async function salvarRastreio(pedidoId) {
+  var input = $('#input-rastreio-' + pedidoId);
+  var codigo = (input ? input.value : '').trim().toUpperCase();
+  if (!codigo) { mostrarToast('Informe o codigo de rastreio', 'error'); return; }
+  try {
+    var resp = await adminApi('update-pedido-rastreio', { pedido_id: pedidoId, codigo_rastreio: codigo });
+    mostrarToast('Rastreio salvo! Status atualizado para ENVIADO');
+    carregarPedidos();
+  } catch (err) {
+    console.error(err);
+    mostrarToast('Erro ao salvar rastreio', 'error');
+  }
+}
+
 async function mudarStatusPedido(pedidoId, novoStatus) {
   try {
-    await adminApi('update-pedido-status', { pedido_id: pedidoId, status: novoStatus });
+    var payload = { pedido_id: pedidoId, status: novoStatus };
+    if (novoStatus === 'enviado') {
+      var codigo = prompt('Codigo de rastreio dos Correios (opcional):');
+      if (codigo && codigo.trim()) payload.codigo_rastreio = codigo.trim().toUpperCase();
+    }
+    await adminApi('update-pedido-status', payload);
     mostrarToast('Status atualizado para ' + novoStatus);
     carregarPedidos();
   } catch (err) {
