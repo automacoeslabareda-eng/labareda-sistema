@@ -1153,6 +1153,168 @@ async function reordenarPlaylist(id, direcao) {
 /* ================================================================== */
 var cacheSecoes = [];
 
+/* ---- Seed: secoes padrao do site com conteudo atual ---- */
+var SECOES_PADRAO = [
+  {
+    slug: 'hero', ordem: 1, visivel: true,
+    titulo_pt: 'LABAREDA', titulo_en: 'LABAREDA',
+    subtitulo_pt: 'ROCA & ARTE', subtitulo_en: 'FARM & ART',
+    conteudo_pt: 'Serra Grande \u00b7 Costa do Cacau \u00b7 Bahia',
+    conteudo_en: 'Serra Grande \u00b7 Cocoa Coast \u00b7 Bahia',
+    botao_texto_pt: '', botao_texto_en: '', botao_url: '', video_url: '',
+  },
+  {
+    slug: 'experience', ordem: 2, visivel: true,
+    titulo_pt: 'Sobre o Sitio', titulo_en: 'About the Farm',
+    subtitulo_pt: 'Um santuario de roca e arte', subtitulo_en: 'A sanctuary of farm and art',
+    conteudo_pt: 'Um santuario de roca e arte no coracao da Costa do Cacau.\nMata viva, lagoas cristalinas, praia logo ali \u2014 e o cafe da manha que a terra deu de manha.',
+    conteudo_en: 'A sanctuary of farm and art in the heart of the Cocoa Coast.\nLiving forest, crystal lagoons, beach nearby \u2014 and the breakfast that the land gave this morning.',
+    botao_texto_pt: 'RESERVA DIRETA', botao_texto_en: 'DIRECT BOOKING', botao_url: '', video_url: '',
+  },
+  {
+    slug: 'manifesto', ordem: 3, visivel: true,
+    titulo_pt: 'MANIFESTO', titulo_en: 'MANIFESTO',
+    subtitulo_pt: '', subtitulo_en: '',
+    conteudo_pt: 'Nossa agrofloresta e um organismo vivo no meio da Mata Atlantica. E dela que vem a fruta do seu cafe, o cheiro do nosso creme, a cor que vira arte. Quando voce caminha entre o cacau, esta caminhando dentro da fonte.\n\nSem cenario. Sem fachada. So o que se vive.',
+    conteudo_en: 'Our agroforest is a living organism within the Atlantic Forest. From it comes the fruit in your coffee, the scent of our cream, the color that becomes art. When you walk among the cacao trees, you walk inside the source.\n\nNo scenery. No facade. Only what is lived.',
+    botao_texto_pt: '', botao_texto_en: '', botao_url: '', video_url: '',
+  },
+  {
+    slug: 'book', ordem: 4, visivel: true,
+    titulo_pt: 'Reservas', titulo_en: 'Book',
+    subtitulo_pt: 'Hospedagem', subtitulo_en: 'Accommodation',
+    conteudo_pt: 'Escolha quando quer viver a roca e a arte.\nPoucas unidades, atencao de verdade \u2014 os melhores periodos costumam fechar cedo.',
+    conteudo_en: 'Choose when you want to live the farm and the art.\nFew units, real attention \u2014 the best periods tend to fill up early.',
+    botao_texto_pt: 'RESERVAR', botao_texto_en: 'BOOK NOW', botao_url: 'https://www.airbnb.com.br/', video_url: '',
+  },
+  {
+    slug: 'radio', ordem: 5, visivel: true,
+    titulo_pt: 'Labareda Radio', titulo_en: 'Labareda Radio',
+    subtitulo_pt: 'A trilha sonora da roca. Ouca nossas playlists curadas.', subtitulo_en: 'The farm soundtrack. Listen to our curated playlists.',
+    conteudo_pt: 'Radio', conteudo_en: 'Radio',
+    botao_texto_pt: '', botao_texto_en: '', botao_url: '', video_url: '',
+  },
+  {
+    slug: 'shop', ordem: 6, visivel: true,
+    titulo_pt: 'Leve um pedaco para casa', titulo_en: 'Take a piece home',
+    subtitulo_pt: 'Produtos artesanais feitos com amor e materia-prima da regiao.', subtitulo_en: 'Handmade products made with love and local raw materials.',
+    conteudo_pt: 'Loja', conteudo_en: 'Shop',
+    botao_texto_pt: '', botao_texto_en: '', botao_url: '', video_url: '',
+  },
+  {
+    slug: 'journal', ordem: 7, visivel: true,
+    titulo_pt: 'Diario da Roca', titulo_en: 'Farm Journal',
+    subtitulo_pt: 'Historias, imagens e cronicas da vida na roca.', subtitulo_en: 'Stories, images and chronicles from life on the farm.',
+    conteudo_pt: 'Diario', conteudo_en: 'Journal',
+    botao_texto_pt: '', botao_texto_en: '', botao_url: '', video_url: '',
+  },
+  {
+    slug: 'depoimentos', ordem: 8, visivel: true,
+    titulo_pt: 'Quem ja viveu, conta', titulo_en: 'Those who lived it, tell',
+    subtitulo_pt: 'Depoimentos', subtitulo_en: 'Testimonials',
+    conteudo_pt: 'Depoimentos de hospedes', conteudo_en: 'Guest testimonials',
+    botao_texto_pt: '', botao_texto_en: '', botao_url: '', video_url: '',
+  },
+  {
+    slug: 'faq', ordem: 9, visivel: true,
+    titulo_pt: 'Perguntas que a gente sempre ouve', titulo_en: 'Questions we always hear',
+    subtitulo_pt: 'Duvidas frequentes', subtitulo_en: 'FAQ',
+    conteudo_pt: 'Duvidas frequentes', conteudo_en: 'Frequently asked questions',
+    botao_texto_pt: '', botao_texto_en: '', botao_url: '', video_url: '',
+  },
+  {
+    slug: 'contato', ordem: 10, visivel: true,
+    titulo_pt: 'Fale conosco', titulo_en: 'Contact us',
+    subtitulo_pt: 'Contato', subtitulo_en: 'Contact',
+    conteudo_pt: 'Estamos na Serra Grande, Costa do Cacau, sul da Bahia, atencao nossa do inicio ao fim.',
+    conteudo_en: 'We are in Serra Grande, Cocoa Coast, southern Bahia. Our full attention from start to finish.',
+    botao_texto_pt: 'Falar no WhatsApp', botao_texto_en: 'Chat on WhatsApp', botao_url: 'https://wa.me/5573999999999', video_url: '',
+  },
+];
+
+async function sincronizarSecoesDoSite() {
+  try {
+    mostrarToast('Sincronizando secoes...', 'success');
+    var existentes = await supaFetch('site_secoes?select=slug');
+    var slugsExistentes = (existentes || []).map(function(s) { return s.slug; });
+
+    var novas = SECOES_PADRAO.filter(function(s) {
+      return slugsExistentes.indexOf(s.slug) === -1;
+    });
+
+    if (novas.length === 0) {
+      mostrarToast('Todas as secoes ja existem!');
+      return;
+    }
+
+    for (var i = 0; i < novas.length; i++) {
+      await supaInsert('site_secoes', novas[i]);
+    }
+
+    mostrarToast(novas.length + ' secao(oes) criada(s)!');
+    carregarConteudoSite();
+  } catch (err) {
+    console.error('Erro ao sincronizar:', err);
+    mostrarToast('Erro ao sincronizar: ' + err.message, 'error');
+  }
+}
+
+/* ---- Icones por tipo de secao ---- */
+var SECAO_ICONS = {
+  hero: '&#127968;',
+  about: '&#128196;',
+  sobre: '&#128196;',
+  experience: '&#127793;',
+  manifesto: '&#128220;',
+  book: '&#128197;',
+  radio: '&#127925;',
+  shop: '&#128722;',
+  journal: '&#128221;',
+  depoimentos: '&#128172;',
+  testimonials: '&#128172;',
+  faq: '&#10067;',
+  contact: '&#9993;',
+  contato: '&#9993;',
+  galeria: '&#127748;',
+  gallery: '&#127748;',
+  servicos: '&#9881;',
+  parceiros: '&#129309;',
+  menu: '&#127860;',
+  cardapio: '&#127860;',
+  reservas: '&#128197;',
+  experiencias: '&#127793;',
+};
+
+function getSecaoIcon(slug) {
+  var key = (slug || '').toLowerCase();
+  return SECAO_ICONS[key] || '&#9726;';
+}
+
+function getSecaoDisplayName(slug) {
+  var names = {
+    hero: 'Hero / Banner Principal',
+    about: 'Sobre Nos',
+    experience: 'Experiencia / Tagline',
+    manifesto: 'Manifesto',
+    book: 'Reservas',
+    radio: 'Radio',
+    shop: 'Loja',
+    journal: 'Diario / Journal',
+    depoimentos: 'Depoimentos',
+    faq: 'Perguntas Frequentes',
+    contact: 'Contato',
+    contato: 'Contato',
+    galeria: 'Galeria',
+    servicos: 'Servicos',
+    menu: 'Cardapio',
+    cardapio: 'Cardapio',
+    reservas: 'Reservas',
+    experiencias: 'Experiencias',
+  };
+  var key = (slug || '').toLowerCase();
+  return names[key] || slug.charAt(0).toUpperCase() + slug.slice(1);
+}
+
 async function carregarConteudoSite() {
   try {
     var secoes = await supaFetch('site_secoes?select=*&order=ordem.asc');
@@ -1168,58 +1330,150 @@ async function carregarConteudoSite() {
 function renderizarSecoes(secoes) {
   var container = $('#secoes-container');
   if (!secoes || secoes.length === 0) {
-    container.innerHTML = '<p class="placeholder">Nenhuma secao encontrada</p>';
+    container.innerHTML = '<p class="placeholder">Nenhuma secao encontrada. Adicione uma nova secao abaixo.</p>';
+    renderizarAddSecao();
     return;
   }
 
   container.innerHTML = secoes.map(function(s, idx) {
     var visivel = s.visivel !== false;
     var slug = s.slug || '--';
-    var badgeClass = visivel ? 'secao-badge--visivel' : 'secao-badge--oculto';
-    var badgeText = visivel ? 'Visivel' : 'Oculto';
-
-    var imgFundoPreview = '';
-    if (s.imagem_fundo) {
-      imgFundoPreview = '<img class="secao-imagem-fundo-preview" src="' + escapeHtml(s.imagem_fundo) + '" alt="Fundo">';
-    }
+    var hasImg = !!s.imagem_fundo;
+    var previewClass = hasImg ? 'secao-card__preview' : 'secao-card__preview secao-card__preview--empty';
+    var previewStyle = hasImg ? ' style="background-image:url(\'' + escapeHtml(s.imagem_fundo) + '\')"' : '';
+    var displayName = getSecaoDisplayName(slug);
+    var icon = getSecaoIcon(slug);
 
     return '<div class="secao-card" data-secao-id="' + s.id + '">' +
-      '<div class="secao-card__header" onclick="toggleSecaoCard(\'' + s.id + '\')">' +
-        '<span class="secao-card__drag" title="Arrastar">&#10303;</span>' +
-        '<span class="secao-card__nome">' + escapeHtml(slug.toUpperCase()) + '</span>' +
-        '<span class="' + badgeClass + '">' + badgeText + '</span>' +
-        '<button class="btn-reorder" onclick="event.stopPropagation();reordenarSecao(\'' + s.id + '\',-1)" title="Subir"' + (idx === 0 ? ' disabled' : '') + '>&#9650;</button>' +
-        '<button class="btn-reorder" onclick="event.stopPropagation();reordenarSecao(\'' + s.id + '\',1)" title="Descer"' + (idx === secoes.length - 1 ? ' disabled' : '') + '>&#9660;</button>' +
-        '<button class="secao-card__toggle" id="toggle-' + s.id + '">&#9662;</button>' +
+      /* -- Visual Preview Header -- */
+      '<div class="' + previewClass + '"' + previewStyle + ' onclick="toggleSecaoCard(\'' + s.id + '\')">' +
+        '<div class="secao-card__preview-overlay"></div>' +
+        '<div class="secao-card__preview-info">' +
+          '<div class="secao-card__preview-title">' + icon + ' ' + escapeHtml(displayName) + '</div>' +
+          '<div class="secao-card__preview-slug">' + escapeHtml(slug) + '</div>' +
+        '</div>' +
       '</div>' +
+
+      /* -- Toolbar -- */
+      '<div class="secao-card__toolbar">' +
+        '<div class="secao-card__toolbar-group">' +
+          '<button class="btn-toolbar' + (visivel ? ' btn-toolbar--active' : '') + '" onclick="toggleVisibilidadeSecao(\'' + s.id + '\',' + !visivel + ')" title="' + (visivel ? 'Ocultar secao' : 'Mostrar secao') + '">' +
+            (visivel ? '&#128065; Visivel' : '&#128683; Oculto') +
+          '</button>' +
+        '</div>' +
+        '<div class="secao-card__toolbar-group">' +
+          '<button class="btn-toolbar" onclick="reordenarSecao(\'' + s.id + '\',-1)" title="Mover para cima"' + (idx === 0 ? ' disabled' : '') + '>&#9650; Subir</button>' +
+          '<button class="btn-toolbar" onclick="reordenarSecao(\'' + s.id + '\',1)" title="Mover para baixo"' + (idx === secoes.length - 1 ? ' disabled' : '') + '>&#9660; Descer</button>' +
+        '</div>' +
+        '<div class="secao-card__toolbar-spacer"></div>' +
+        '<div class="secao-card__toolbar-group">' +
+          '<button class="btn-toolbar btn-toolbar--save" onclick="salvarSecao(\'' + s.id + '\')">&#128190; Salvar</button>' +
+          '<button class="btn-toolbar" onclick="toggleSecaoCard(\'' + s.id + '\')" id="toggle-' + s.id + '">&#9662; Editar</button>' +
+        '</div>' +
+      '</div>' +
+
+      /* -- Body (expandable) -- */
       '<div class="secao-card__body" id="body-' + s.id + '">' +
-        '<div class="secao-form-row">' +
-          '<div class="form-group"><label>Titulo (PT)</label><input type="text" id="titulo-pt-' + s.id + '" value="' + escapeHtml(s.titulo_pt || '') + '"></div>' +
-          '<div class="form-group"><label>Titulo (EN)</label><input type="text" id="titulo-en-' + s.id + '" value="' + escapeHtml(s.titulo_en || '') + '"></div>' +
+
+        /* -- Language Tabs -- */
+        '<div class="secao-lang-tabs">' +
+          '<button class="secao-lang-tab secao-lang-tab--active" onclick="switchLangTab(\'' + s.id + '\',\'pt\')" id="tab-pt-' + s.id + '">' +
+            '<span class="secao-lang-tab__flag">&#127463;&#127479;</span> Portugues' +
+          '</button>' +
+          '<button class="secao-lang-tab" onclick="switchLangTab(\'' + s.id + '\',\'en\')" id="tab-en-' + s.id + '">' +
+            '<span class="secao-lang-tab__flag">&#127482;&#127480;</span> English' +
+          '</button>' +
         '</div>' +
-        '<div class="secao-form-row">' +
-          '<div class="form-group"><label>Subtitulo (PT)</label><input type="text" id="subtitulo-pt-' + s.id + '" value="' + escapeHtml(s.subtitulo_pt || '') + '"></div>' +
-          '<div class="form-group"><label>Subtitulo (EN)</label><input type="text" id="subtitulo-en-' + s.id + '" value="' + escapeHtml(s.subtitulo_en || '') + '"></div>' +
+
+        /* -- PT Panel -- */
+        '<div class="secao-lang-panel secao-lang-panel--active" id="panel-pt-' + s.id + '">' +
+          '<div class="wp-field">' +
+            '<label class="wp-field__label">Titulo</label>' +
+            '<input type="text" class="wp-field__input wp-field__input--large" id="titulo-pt-' + s.id + '" value="' + escapeHtml(s.titulo_pt || '') + '" placeholder="Digite o titulo...">' +
+          '</div>' +
+          '<div class="wp-field">' +
+            '<label class="wp-field__label">Subtitulo</label>' +
+            '<input type="text" class="wp-field__input" id="subtitulo-pt-' + s.id + '" value="' + escapeHtml(s.subtitulo_pt || '') + '" placeholder="Subtitulo opcional...">' +
+          '</div>' +
+          renderConteudoField(s, 'pt', slug) +
+          '<div class="wp-field-row">' +
+            '<div class="wp-field">' +
+              '<label class="wp-field__label">Texto do Botao (CTA)</label>' +
+              '<input type="text" class="wp-field__input" id="btn-texto-pt-' + s.id + '" value="' + escapeHtml(s.botao_texto_pt || '') + '" placeholder="Ex: Saiba Mais">' +
+            '</div>' +
+            '<div class="wp-field">' +
+              '<label class="wp-field__label">URL do Botao</label>' +
+              '<input type="text" class="wp-field__input" id="btn-url-' + s.id + '" value="' + escapeHtml(s.botao_url || '') + '" placeholder="https://...">' +
+            '</div>' +
+          '</div>' +
         '</div>' +
-        '<div class="secao-form-row">' +
-          '<div class="form-group"><label>Conteudo (PT)</label><textarea id="conteudo-pt-' + s.id + '" rows="4">' + escapeHtml(s.conteudo_pt || '') + '</textarea></div>' +
-          '<div class="form-group"><label>Conteudo (EN)</label><textarea id="conteudo-en-' + s.id + '" rows="4">' + escapeHtml(s.conteudo_en || '') + '</textarea></div>' +
+
+        /* -- EN Panel -- */
+        '<div class="secao-lang-panel" id="panel-en-' + s.id + '">' +
+          '<div class="wp-field">' +
+            '<label class="wp-field__label">Title</label>' +
+            '<input type="text" class="wp-field__input wp-field__input--large" id="titulo-en-' + s.id + '" value="' + escapeHtml(s.titulo_en || '') + '" placeholder="Enter the title...">' +
+          '</div>' +
+          '<div class="wp-field">' +
+            '<label class="wp-field__label">Subtitle</label>' +
+            '<input type="text" class="wp-field__input" id="subtitulo-en-' + s.id + '" value="' + escapeHtml(s.subtitulo_en || '') + '" placeholder="Optional subtitle...">' +
+          '</div>' +
+          renderConteudoField(s, 'en', slug) +
+          '<div class="wp-field-row">' +
+            '<div class="wp-field">' +
+              '<label class="wp-field__label">Button Text (CTA)</label>' +
+              '<input type="text" class="wp-field__input" id="btn-texto-en-' + s.id + '" value="' + escapeHtml(s.botao_texto_en || '') + '" placeholder="Ex: Learn More">' +
+            '</div>' +
+            '<div class="wp-field">' +
+              '<label class="wp-field__label">Button URL</label>' +
+              '<input type="text" class="wp-field__input" id="btn-url-en-' + s.id + '" value="' + escapeHtml(s.botao_url || '') + '" placeholder="https://..." disabled>' +
+              '<span class="wp-field__hint">Compartilhado com PT</span>' +
+            '</div>' +
+          '</div>' +
         '</div>' +
-        '<div class="form-group">' +
-          '<label>Imagem de Fundo</label>' +
-          '<div id="fundo-preview-' + s.id + '">' + imgFundoPreview + '</div>' +
-          '<input type="file" id="fundo-file-' + s.id + '" accept="image/*" onchange="previewFundoSecao(\'' + s.id + '\', this)">' +
+
+        /* -- Media Section -- */
+        '<div class="secao-media">' +
+          '<div class="secao-media__title">&#127912; Midia</div>' +
+
+          /* Imagem de Fundo - Drop Zone */
+          '<div class="wp-field">' +
+            '<label class="wp-field__label">Imagem de Fundo</label>' +
+            '<div class="wp-dropzone' + (hasImg ? ' wp-dropzone--has-image' : '') + '" id="dropzone-' + s.id + '" onclick="triggerFundoUpload(\'' + s.id + '\')"' +
+              ' ondragover="event.preventDefault();this.classList.add(\'wp-dropzone--dragover\')"' +
+              ' ondragleave="this.classList.remove(\'wp-dropzone--dragover\')"' +
+              ' ondrop="handleFundoDrop(event,\'' + s.id + '\')">' +
+              (hasImg ?
+                '<div class="wp-dropzone__preview-wrap">' +
+                  '<img class="wp-dropzone__preview-img" src="' + escapeHtml(s.imagem_fundo) + '" alt="Fundo">' +
+                  '<div class="wp-dropzone__preview-actions">' +
+                    '<button class="wp-dropzone__preview-btn" onclick="event.stopPropagation();triggerFundoUpload(\'' + s.id + '\')">Trocar</button>' +
+                    '<button class="wp-dropzone__preview-btn wp-dropzone__preview-btn--danger" onclick="event.stopPropagation();removerFundoSecao(\'' + s.id + '\')">Remover</button>' +
+                  '</div>' +
+                '</div>'
+                :
+                '<span class="wp-dropzone__icon">&#128247;</span>' +
+                '<div class="wp-dropzone__text">Arraste uma imagem ou <strong>clique para escolher</strong></div>' +
+                '<div class="wp-dropzone__hint">JPG, PNG ou WebP - Recomendado: 1920x1080px</div>'
+              ) +
+              '<input type="file" class="wp-dropzone__input" id="fundo-file-' + s.id + '" accept="image/*" onchange="previewFundoSecao(\'' + s.id + '\', this)" style="display:none">' +
+            '</div>' +
+          '</div>' +
+
+          /* Video URL */
+          '<div class="wp-field">' +
+            '<label class="wp-field__label">Video (URL)</label>' +
+            '<input type="text" class="wp-field__input" id="video-' + s.id + '" value="' + escapeHtml(s.video_url || '') + '" placeholder="https://youtube.com/... ou https://vimeo.com/...">' +
+            '<span class="wp-field__hint">YouTube, Vimeo ou link direto do video</span>' +
+          '</div>' +
         '</div>' +
-        '<div class="form-group"><label>Video URL</label><input type="text" id="video-' + s.id + '" value="' + escapeHtml(s.video_url || '') + '" placeholder="https://..."></div>' +
-        '<div class="secao-form-row">' +
-          '<div class="form-group"><label>Botao CTA - Texto (PT)</label><input type="text" id="btn-texto-pt-' + s.id + '" value="' + escapeHtml(s.botao_texto_pt || '') + '"></div>' +
-          '<div class="form-group"><label>Botao CTA - Texto (EN)</label><input type="text" id="btn-texto-en-' + s.id + '" value="' + escapeHtml(s.botao_texto_en || '') + '"></div>' +
+
+        /* -- Gallery Section -- */
+        '<div class="secao-galeria-wrap">' +
+          '<div class="secao-galeria-wrap__title">&#127748; Galeria de Imagens</div>' +
+          '<div id="galeria-' + s.id + '" class="secao-galeria"><p class="placeholder" style="grid-column:1/-1">Carregando galeria...</p></div>' +
         '</div>' +
-        '<div class="form-group"><label>Botao CTA - URL</label><input type="text" id="btn-url-' + s.id + '" value="' + escapeHtml(s.botao_url || '') + '" placeholder="https://..."></div>' +
-        '<div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="visivel-' + s.id + '"' + (visivel ? ' checked' : '') + ' onchange="toggleVisibilidadeSecao(\'' + s.id + '\', this.checked)"> Secao visivel no site</label></div>' +
-        '<div class="secao-separator">Galeria de Imagens</div>' +
-        '<div id="galeria-' + s.id + '" class="secao-galeria"><p class="placeholder" style="grid-column:1/-1">Carregando galeria...</p></div>' +
-        '<div style="margin-top:20px;text-align:center"><button class="btn btn--primary" onclick="salvarSecao(\'' + s.id + '\')">Salvar Secao</button></div>' +
+
       '</div>' +
     '</div>';
   }).join('');
@@ -1228,25 +1482,417 @@ function renderizarSecoes(secoes) {
   secoes.forEach(function(s) {
     carregarGaleriaSecao(s.id, s.slug);
   });
+
+  renderizarAddSecao();
+}
+
+function renderizarAddSecao() {
+  var area = $('#secao-add-area');
+  if (!area) return;
+  area.innerHTML = '<div class="secao-add-card" onclick="mostrarFormNovaSecao()">' +
+    '<span class="secao-add-card__icon">+</span>' +
+    '<span class="secao-add-card__text">Adicionar Nova Secao</span>' +
+  '</div>';
+}
+
+function mostrarFormNovaSecao() {
+  var area = $('#secao-add-area');
+  if (!area) return;
+  area.innerHTML = '<div class="secao-add-modal">' +
+    '<div class="secao-add-modal__title">Nova Secao</div>' +
+    '<div class="secao-add-modal__row">' +
+      '<div class="wp-field" style="margin:0">' +
+        '<label class="wp-field__label">Slug (identificador)</label>' +
+        '<input type="text" class="wp-field__input" id="nova-secao-slug" placeholder="Ex: hero, about, galeria...">' +
+        '<span class="wp-field__hint">Sem espacos, letras minusculas</span>' +
+      '</div>' +
+      '<div class="wp-field" style="margin:0">' +
+        '<label class="wp-field__label">Titulo (PT)</label>' +
+        '<input type="text" class="wp-field__input" id="nova-secao-titulo" placeholder="Titulo da secao">' +
+      '</div>' +
+    '</div>' +
+    '<div class="secao-add-modal__actions">' +
+      '<button class="btn btn--secondary" onclick="renderizarAddSecao()">Cancelar</button>' +
+      '<button class="btn btn--primary" onclick="criarNovaSecao()">Criar Secao</button>' +
+    '</div>' +
+  '</div>';
+  var slugInput = $('#nova-secao-slug');
+  if (slugInput) slugInput.focus();
+}
+
+async function criarNovaSecao() {
+  var slug = valor('nova-secao-slug').toLowerCase().replace(/[^a-z0-9-_]/g, '');
+  var titulo = valor('nova-secao-titulo');
+  if (!slug) { mostrarToast('Informe um slug para a secao', 'error'); return; }
+
+  // Verificar slug duplicado
+  var existe = cacheSecoes.find(function(s) { return s.slug === slug; });
+  if (existe) { mostrarToast('Ja existe uma secao com este slug', 'error'); return; }
+
+  try {
+    var maxOrdem = 0;
+    cacheSecoes.forEach(function(s) { if (s.ordem > maxOrdem) maxOrdem = s.ordem; });
+
+    await supaInsert('site_secoes', {
+      slug: slug,
+      titulo_pt: titulo || slug,
+      titulo_en: titulo || slug,
+      subtitulo_pt: '',
+      subtitulo_en: '',
+      conteudo_pt: '',
+      conteudo_en: '',
+      imagem_fundo: null,
+      video_url: '',
+      botao_texto_pt: '',
+      botao_texto_en: '',
+      botao_url: '',
+      visivel: true,
+      ordem: maxOrdem + 1,
+    });
+
+    mostrarToast('Secao criada!');
+    carregarConteudoSite();
+  } catch (err) {
+    console.error('Erro ao criar secao:', err);
+    mostrarToast('Erro ao criar secao: ' + err.message, 'error');
+  }
+}
+
+/* ---- FAQ Repeater Editor ---- */
+function parseFaqFromText(text) {
+  if (!text) return [];
+  var items = [];
+  var blocos = text.split('\n\n').filter(function(b) { return b.trim(); });
+  blocos.forEach(function(bloco) {
+    var linhas = bloco.split('\n');
+    var pergunta = '', resposta = '';
+    linhas.forEach(function(l) {
+      if (l.match(/^[PQ]:\s*/)) pergunta = l.replace(/^[PQ]:\s*/, '');
+      else if (l.match(/^[RA]:\s*/)) resposta = l.replace(/^[RA]:\s*/, '');
+    });
+    if (pergunta || resposta) items.push({ q: pergunta, a: resposta });
+  });
+  return items;
+}
+
+function faqToText(secaoId, lang) {
+  var prefix = lang === 'en' ? 'Q' : 'P';
+  var aPrefix = lang === 'en' ? 'A' : 'R';
+  var items = [];
+  var container = $('#faq-repeater-' + lang + '-' + secaoId);
+  if (!container) return '';
+  var cards = container.querySelectorAll('.wp-repeater__item');
+  cards.forEach(function(card, idx) {
+    var q = card.querySelector('.faq-q-input');
+    var a = card.querySelector('.faq-a-input');
+    if (q && a && (q.value.trim() || a.value.trim())) {
+      items.push(prefix + ': ' + q.value.trim() + '\n' + aPrefix + ': ' + a.value.trim());
+    }
+  });
+  return items.join('\n\n');
+}
+
+function renderFaqRepeater(secaoId, lang, text) {
+  var items = parseFaqFromText(text);
+  if (items.length === 0) items = [{ q: '', a: '' }];
+  var html = '<div class="wp-repeater" id="faq-repeater-' + lang + '-' + secaoId + '">';
+  items.forEach(function(item, idx) {
+    html += renderFaqItem(secaoId, lang, idx, item.q, item.a, items.length);
+  });
+  html += '</div>';
+  html += '<button class="wp-repeater__add" onclick="addFaqItem(\'' + secaoId + '\',\'' + lang + '\')" type="button">+ Adicionar Pergunta</button>';
+  return html;
+}
+
+function renderFaqItem(secaoId, lang, idx, q, a, total) {
+  return '<div class="wp-repeater__item">' +
+    '<div class="wp-repeater__item-header">' +
+      '<span class="wp-repeater__item-num">' + (idx + 1) + '</span>' +
+      '<div class="wp-repeater__item-actions">' +
+        (idx > 0 ? '<button class="wp-repeater__item-btn" onclick="moveFaqItem(\'' + secaoId + '\',\'' + lang + '\',' + idx + ',-1)" title="Subir">&#9650;</button>' : '') +
+        (idx < total - 1 ? '<button class="wp-repeater__item-btn" onclick="moveFaqItem(\'' + secaoId + '\',\'' + lang + '\',' + idx + ',1)" title="Descer">&#9660;</button>' : '') +
+        '<button class="wp-repeater__item-btn wp-repeater__item-btn--danger" onclick="removeFaqItem(\'' + secaoId + '\',\'' + lang + '\',' + idx + ')" title="Remover">&times;</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="wp-field" style="margin-bottom:10px">' +
+      '<label class="wp-field__label">Pergunta</label>' +
+      '<input type="text" class="wp-field__input faq-q-input" value="' + escapeHtml(q) + '" placeholder="Digite a pergunta...">' +
+    '</div>' +
+    '<div class="wp-field" style="margin-bottom:0">' +
+      '<label class="wp-field__label">Resposta</label>' +
+      '<textarea class="wp-field__textarea faq-a-input" rows="2" placeholder="Digite a resposta...">' + escapeHtml(a) + '</textarea>' +
+    '</div>' +
+  '</div>';
+}
+
+function addFaqItem(secaoId, lang) {
+  var container = $('#faq-repeater-' + lang + '-' + secaoId);
+  if (!container) return;
+  var items = container.querySelectorAll('.wp-repeater__item');
+  var total = items.length + 1;
+  var div = document.createElement('div');
+  div.innerHTML = renderFaqItem(secaoId, lang, items.length, '', '', total);
+  container.appendChild(div.firstChild);
+  rebuildFaqNumbers(secaoId, lang);
+}
+
+function removeFaqItem(secaoId, lang, idx) {
+  var container = $('#faq-repeater-' + lang + '-' + secaoId);
+  if (!container) return;
+  var items = container.querySelectorAll('.wp-repeater__item');
+  if (items.length <= 1) return;
+  items[idx].remove();
+  rebuildFaqNumbers(secaoId, lang);
+}
+
+function moveFaqItem(secaoId, lang, idx, dir) {
+  var container = $('#faq-repeater-' + lang + '-' + secaoId);
+  if (!container) return;
+  var items = Array.from(container.querySelectorAll('.wp-repeater__item'));
+  var newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= items.length) return;
+  if (dir === -1) container.insertBefore(items[idx], items[newIdx]);
+  else container.insertBefore(items[newIdx], items[idx]);
+  rebuildFaqNumbers(secaoId, lang);
+}
+
+function rebuildFaqNumbers(secaoId, lang) {
+  var container = $('#faq-repeater-' + lang + '-' + secaoId);
+  if (!container) return;
+  var items = container.querySelectorAll('.wp-repeater__item');
+  items.forEach(function(item, idx) {
+    var num = item.querySelector('.wp-repeater__item-num');
+    if (num) num.textContent = idx + 1;
+  });
+}
+
+/* ---- Depoimentos Repeater Editor ---- */
+function parseDepoFromText(text) {
+  if (!text) return [];
+  var items = [];
+  var blocos = text.split('\n\n').filter(function(b) { return b.trim(); });
+  blocos.forEach(function(bloco) {
+    var linhas = bloco.split('\n');
+    var quote = '', author = '', origin = '';
+    linhas.forEach(function(l) {
+      var t = l.trim();
+      if (t.match(/^[""\u201C]/)) {
+        quote = t.replace(/^[""\u201C]/, '').replace(/[""\u201D]$/, '');
+      } else if (t.match(/^[\u2014\u2013—-]\s*/)) {
+        var parts = t.replace(/^[\u2014\u2013—-]\s*/, '').split(',');
+        author = parts[0] ? parts[0].trim() : '';
+        origin = parts.slice(1).join(',').trim();
+      }
+    });
+    if (quote || author) items.push({ quote: quote, author: author, origin: origin });
+  });
+  return items;
+}
+
+function depoToText(secaoId, lang) {
+  var items = [];
+  var container = $('#depo-repeater-' + lang + '-' + secaoId);
+  if (!container) return '';
+  var cards = container.querySelectorAll('.wp-repeater__item');
+  cards.forEach(function(card) {
+    var q = card.querySelector('.depo-quote-input');
+    var a = card.querySelector('.depo-author-input');
+    var o = card.querySelector('.depo-origin-input');
+    if (q && a && (q.value.trim() || a.value.trim())) {
+      var line = '\u201C' + q.value.trim() + '\u201D';
+      line += '\n\u2014 ' + a.value.trim();
+      if (o && o.value.trim()) line += ', ' + o.value.trim();
+      items.push(line);
+    }
+  });
+  return items.join('\n\n');
+}
+
+function renderDepoRepeater(secaoId, lang, text) {
+  var items = parseDepoFromText(text);
+  if (items.length === 0) items = [{ quote: '', author: '', origin: '' }];
+  var html = '<div class="wp-repeater" id="depo-repeater-' + lang + '-' + secaoId + '">';
+  items.forEach(function(item, idx) {
+    html += renderDepoItem(secaoId, lang, idx, item, items.length);
+  });
+  html += '</div>';
+  html += '<button class="wp-repeater__add" onclick="addDepoItem(\'' + secaoId + '\',\'' + lang + '\')" type="button">+ Adicionar Depoimento</button>';
+  return html;
+}
+
+function renderDepoItem(secaoId, lang, idx, item, total) {
+  return '<div class="wp-repeater__item">' +
+    '<div class="wp-repeater__item-header">' +
+      '<span class="wp-repeater__item-num">' + (idx + 1) + '</span>' +
+      '<div class="wp-repeater__item-actions">' +
+        '<button class="wp-repeater__item-btn wp-repeater__item-btn--danger" onclick="removeDepoItem(\'' + secaoId + '\',\'' + lang + '\',' + idx + ')" title="Remover">&times;</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="wp-field" style="margin-bottom:10px">' +
+      '<label class="wp-field__label">Depoimento</label>' +
+      '<textarea class="wp-field__textarea depo-quote-input" rows="3" placeholder="O que o hospede disse...">' + escapeHtml(item.quote) + '</textarea>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+      '<div class="wp-field" style="margin-bottom:0">' +
+        '<label class="wp-field__label">Nome</label>' +
+        '<input type="text" class="wp-field__input depo-author-input" value="' + escapeHtml(item.author) + '" placeholder="Carolina & Pedro">' +
+      '</div>' +
+      '<div class="wp-field" style="margin-bottom:0">' +
+        '<label class="wp-field__label">Cidade / Origem</label>' +
+        '<input type="text" class="wp-field__input depo-origin-input" value="' + escapeHtml(item.origin) + '" placeholder="Sao Paulo, SP">' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function addDepoItem(secaoId, lang) {
+  var container = $('#depo-repeater-' + lang + '-' + secaoId);
+  if (!container) return;
+  var items = container.querySelectorAll('.wp-repeater__item');
+  var div = document.createElement('div');
+  div.innerHTML = renderDepoItem(secaoId, lang, items.length, { quote: '', author: '', origin: '' }, items.length + 1);
+  container.appendChild(div.firstChild);
+  rebuildDepoNumbers(secaoId, lang);
+}
+
+function removeDepoItem(secaoId, lang, idx) {
+  var container = $('#depo-repeater-' + lang + '-' + secaoId);
+  if (!container) return;
+  var items = container.querySelectorAll('.wp-repeater__item');
+  if (items.length <= 1) return;
+  items[idx].remove();
+  rebuildDepoNumbers(secaoId, lang);
+}
+
+function rebuildDepoNumbers(secaoId, lang) {
+  var container = $('#depo-repeater-' + lang + '-' + secaoId);
+  if (!container) return;
+  var items = container.querySelectorAll('.wp-repeater__item');
+  items.forEach(function(item, idx) {
+    var num = item.querySelector('.wp-repeater__item-num');
+    if (num) num.textContent = idx + 1;
+  });
+}
+
+/* ---- Renderizar campo de conteudo (generico ou customizado) ---- */
+function renderConteudoField(s, lang, slug) {
+  var conteudo = lang === 'en' ? (s.conteudo_en || '') : (s.conteudo_pt || '');
+  var labelPt = lang === 'en' ? 'Content / Description' : 'Conteudo / Descricao';
+  var placeholderPt = lang === 'en' ? 'Write the content for this section...' : 'Escreva o conteudo desta secao...';
+
+  try {
+    if (slug === 'faq') {
+      var faqLabel = lang === 'en' ? 'Questions & Answers' : 'Perguntas e Respostas';
+      return '<div class="wp-field">' +
+        '<label class="wp-field__label">' + faqLabel + '</label>' +
+        renderFaqRepeater(s.id, lang, conteudo) +
+        '<textarea class="wp-field__textarea escondido" id="conteudo-' + lang + '-' + s.id + '">' + escapeHtml(conteudo) + '</textarea>' +
+      '</div>';
+    }
+
+    if (slug === 'depoimentos') {
+      var depoLabel = lang === 'en' ? 'Testimonials' : 'Depoimentos';
+      return '<div class="wp-field">' +
+        '<label class="wp-field__label">' + depoLabel + '</label>' +
+        renderDepoRepeater(s.id, lang, conteudo) +
+        '<textarea class="wp-field__textarea escondido" id="conteudo-' + lang + '-' + s.id + '">' + escapeHtml(conteudo) + '</textarea>' +
+      '</div>';
+    }
+  } catch (err) {
+    console.error('Erro no editor customizado (' + slug + '):', err);
+  }
+
+  // Fallback: textarea generico
+  return '<div class="wp-field">' +
+    '<label class="wp-field__label">' + labelPt + '</label>' +
+    '<textarea class="wp-field__textarea" id="conteudo-' + lang + '-' + s.id + '" rows="5" placeholder="' + placeholderPt + '">' + escapeHtml(conteudo) + '</textarea>' +
+  '</div>';
+}
+
+/* ---- Tabs de idioma ---- */
+function switchLangTab(secaoId, lang) {
+  var tabs = ['pt', 'en'];
+  tabs.forEach(function(t) {
+    var tab = $('#tab-' + t + '-' + secaoId);
+    var panel = $('#panel-' + t + '-' + secaoId);
+    if (tab) tab.classList.toggle('secao-lang-tab--active', t === lang);
+    if (panel) panel.classList.toggle('secao-lang-panel--active', t === lang);
+  });
 }
 
 function toggleSecaoCard(secaoId) {
   var body = $('#body-' + secaoId);
   var toggle = $('#toggle-' + secaoId);
   if (body) {
-    body.classList.toggle('aberto');
-    if (toggle) toggle.classList.toggle('secao-card__toggle--aberto');
+    var isOpen = body.classList.toggle('aberto');
+    if (toggle) {
+      toggle.innerHTML = isOpen ? '&#9652; Fechar' : '&#9662; Editar';
+    }
+  }
+}
+
+/* ---- Imagem de fundo: Drop zone ---- */
+function triggerFundoUpload(secaoId) {
+  var fileInput = $('#fundo-file-' + secaoId);
+  if (fileInput) fileInput.click();
+}
+
+function handleFundoDrop(event, secaoId) {
+  event.preventDefault();
+  var dropzone = $('#dropzone-' + secaoId);
+  if (dropzone) dropzone.classList.remove('wp-dropzone--dragover');
+  var files = event.dataTransfer.files;
+  if (files && files.length > 0) {
+    var fileInput = $('#fundo-file-' + secaoId);
+    if (fileInput) {
+      // Create a new DataTransfer to set files on input
+      var dt = new DataTransfer();
+      dt.items.add(files[0]);
+      fileInput.files = dt.files;
+      previewFundoSecao(secaoId, fileInput);
+    }
   }
 }
 
 function previewFundoSecao(secaoId, input) {
-  var preview = $('#fundo-preview-' + secaoId);
-  if (input.files && input.files[0] && preview) {
-    var reader = new FileReader();
-    reader.onload = function(e) {
-      preview.innerHTML = '<img class="secao-imagem-fundo-preview" src="' + e.target.result + '" alt="Preview">';
-    };
-    reader.readAsDataURL(input.files[0]);
+  if (!input.files || !input.files[0]) return;
+  var dropzone = $('#dropzone-' + secaoId);
+  if (!dropzone) return;
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    dropzone.className = 'wp-dropzone wp-dropzone--has-image';
+    dropzone.innerHTML =
+      '<div class="wp-dropzone__preview-wrap">' +
+        '<img class="wp-dropzone__preview-img" src="' + e.target.result + '" alt="Preview">' +
+        '<div class="wp-dropzone__preview-actions">' +
+          '<button class="wp-dropzone__preview-btn" onclick="event.stopPropagation();triggerFundoUpload(\'' + secaoId + '\')">Trocar</button>' +
+          '<button class="wp-dropzone__preview-btn wp-dropzone__preview-btn--danger" onclick="event.stopPropagation();removerFundoSecao(\'' + secaoId + '\')">Remover</button>' +
+        '</div>' +
+      '</div>' +
+      '<input type="file" class="wp-dropzone__input" id="fundo-file-' + secaoId + '" accept="image/*" onchange="previewFundoSecao(\'' + secaoId + '\', this)" style="display:none">';
+
+    // Update preview header too
+    var card = dropzone.closest('.secao-card');
+    if (card) {
+      var preview = card.querySelector('.secao-card__preview');
+      if (preview) {
+        preview.style.backgroundImage = 'url(\'' + e.target.result + '\')';
+        preview.classList.remove('secao-card__preview--empty');
+      }
+    }
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+async function removerFundoSecao(secaoId) {
+  try {
+    await supaUpdate('site_secoes', secaoId, { imagem_fundo: null });
+    mostrarToast('Imagem de fundo removida');
+    carregarConteudoSite();
+  } catch (err) {
+    console.error(err);
+    mostrarToast('Erro ao remover imagem', 'error');
   }
 }
 
@@ -1257,13 +1903,29 @@ function valor(id) {
 
 async function salvarSecao(secaoId) {
   try {
+    // Detectar se eh secao com editor customizado
+    var secao = cacheSecoes.find(function(s) { return s.id === secaoId; });
+    var secSlug = secao ? secao.slug : '';
+    var conteudoPt, conteudoEn;
+
+    if (secSlug === 'faq') {
+      conteudoPt = faqToText(secaoId, 'pt');
+      conteudoEn = faqToText(secaoId, 'en');
+    } else if (secSlug === 'depoimentos') {
+      conteudoPt = depoToText(secaoId, 'pt');
+      conteudoEn = depoToText(secaoId, 'en');
+    } else {
+      conteudoPt = valor('conteudo-pt-' + secaoId);
+      conteudoEn = valor('conteudo-en-' + secaoId);
+    }
+
     var data = {
       titulo_pt: valor('titulo-pt-' + secaoId),
       titulo_en: valor('titulo-en-' + secaoId),
       subtitulo_pt: valor('subtitulo-pt-' + secaoId),
       subtitulo_en: valor('subtitulo-en-' + secaoId),
-      conteudo_pt: valor('conteudo-pt-' + secaoId),
-      conteudo_en: valor('conteudo-en-' + secaoId),
+      conteudo_pt: conteudoPt,
+      conteudo_en: conteudoEn,
       video_url: valor('video-' + secaoId),
       botao_texto_pt: valor('btn-texto-pt-' + secaoId),
       botao_texto_en: valor('btn-texto-en-' + secaoId),
@@ -1281,7 +1943,13 @@ async function salvarSecao(secaoId) {
     }
 
     await supaUpdate('site_secoes', secaoId, data);
-    mostrarToast('Secao atualizada!');
+    mostrarToast('Secao salva com sucesso!');
+
+    // Atualizar cache local sem recarregar tudo
+    var secao = cacheSecoes.find(function(s) { return s.id === secaoId; });
+    if (secao) {
+      Object.keys(data).forEach(function(k) { secao[k] = data[k]; });
+    }
   } catch (err) {
     console.error('Erro ao salvar secao:', err);
     mostrarToast('Erro ao salvar: ' + err.message, 'error');
@@ -1291,7 +1959,7 @@ async function salvarSecao(secaoId) {
 async function toggleVisibilidadeSecao(secaoId, visivel) {
   try {
     await supaUpdate('site_secoes', secaoId, { visivel: visivel });
-    mostrarToast(visivel ? 'Secao visivel' : 'Secao oculta');
+    mostrarToast(visivel ? 'Secao visivel no site' : 'Secao oculta do site');
     carregarConteudoSite();
   } catch (err) {
     console.error(err);
@@ -1367,13 +2035,16 @@ function renderizarGaleria(secaoId, secaoSlug, imagens) {
       '<img src="' + escapeHtml(img.imagem_url) + '" alt="' + escapeHtml(img.titulo || '') + '" loading="lazy">' +
       '<button class="secao-galeria__remove" onclick="removerImagemGaleria(\'' + img.id + '\',\'' + secaoId + '\',\'' + secaoSlug + '\')" title="Remover">&times;</button>' +
       '<div class="secao-galeria__reorder">' +
-        (idx > 0 ? '<button class="btn-reorder" onclick="reordenarImagemGaleria(\'' + img.id + '\',-1,\'' + secaoId + '\',\'' + secaoSlug + '\')" title="Mover esquerda">&#9650;</button>' : '') +
-        (idx < imagens.length - 1 ? '<button class="btn-reorder" onclick="reordenarImagemGaleria(\'' + img.id + '\',1,\'' + secaoId + '\',\'' + secaoSlug + '\')" title="Mover direita">&#9660;</button>' : '') +
+        (idx > 0 ? '<button class="btn-reorder" onclick="reordenarImagemGaleria(\'' + img.id + '\',-1,\'' + secaoId + '\',\'' + secaoSlug + '\')" title="Mover esquerda">&#9664;</button>' : '') +
+        (idx < imagens.length - 1 ? '<button class="btn-reorder" onclick="reordenarImagemGaleria(\'' + img.id + '\',1,\'' + secaoId + '\',\'' + secaoSlug + '\')" title="Mover direita">&#9654;</button>' : '') +
       '</div>' +
     '</div>';
   });
 
-  html += '<button class="secao-galeria__add" onclick="adicionarImagemGaleria(\'' + secaoId + '\',\'' + secaoSlug + '\')" title="Adicionar imagem">+ Adicionar</button>';
+  html += '<button class="secao-galeria__add" onclick="adicionarImagemGaleria(\'' + secaoId + '\',\'' + secaoSlug + '\')" title="Adicionar imagem">' +
+    '<span class="secao-galeria__add-icon">+</span>' +
+    'Adicionar' +
+  '</button>';
 
   container.innerHTML = html;
 }
@@ -1382,26 +2053,30 @@ async function adicionarImagemGaleria(secaoId, secaoSlug) {
   var input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
+  input.multiple = true;
   input.onchange = async function() {
-    if (!input.files || !input.files[0]) return;
+    if (!input.files || input.files.length === 0) return;
     try {
-      mostrarToast('Enviando imagem...', 'success');
-      var urlPublica = await uploadImagemSite(input.files[0], secaoSlug);
+      var files = Array.from(input.files);
+      mostrarToast('Enviando ' + files.length + ' imagem(ns)...', 'success');
 
       // Buscar max ordem atual
       var existentes = await supaFetch('site_galeria?secao_slug=eq.' + secaoSlug + '&select=ordem&order=ordem.desc&limit=1');
       var novaOrdem = (existentes && existentes.length > 0 && existentes[0].ordem != null) ? existentes[0].ordem + 1 : 0;
 
-      await supaInsert('site_galeria', {
-        secao_slug: secaoSlug,
-        imagem_url: urlPublica,
-        titulo: '',
-        descricao: '',
-        ordem: novaOrdem,
-        ativo: true,
-      });
+      for (var i = 0; i < files.length; i++) {
+        var urlPublica = await uploadImagemSite(files[i], secaoSlug);
+        await supaInsert('site_galeria', {
+          secao_slug: secaoSlug,
+          imagem_url: urlPublica,
+          titulo: '',
+          descricao: '',
+          ordem: novaOrdem + i,
+          ativo: true,
+        });
+      }
 
-      mostrarToast('Imagem adicionada!');
+      mostrarToast(files.length > 1 ? files.length + ' imagens adicionadas!' : 'Imagem adicionada!');
       carregarGaleriaSecao(secaoId, secaoSlug);
     } catch (err) {
       console.error('Erro ao adicionar imagem:', err);

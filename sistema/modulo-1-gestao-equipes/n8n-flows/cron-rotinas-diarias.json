@@ -222,7 +222,8 @@
     },
     {
       "parameters": {
-        "jsCode": "const resultado = $input.item.json;\nconst rotina = $('Preparar Rotinas').item.json;\n\n// Se retornou array vazio ou nenhum resultado, nao gerou ainda\nconst jaGerou = Array.isArray(resultado) ? resultado.length > 0 : (resultado && resultado.id);\n\nreturn [\n  {\n    json: {\n      ...rotina,\n      ja_gerou: jaGerou\n    }\n  }\n];"
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items = $input.all();\nconst rotinas = $('Tem Rotinas?').all();\n\nreturn items.map((item, index) => {\n  const resp = item.json;\n  const rotina = rotinas[index]?.json || {};\n\n  const jaGerou = Array.isArray(resp) ? resp.length > 0 : !!(resp && resp.id);\n\n  return {\n    json: {\n      ...rotina,\n      ja_gerou: jaGerou\n    }\n  };\n});"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -297,7 +298,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const tarefa = $input.item.json;\nconst rotina = $('Avaliar Duplicata').item.json;\n\n// Pegar o ID da tarefa criada\nconst tarefaData = Array.isArray(tarefa) ? tarefa[0] : tarefa;\n\nreturn [\n  {\n    json: {\n      tarefa_id: tarefaData.id,\n      propriedade_id: rotina.propriedade_id,\n      rotina_id: rotina.rotina_id\n    }\n  }\n];"
+        "jsCode": "const tarefa = $input.item.json;\n\n// POST com Prefer: return=representation ja retorna os campos\nconst tarefaData = Array.isArray(tarefa) ? tarefa[0] : tarefa;\n\nreturn [\n  {\n    json: {\n      tarefa_id: tarefaData.id,\n      propriedade_id: tarefaData.propriedade_id,\n      rotina_id: tarefaData.rotina_id\n    }\n  }\n];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -353,7 +354,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.item.json;\nconst tarefaInfo = $('Extrair Tarefa ID').item.json;\n\nconst itemsList = Array.isArray(items) ? items : [items];\n\nif (!itemsList[0] || !itemsList[0].id) {\n  return [];\n}\n\nreturn itemsList.map(item => ({\n  json: {\n    tarefa_id: tarefaInfo.tarefa_id,\n    propriedade_id: tarefaInfo.propriedade_id,\n    colaborador_id: item.colaborador_id,\n    descricao: item.descricao,\n    ordem: item.ordem\n  }\n}));"
+        "jsCode": "const items = $input.item.json;\nconst tarefaInfo = $('Extrair Tarefa ID').first().json;\n\nconst itemsList = Array.isArray(items) ? items : [items];\n\nif (!itemsList[0] || !itemsList[0].id) {\n  return [];\n}\n\nreturn itemsList.map(item => ({\n  json: {\n    tarefa_id: tarefaInfo.tarefa_id,\n    propriedade_id: tarefaInfo.propriedade_id,\n    colaborador_id: item.colaborador_id,\n    descricao: item.descricao,\n    ordem: item.ordem\n  }\n}));"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,

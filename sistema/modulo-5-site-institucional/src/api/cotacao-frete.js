@@ -62,7 +62,7 @@ async function handler(event) {
       ? 'https://api.superfrete.com'
       : 'https://sandbox.superfrete.com';
 
-    const cepOrigem = process.env.SUPERFRETE_CEP_ORIGEM || '45680000';
+    const cepOrigem = process.env.SUPERFRETE_CEP_ORIGEM || '45653000';
 
     // Peso e dimensões padrão para produtos da loja (cosméticos, camisetas, arte)
     const pacote = body.package || {

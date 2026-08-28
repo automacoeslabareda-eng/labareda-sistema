@@ -194,6 +194,18 @@ async function supaUpdate(tabela, id, data) {
   return r.json();
 }
 
+async function supaDelete(tabela, filtro) {
+  var url = CONFIG.SUPABASE_URL + '/rest/v1/' + tabela + '?' + filtro;
+  var r = await fetch(url, {
+    method: 'DELETE',
+    headers: apiHeaders(),
+  });
+  if (!r.ok) {
+    var txt = await r.text();
+    throw new Error('DELETE ' + tabela + ': ' + txt);
+  }
+}
+
 async function supaCount(tabela, filtro) {
   var qs = filtro ? '&' + filtro : '';
   var url = CONFIG.SUPABASE_URL + '/rest/v1/' + tabela + '?select=id' + qs;
@@ -640,6 +652,7 @@ async function carregarTarefas() {
           (t.status !== 'cancelada'
             ? '<button class="btn btn--small btn--danger" onclick="cancelarTarefa(\'' + t.id + '\')" title="Cancelar">&#10005;</button>'
             : '<button class="btn btn--small btn--secondary" onclick="reativarTarefa(\'' + t.id + '\')" title="Reativar">&#8634;</button>') +
+          ' <button class="btn btn--small btn--danger" onclick="excluirTarefa(\'' + t.id + '\', \'' + escapeHtml((t.comando_original || t.descricao || 'Tarefa').replace(/'/g, '')) + '\')" title="Excluir permanentemente" style="background:#8b0000">&#128465;</button>' +
         '</td>' +
         '</tr>';
     }).join('');
@@ -793,6 +806,23 @@ async function cancelarTarefa(id) {
     carregarTarefas();
   } catch (err) {
     mostrarToast('Erro ao cancelar', 'error');
+  }
+}
+
+async function excluirTarefa(id, nome) {
+  if (!confirm('Tem certeza que deseja EXCLUIR permanentemente a tarefa "' + nome + '"?\n\nIsso ira apagar a tarefa e todos os seus checklist items. Esta acao nao pode ser desfeita.')) return;
+  try {
+    await supaDelete('checklist_items', 'tarefa_id=eq.' + id);
+    await supaDelete('tarefas', 'id=eq.' + id);
+    mostrarToast('Tarefa excluida permanentemente');
+    tarefaAbertaId = null;
+    tarefaAbertaDados = null;
+    var detalhe = $('#tarefa-detalhe');
+    if (detalhe) detalhe.style.display = 'none';
+    carregarTarefas();
+  } catch (err) {
+    console.error('Erro ao excluir tarefa:', err);
+    mostrarToast('Erro ao excluir tarefa', 'error');
   }
 }
 
