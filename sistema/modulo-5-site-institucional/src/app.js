@@ -1709,7 +1709,7 @@
      ========================================================================== */
   var checkoutStep = 1;
   var selectedFrete = null;
-  var freteTabela = [];
+  var freteOpcoes = []; // opções retornadas pelo SuperFrete
 
   function openCheckout() {
     var cart = getCart();
@@ -1717,16 +1717,8 @@
 
     checkoutStep = 1;
     selectedFrete = null;
+    freteOpcoes = [];
     showCheckoutStep(1);
-
-    /* Load frete tabela */
-    if (freteTabela.length === 0) {
-      supabaseFetch('frete_tabela', '?select=*')
-        .then(function (data) {
-          if (data) freteTabela = data;
-        })
-        .catch(function () { /* noop */ });
-    }
 
     document.getElementById('checkout-modal').classList.add('aberto');
     document.body.style.overflow = 'hidden';
@@ -1755,72 +1747,111 @@
     });
   }
 
-  function getFreteRegion(estado) {
-    if (estado === 'BA') return 'BA';
-    var ne = ['MA', 'PI', 'CE', 'RN', 'PB', 'PE', 'AL', 'SE'];
-    if (ne.indexOf(estado) !== -1) return 'NE';
-    var seSul = ['SP', 'RJ', 'MG', 'ES', 'PR', 'SC', 'RS'];
-    if (seSul.indexOf(estado) !== -1) return 'SE_SUL';
-    return 'OUTROS';
-  }
+  /* ---- SuperFrete: cotação de frete por CEP ---- */
+  var freteLoading = false;
 
-  function renderFreteOptions(estado) {
+  function calcularFreteSuperFrete(cep) {
     var container = document.getElementById('checkout-frete-options');
-    if (!estado || freteTabela.length === 0) {
-      container.innerHTML = '<p class="checkout-frete-hint">' + translations[currentLang].checkout_select_state + '</p>';
+    var cepLimpo = (cep || '').replace(/\D/g, '');
+
+    if (!cepLimpo || cepLimpo.length !== 8) {
+      container.innerHTML = '<p class="checkout-frete-hint">' + (currentLang === 'en' ? 'Enter your ZIP code to calculate shipping.' : 'Informe seu CEP para calcular o frete.') + '</p>';
       selectedFrete = null;
       return;
     }
 
-    var region = getFreteRegion(estado);
-    var html = '';
-    var daysLabel = translations[currentLang].checkout_days;
+    if (freteLoading) return;
+    freteLoading = true;
+    selectedFrete = null;
+    container.innerHTML = '<p class="checkout-frete-hint">' + (currentLang === 'en' ? 'Calculating shipping...' : 'Calculando frete...') + '</p>';
 
-    freteTabela.forEach(function (ft) {
-      var regionName = ft.regiao || ft.nome || '';
-      var isMatch = regionName.toUpperCase() === region;
-      var selected = isMatch ? ' selected' : '';
+    fetch('/api/cotacao-frete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cep_destino: cepLimpo }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        freteLoading = false;
+        if (data.erro) {
+          container.innerHTML = '<p class="checkout-frete-hint" style="color:var(--terracota)">' + data.erro + '</p>';
+          return;
+        }
+        freteOpcoes = Array.isArray(data) ? data : [];
+        renderFreteOpcoesSuperFrete();
+      })
+      .catch(function () {
+        freteLoading = false;
+        container.innerHTML = '<p class="checkout-frete-hint" style="color:var(--terracota)">' + (currentLang === 'en' ? 'Error calculating shipping. Try again.' : 'Erro ao calcular frete. Tente novamente.') + '</p>';
+      });
+  }
+
+  function renderFreteOpcoesSuperFrete() {
+    var container = document.getElementById('checkout-frete-options');
+    if (freteOpcoes.length === 0) {
+      container.innerHTML = '<p class="checkout-frete-hint">' + (currentLang === 'en' ? 'No shipping options available for this ZIP code.' : 'Nenhuma opção de frete disponível para este CEP.') + '</p>';
+      selectedFrete = null;
+      return;
+    }
+
+    var daysLabel = currentLang === 'en' ? 'business days' : 'dias úteis';
+    var html = '';
+
+    freteOpcoes.forEach(function (op, idx) {
+      var selected = idx === 0 ? ' selected' : '';
+      var checked = idx === 0 ? 'checked' : '';
+      var prazoTxt = op.prazo_range
+        ? op.prazo_range.min + '-' + op.prazo_range.max + ' ' + daysLabel
+        : (op.prazo_dias || '') + ' ' + daysLabel;
 
       html += '<label class="frete-option' + selected + '">'
-        + '<input type="radio" name="frete" value="' + (ft.id || ft.regiao) + '" ' + (isMatch ? 'checked' : '') + '>'
+        + '<input type="radio" name="frete" value="' + idx + '" ' + checked + '>'
         + '<div class="frete-option__info">'
-        + '<span class="frete-option__region">' + regionName + '</span>'
-        + '<span class="frete-option__prazo">' + (ft.prazo_dias || ft.prazo || '') + ' ' + daysLabel + '</span>'
+        + '<span class="frete-option__region">' + (op.nome || '') + (op.transportadora ? ' (' + op.transportadora + ')' : '') + '</span>'
+        + '<span class="frete-option__prazo">' + prazoTxt + '</span>'
         + '</div>'
-        + '<span class="frete-option__price">' + formatPrice(ft.valor || ft.preco || 0) + '</span>'
+        + '<span class="frete-option__price">' + formatPrice(op.preco || 0) + '</span>'
         + '</label>';
 
-      if (isMatch) {
+      if (idx === 0) {
         selectedFrete = {
-          regiao: regionName,
-          valor: parseFloat(ft.valor || ft.preco || 0),
-          prazo: ft.prazo_dias || ft.prazo || '',
+          regiao: op.nome || '',
+          valor: parseFloat(op.preco || 0),
+          prazo: op.prazo_dias || '',
+          transportadora: op.transportadora || '',
         };
       }
     });
 
     container.innerHTML = html;
 
-    /* Bind frete radio change */
+    /* Bind radio change */
     container.querySelectorAll('input[name="frete"]').forEach(function (radio) {
       radio.addEventListener('change', function () {
-        var freteId = this.value;
+        var idx = parseInt(this.value, 10);
         container.querySelectorAll('.frete-option').forEach(function (opt) { opt.classList.remove('selected'); });
         this.closest('.frete-option').classList.add('selected');
 
-        for (var i = 0; i < freteTabela.length; i++) {
-          var ft = freteTabela[i];
-          if ((ft.id || ft.regiao) === freteId) {
-            selectedFrete = {
-              regiao: ft.regiao || ft.nome || '',
-              valor: parseFloat(ft.valor || ft.preco || 0),
-              prazo: ft.prazo_dias || ft.prazo || '',
-            };
-            break;
-          }
+        var op = freteOpcoes[idx];
+        if (op) {
+          selectedFrete = {
+            regiao: op.nome || '',
+            valor: parseFloat(op.preco || 0),
+            prazo: op.prazo_dias || '',
+            transportadora: op.transportadora || '',
+          };
         }
       });
     });
+  }
+
+  /* Compatibilidade: renderFreteOptions chamada pelo evento de estado */
+  function renderFreteOptions(estado) {
+    var cepEl = document.getElementById('checkout-cep');
+    var cep = cepEl ? cepEl.value : '';
+    if (cep && cep.replace(/\D/g, '').length === 8) {
+      calcularFreteSuperFrete(cep);
+    }
   }
 
   function renderCheckoutSummary() {
@@ -1911,14 +1942,13 @@
     showCheckoutStep(2);
   });
 
-  /* Auto-calculate frete on estado change */
+  /* Auto-calculate frete on estado change (fallback) */
   document.getElementById('checkout-estado').addEventListener('change', function () {
     renderFreteOptions(this.value);
   });
 
-  /* CEP automatico: ao digitar o CEP, puxa endereco/bairro/cidade/estado e ja
-     seleciona o frete (ViaCEP). Usuario so preenche numero/complemento.
-     Todos os campos continuam editaveis. */
+  /* CEP automatico: ao digitar o CEP, puxa endereco (ViaCEP) e calcula
+     frete via SuperFrete. Usuario so preenche numero/complemento. */
   (function () {
     var cepEl = document.getElementById('checkout-cep');
     if (!cepEl) return;
@@ -1926,6 +1956,8 @@
       var cep = (cepEl.value || '').replace(/\D/g, '');
       if (cep.length !== 8) return;
       cepEl.disabled = true;
+
+      /* 1. ViaCEP: preenche endereço */
       fetch('https://viacep.com.br/ws/' + cep + '/json/')
         .then(function (r) { return r.json(); })
         .then(function (d) {
@@ -1934,16 +1966,16 @@
             if (d.bairro) document.getElementById('checkout-bairro').value = d.bairro;
             if (d.localidade) document.getElementById('checkout-cidade').value = d.localidade;
             var estadoEl = document.getElementById('checkout-estado');
-            if (d.uf && estadoEl) {
-              estadoEl.value = d.uf;
-              renderFreteOptions(d.uf); /* seleciona o frete da regiao automaticamente */
-            }
+            if (d.uf && estadoEl) estadoEl.value = d.uf;
             var numEl = document.getElementById('checkout-numero');
-            if (numEl) numEl.focus(); /* leva o cursor direto pro numero */
+            if (numEl) numEl.focus();
           }
         })
         .catch(function () {})
         .finally(function () { cepEl.disabled = false; });
+
+      /* 2. SuperFrete: calcula frete */
+      calcularFreteSuperFrete(cep);
     }
     cepEl.addEventListener('blur', buscarCep);
     cepEl.addEventListener('input', function () {
