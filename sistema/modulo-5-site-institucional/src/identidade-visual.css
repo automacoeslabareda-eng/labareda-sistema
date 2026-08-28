@@ -3,6 +3,9 @@
    Fontes da marca + paleta do PSD. Aditiva (carrega depois do style.css).
    ========================================================================== */
 
+/* ---------- Anti-overflow mobile ---------- */
+html, body { overflow-x: hidden; max-width: 100vw; }
+
 /* ---------- Fontes da marca ---------- */
 @font-face {
   font-family: 'Costa';
@@ -355,8 +358,18 @@ header.site-header.sticky {
 .p2-manifesto-fecho { margin-top: 20px; }
 
 @media (max-width: 720px) {
-  .p2-selo { width: 80px; }
-  .p2-manifesto { gap: 18px; }
+  .p2-selo { display: none; }
+  .p2-manifesto { gap: 0; padding: 0 20px; margin-top: 50px; }
+  .p2-manifesto-texto p { font-size: .85rem; line-height: 2; max-width: 100%; }
+  .p2-manifesto-titulo { font-size: 1.4rem; }
+  .section--experience { padding: 50px 16px 60px; }
+  .p2-tagline-texto { font-size: .88rem; line-height: 1.85; padding: 0 8px; }
+  .p2-microbar { font-size: .7rem; gap: 10px; }
+  .p2-galeria { margin-top: 30px; }
+  .section--book { padding: 40px 0; }
+  .p3-frase { font-size: .9rem !important; padding: 0 16px; }
+  .p3-reserva-btns { flex-direction: column; gap: 10px; padding: 0 16px; }
+  .p3-btn-reservar { font-size: .75rem; padding: 14px 20px; }
 }
 
 /* ==========================================================================
