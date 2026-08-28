@@ -40,6 +40,7 @@
       font-family:var(--disp);
       font-size:clamp(2.8rem,7vw,4.8rem);
       letter-spacing:.06em;
+      padding-right:.06em; /* compensa letter-spacing para centralizar */
       line-height:1;
       color:var(--creme);
     }
@@ -49,13 +50,15 @@
       line-height:2.4;
       opacity:.92;
       text-transform:uppercase;
+      padding-right:.38em; /* compensa letter-spacing no ultimo char */
     }
-    .jp-header__sub .row { display:block; }
+    .jp-header__sub .row { display:block; text-align:center; }
     .jp-header__sub .spread {
-      display:flex; justify-content:center; gap:min(16vw,180px);
+      display:flex; justify-content:center; gap:min(14vw,140px);
+      max-width:420px; margin:0 auto;
     }
     .jp-header__sub .spread span {
-      flex:1; /* largura igual nos dois lados para centralizar o gap */
+      flex:none; /* largura pelo conteudo, nao esticado */
     }
     .jp-header__sub .spread span:first-child { text-align:right; }
     .jp-header__sub .spread span:last-child { text-align:left; }
