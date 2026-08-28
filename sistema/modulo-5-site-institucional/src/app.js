@@ -1776,7 +1776,7 @@
           height: 15,
           width: 30,
           length: 40,
-          weight: Math.max(0.3, cart.reduce(function(s, i) { return s + ((i.peso_gramas || 200) / 1000) * i.quantity; }, 0))
+          weight: Math.max(0.3, getCart().reduce(function(s, i) { return s + ((i.peso_gramas || 200) / 1000) * (i.quantity || 1); }, 0))
         }
       }),
     })
