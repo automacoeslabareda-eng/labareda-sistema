@@ -393,6 +393,15 @@ header.site-header.sticky {
   transition: background .2s, color .2s;
 }
 .p3-btn-reservar:hover { background: var(--branco); color: var(--terracota); }
+.p3-reserva-btns {
+  display: flex; flex-wrap: wrap; gap: 16px; justify-content: center;
+}
+.p3-btn-reservar--airbnb {
+  border-color: var(--turquesa); color: var(--turquesa);
+}
+.p3-btn-reservar--airbnb:hover {
+  background: var(--turquesa); color: var(--branco); border-color: var(--turquesa);
+}
 
 /* ==========================================================================
    ITERAÇÃO 7 — JOURNAL (cards emoldurados, estilo editorial do PSD)
