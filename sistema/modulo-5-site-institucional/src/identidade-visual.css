@@ -11,7 +11,7 @@
 }
 @font-face {
   font-family: 'Ocotillo';
-  src: url('fonts/OCOTILLO.otf') format('opentype');
+  src: url('fonts/OcotilloPortugues.otf') format('opentype');
   font-weight: normal; font-style: normal; font-display: swap;
 }
 @font-face {
@@ -245,7 +245,7 @@ header.site-header.sticky {
   justify-content: center;
 }
 .hero-logo {
-  width: min(340px, 62vw);
+  width: min(240px, 44vw);
   height: auto;
   filter: drop-shadow(0 8px 22px rgba(0, 0, 0, .5));
 }

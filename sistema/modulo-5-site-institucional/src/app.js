@@ -143,7 +143,7 @@
       book_cta: 'Ver disponibilidade e reservar',
       book_cta_whatsapp: 'Prefere conversar? Chame no WhatsApp',
       radio_label: 'R\u00e1dio',
-      radio_title: 'Labareda Radio',
+      radio_title: 'Radio Labareda',
       radio_subtitle: 'A trilha sonora da ro\u00e7a. Ou\u00e7a nossas playlists curadas.',
       radio_aviso: 'Ou\u00e7a nossas playlists completas! Acesse o Spotify, salve na sua biblioteca e leve a trilha sonora da Labareda para onde quiser.',
       radio_abrir_spotify: 'Abrir Spotify',
@@ -282,7 +282,7 @@
       book_cta: 'See availability and book',
       book_cta_whatsapp: 'Prefer to talk? Chat on WhatsApp',
       radio_label: 'Radio',
-      radio_title: 'Labareda Radio',
+      radio_title: 'Radio Labareda',
       radio_subtitle: 'The soundtrack of the countryside. Listen to our curated playlists.',
       radio_aviso: 'Listen to our full playlists! Open Spotify, save to your library and take the Labareda soundtrack wherever you go.',
       radio_abrir_spotify: 'Open Spotify',
@@ -615,7 +615,7 @@
       'vestuario': 15,
       'artes': 40,
       'cosmeticos': 130,
-      'alimentos': 20,
+      'chocolates': 20,
     };
     return hueMap[categorySlug] || 15;
   }
@@ -1037,6 +1037,209 @@
       })
       .catch(function (err) {
         console.warn('Failed to load site config:', err.message);
+      });
+  }
+
+  /* ==========================================================================
+     9b. SITE SECTIONS — Dynamic content from site_secoes
+     ========================================================================== */
+
+  function loadSiteSections() {
+    supabaseFetch('site_secoes', '?visivel=eq.true&select=*&order=ordem.asc')
+      .then(function (secoes) {
+        if (!secoes || secoes.length === 0) return;
+
+        var lang = currentLang || 'pt';
+        var secMap = {};
+        secoes.forEach(function (s) { secMap[s.slug] = s; });
+
+        /* --- HERO --- */
+        if (secMap.hero) {
+          var h = secMap.hero;
+          /* Hero background image from DB */
+          if (h.imagem_fundo) {
+            var heroBg = document.querySelector('.hero-bg');
+            if (heroBg) heroBg.style.backgroundImage = "url('" + h.imagem_fundo + "')";
+          }
+        }
+
+        /* --- EXPERIENCE (tagline + microbar) — uses slug 'experience' or fallback 'about' --- */
+        var exp = secMap.experience || secMap.about;
+        if (exp) {
+          var tagline = document.querySelector('.p2-tagline-texto');
+          if (tagline) {
+            var txt = lang === 'en' ? exp.conteudo_en : exp.conteudo_pt;
+            if (txt) tagline.innerHTML = txt.replace(/\n/g, '<br>');
+          }
+        }
+
+        /* --- MANIFESTO --- */
+        if (secMap.manifesto) {
+          var man = secMap.manifesto;
+          var manTitulo = document.querySelector('.p2-manifesto-titulo');
+          var manTexto = document.querySelector('.p2-manifesto-texto p:first-of-type');
+          var manFecho = document.querySelector('.p2-manifesto-fecho');
+          if (manTitulo) manTitulo.textContent = lang === 'en' ? man.titulo_en : man.titulo_pt;
+          if (man.conteudo_pt || man.conteudo_en) {
+            var conteudo = lang === 'en' ? man.conteudo_en : man.conteudo_pt;
+            if (conteudo) {
+              var partes = conteudo.split('\n\n');
+              if (manTexto && partes[0]) manTexto.textContent = partes[0];
+              if (manFecho && partes[1]) manFecho.textContent = partes[1];
+            }
+          }
+        }
+
+        /* --- BOOK (Reservas) --- */
+        if (secMap.book) {
+          var bk = secMap.book;
+          var frase = document.querySelector('.p3-frase');
+          var btnReservar = document.getElementById('btn-reservar-airbnb');
+          if (frase) {
+            var txt = lang === 'en' ? bk.conteudo_en : bk.conteudo_pt;
+            if (txt) frase.innerHTML = txt.replace(/\n/g, '<br>');
+          }
+          if (btnReservar) {
+            if (bk.botao_url) btnReservar.href = bk.botao_url;
+            var btnTxt = lang === 'en' ? bk.botao_texto_en : bk.botao_texto_pt;
+            if (btnTxt) btnReservar.textContent = btnTxt;
+          }
+        }
+
+        /* --- RADIO --- */
+        if (secMap.radio) {
+          var rd = secMap.radio;
+          var radioTitle = document.getElementById('radio-title');
+          var radioSub = document.querySelector('.section--radio .section-subtitle');
+          if (radioTitle) radioTitle.textContent = lang === 'en' ? rd.titulo_en : rd.titulo_pt;
+          if (radioSub) radioSub.textContent = lang === 'en' ? rd.subtitulo_en : rd.subtitulo_pt;
+        }
+
+        /* --- SHOP --- */
+        if (secMap.shop) {
+          var sh = secMap.shop;
+          var shopTitle = document.getElementById('shop-title');
+          var shopSub = document.querySelector('.section--shop .section-subtitle');
+          if (shopTitle) shopTitle.textContent = lang === 'en' ? sh.titulo_en : sh.titulo_pt;
+          if (shopSub) shopSub.textContent = lang === 'en' ? sh.subtitulo_en : sh.subtitulo_pt;
+        }
+
+        /* --- JOURNAL --- */
+        if (secMap.journal) {
+          var jr = secMap.journal;
+          var journalTitle = document.getElementById('journal-title');
+          var journalSub = document.querySelector('.section--journal .section-subtitle');
+          if (journalTitle) journalTitle.textContent = lang === 'en' ? jr.titulo_en : jr.titulo_pt;
+          if (journalSub) journalSub.textContent = lang === 'en' ? jr.subtitulo_en : jr.subtitulo_pt;
+        }
+
+        /* --- DEPOIMENTOS --- */
+        if (secMap.depoimentos) {
+          var dp = secMap.depoimentos;
+          var depTitle = document.getElementById('testimonials-title');
+          if (depTitle) depTitle.textContent = lang === 'en' ? dp.titulo_en : dp.titulo_pt;
+          /* Parse testimonials from conteudo */
+          var depContent = lang === 'en' ? dp.conteudo_en : dp.conteudo_pt;
+          if (depContent) {
+            var depGrid = document.querySelector('.testimonials-grid');
+            if (depGrid) {
+              var depBlocos = depContent.split('\n\n').filter(function(b) { return b.trim(); });
+              var depHtml = '';
+              depBlocos.forEach(function(bloco, i) {
+                var linhas = bloco.split('\n');
+                var quote = '', author = '', origin = '';
+                linhas.forEach(function(l) {
+                  var trimmed = l.trim();
+                  if (trimmed.match(/^[""\u201C]/)) {
+                    quote = trimmed.replace(/^[""\u201C]/, '').replace(/[""\u201D]$/, '');
+                  } else if (trimmed.match(/^[\u2014—-]\s*/)) {
+                    var parts = trimmed.replace(/^[\u2014—-]\s*/, '').split(',');
+                    author = parts[0] ? parts[0].trim() : '';
+                    origin = parts.slice(1).join(',').trim();
+                  }
+                });
+                if (quote && author) {
+                  var delay = i > 0 ? ' reveal--delay-' + i : '';
+                  depHtml += '<blockquote class="testimonial-card reveal' + delay + '">' +
+                    '<p class="testimonial-quote">\u201C' + quote + '\u201D</p>' +
+                    '<footer class="testimonial-author">' +
+                      '<span class="testimonial-name">' + author + '</span>' +
+                      (origin ? '<span class="testimonial-origin">' + origin + '</span>' : '') +
+                    '</footer></blockquote>';
+                }
+              });
+              if (depHtml) depGrid.innerHTML = depHtml;
+            }
+          }
+        }
+
+        /* --- FAQ --- */
+        if (secMap.faq) {
+          var fq = secMap.faq;
+          var faqTitle = document.getElementById('faq-title');
+          if (faqTitle) faqTitle.textContent = lang === 'en' ? fq.titulo_en : fq.titulo_pt;
+          /* Parse Q&A from conteudo */
+          var faqContent = lang === 'en' ? fq.conteudo_en : fq.conteudo_pt;
+          if (faqContent) {
+            var faqAccordion = document.querySelector('.faq-accordion');
+            if (faqAccordion) {
+              var blocos = faqContent.split('\n\n').filter(function(b) { return b.trim(); });
+              var faqHtml = '';
+              blocos.forEach(function(bloco) {
+                var linhas = bloco.split('\n');
+                var pergunta = '', resposta = '';
+                linhas.forEach(function(l) {
+                  if (l.match(/^[PQ]:\s*/)) pergunta = l.replace(/^[PQ]:\s*/, '');
+                  else if (l.match(/^[RA]:\s*/)) resposta = l.replace(/^[RA]:\s*/, '');
+                });
+                if (pergunta && resposta) {
+                  faqHtml += '<details class="faq-item"><summary class="faq-question">' + pergunta + '</summary><div class="faq-answer">' + resposta + '</div></details>';
+                }
+              });
+              if (faqHtml) faqAccordion.innerHTML = faqHtml;
+            }
+          }
+        }
+
+        /* --- CONTATO (slug: 'contact' or 'contato') --- */
+        var ct = secMap.contact || secMap.contato;
+        if (ct) {
+          var contactTitle = document.getElementById('contact-title');
+          var contactDesc = document.querySelector('.contact-description');
+          var contactWa = document.querySelector('.contact-whatsapp-btn');
+          if (contactTitle) contactTitle.textContent = lang === 'en' ? ct.titulo_en : ct.titulo_pt;
+          if (contactDesc) contactDesc.textContent = lang === 'en' ? ct.conteudo_en : ct.conteudo_pt;
+          if (contactWa && ct.botao_url) contactWa.href = ct.botao_url;
+          if (contactWa) {
+            var waTxt = lang === 'en' ? ct.botao_texto_en : ct.botao_texto_pt;
+            if (waTxt) contactWa.textContent = waTxt;
+          }
+        }
+
+        /* --- Hide invisible sections --- */
+        var sectionMap = {
+          hero: '.hero',
+          experience: '.section--experience',
+          about: '.section--experience',
+          book: '.section--book',
+          radio: '.section--radio',
+          shop: '.section--shop',
+          journal: '.section--journal',
+          depoimentos: '.section--testimonials',
+          faq: '.section--faq',
+          contact: '.section--contact',
+          contato: '.section--contact',
+        };
+        Object.keys(sectionMap).forEach(function(slug) {
+          var secao = secMap[slug];
+          var el = document.querySelector(sectionMap[slug]);
+          if (el && secao && secao.visivel === false) {
+            el.style.display = 'none';
+          }
+        });
+      })
+      .catch(function (err) {
+        console.warn('Failed to load site sections:', err.message);
       });
   }
 
@@ -1895,6 +2098,7 @@
 
     /* ===== Load Supabase data ===== */
     loadSiteConfig();
+    loadSiteSections();
     loadProducts();
     loadJournal();
     loadRadio();
@@ -1924,7 +2128,7 @@
             playerVisivel = false;
             // Atualizar texto com primeira playlist
             if (loadedPlaylists.length > 0) {
-              miniTexto.textContent = 'Tocando: ' + (loadedPlaylists[0].nome || 'Labareda Radio');
+              miniTexto.textContent = 'Tocando: ' + (loadedPlaylists[0].nome || 'Radio Labareda');
             }
           } else if (!playerFechado && loadedPlaylists.length > 0) {
             // Usuário saiu da seção Radio — mostrar mini player
