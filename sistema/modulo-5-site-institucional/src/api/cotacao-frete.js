@@ -95,7 +95,8 @@ async function handler(event) {
       headers: {
         'Authorization': 'Bearer ' + token,
         'Content-Type': 'application/json',
-        'User-Agent': 'SitioLabareda (sitiolabareda@gmail.com)',
+        'Accept': 'application/json',
+        'User-Agent': 'SitioLabareda/1.0 (sitiolabareda@gmail.com)',
       },
       body: JSON.stringify(payload),
     });
