@@ -614,7 +614,9 @@
     var hueMap = {
       'vestuario': 15,
       'artes': 40,
+      'art': 40,
       'cosmeticos': 130,
+      'cosmetico': 130,
       'chocolates': 20,
     };
     return hueMap[categorySlug] || 15;
