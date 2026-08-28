@@ -156,6 +156,16 @@ h1, h2, h3,
 .radio-embed { overflow: visible; border-radius: 12px; }
 .radio-embed iframe { width: 100%; display: block; border-radius: 12px; }
 
+/* Mobile: disco menor, card mais compacto */
+@media (max-width: 600px) {
+  .vinyl-disc { width: 80px; height: 80px; }
+  .vinyl-label { width: 30px; height: 30px; font-size: .6rem; }
+  .radio-vinyl { margin-bottom: 14px; }
+  .radio-card { padding: 20px 16px; }
+  .radio-card-title { font-size: 1.1rem; }
+  .radio-card-desc { font-size: .8rem; margin-bottom: 14px; }
+}
+
 /* ---- Molduras finas nas fotos (estilo editorial do PSD) ---- */
 .book-slide img,
 .about-image,
