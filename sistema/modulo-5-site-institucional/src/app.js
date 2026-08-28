@@ -1770,7 +1770,15 @@
     fetch('/api/cotacao-frete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cep_destino: cepLimpo }),
+      body: JSON.stringify({
+        cep_destino: cepLimpo,
+        package: {
+          height: 15,
+          width: 30,
+          length: 40,
+          weight: Math.max(0.3, cart.reduce(function(s, i) { return s + ((i.peso_gramas || 200) / 1000) * i.quantity; }, 0))
+        }
+      }),
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
