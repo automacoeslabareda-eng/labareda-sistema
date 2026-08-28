@@ -50,15 +50,16 @@
       line-height:2.4;
       opacity:.92;
       text-transform:uppercase;
-      padding-right:.38em; /* compensa letter-spacing no ultimo char */
     }
-    .jp-header__sub .row { display:block; text-align:center; }
+    .jp-header__sub .row {
+      display:block; text-align:center;
+      padding-right:.38em; /* compensa letter-spacing do ultimo char */
+    }
     .jp-header__sub .spread {
-      display:flex; justify-content:center; gap:min(14vw,140px);
-      max-width:420px; margin:0 auto;
-    }
-    .jp-header__sub .spread span {
-      flex:none; /* largura pelo conteudo, nao esticado */
+      display:grid; grid-template-columns:1fr 1fr;
+      gap:0; column-gap:min(16vw,160px);
+      max-width:500px; margin:0 auto;
+      padding-right:.38em;
     }
     .jp-header__sub .spread span:first-child { text-align:right; }
     .jp-header__sub .spread span:last-child { text-align:left; }
