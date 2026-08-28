@@ -54,6 +54,11 @@
     .jp-header__sub .spread {
       display:flex; justify-content:center; gap:min(16vw,180px);
     }
+    .jp-header__sub .spread span {
+      flex:1; /* largura igual nos dois lados para centralizar o gap */
+    }
+    .jp-header__sub .spread span:first-child { text-align:right; }
+    .jp-header__sub .spread span:last-child { text-align:left; }
     /* JOURNAL vertical nas laterais */
     .jp-vert {
       position:absolute; top:50%; transform:translateY(-50%);
