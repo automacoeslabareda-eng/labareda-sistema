@@ -462,6 +462,12 @@ function abrirModalProduto(id) {
     '<div class="form-group"><label>Estoque</label><input type="number" id="campo-prod-estoque" min="0" placeholder="0"></div>' +
     '<div class="form-group"><label>SKU</label><input type="text" id="campo-prod-sku" placeholder="SKU do produto"></div>' +
     '<div class="form-group"><label>Peso (gramas)</label><input type="number" id="campo-prod-peso" min="0" placeholder="0"></div>' +
+    '<p style="font-size:12px;font-weight:600;margin:12px 0 6px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">Dimensoes para frete (cm)</p>' +
+    '<div style="display:flex;gap:8px">' +
+      '<div class="form-group" style="flex:1"><label>Comprimento</label><input type="number" id="campo-prod-frete-comprimento" min="0" step="0.1" placeholder="cm"></div>' +
+      '<div class="form-group" style="flex:1"><label>Largura</label><input type="number" id="campo-prod-frete-largura" min="0" step="0.1" placeholder="cm"></div>' +
+      '<div class="form-group" style="flex:1"><label>Altura</label><input type="number" id="campo-prod-frete-altura" min="0" step="0.1" placeholder="cm"></div>' +
+    '</div>' +
     '<div class="form-group"><label>Imagem do Produto</label>' +
       '<input type="file" id="campo-prod-imagem-file" accept="image/*">' +
       '<div id="campo-prod-imagem-preview" style="margin-top:8px"></div>' +
@@ -512,6 +518,9 @@ async function carregarDadosProdutoModal(id) {
       if (el('#campo-prod-estoque')) el('#campo-prod-estoque').value = p.estoque != null ? p.estoque : '';
       if (el('#campo-prod-sku')) el('#campo-prod-sku').value = p.sku || '';
       if (el('#campo-prod-peso')) el('#campo-prod-peso').value = p.peso_gramas || '';
+      if (el('#campo-prod-frete-comprimento')) el('#campo-prod-frete-comprimento').value = p.frete_comprimento || '';
+      if (el('#campo-prod-frete-largura')) el('#campo-prod-frete-largura').value = p.frete_largura || '';
+      if (el('#campo-prod-frete-altura')) el('#campo-prod-frete-altura').value = p.frete_altura || '';
       if (el('#campo-prod-descricao-pt')) el('#campo-prod-descricao-pt').value = p.descricao_pt || '';
       if (el('#campo-prod-descricao-en')) el('#campo-prod-descricao-en').value = p.descricao_en || '';
       if (el('#campo-prod-destaque')) el('#campo-prod-destaque').checked = !!p.destaque;
@@ -2283,6 +2292,9 @@ async function salvarModal() {
         estoque: parseInt(($('#campo-prod-estoque') || {}).value) || 0,
         sku: ($('#campo-prod-sku') || {}).value || null,
         peso_gramas: parseInt(($('#campo-prod-peso') || {}).value) || null,
+        frete_comprimento: parseFloat(($('#campo-prod-frete-comprimento') || {}).value) || null,
+        frete_largura: parseFloat(($('#campo-prod-frete-largura') || {}).value) || null,
+        frete_altura: parseFloat(($('#campo-prod-frete-altura') || {}).value) || null,
         descricao_pt: ($('#campo-prod-descricao-pt') || {}).value || '',
         descricao_en: ($('#campo-prod-descricao-en') || {}).value || '',
         destaque: ($('#campo-prod-destaque') || {}).checked || false,

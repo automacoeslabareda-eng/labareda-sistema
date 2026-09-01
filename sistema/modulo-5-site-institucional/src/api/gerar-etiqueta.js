@@ -107,11 +107,20 @@ async function criarEnvioSuperFrete(sf, pedido, cliente, itens) {
     postal_code: (end.cep || '').replace(/\D/g, ''),
   };
 
-  // Calcula peso total
-  var pesoTotal = 0.3; // minimo 300g
+  // Calcula peso e dimensões reais a partir dos produtos
+  var pesoTotal = 0;
+  var pkgHeight = 0, pkgWidth = 0, pkgLength = 0;
   var valorTotal = Number(pedido.subtotal) || 0;
   var products = (itens || []).map(function (it) {
-    return { name: it.nome_produto, quantity: it.quantidade, unitary_value: Number(it.preco_unitario) || 0 };
+    var prod = it.produtos || {};
+    var qty = it.quantidade || 1;
+    var pesoItem = (prod.peso_gramas || 200) / 1000;
+    pesoTotal += pesoItem * qty;
+    // Altura soma (empilha), largura e comprimento pega o maior
+    pkgHeight += (prod.frete_altura || 5) * qty;
+    if ((prod.frete_largura || 20) > pkgWidth) pkgWidth = prod.frete_largura || 20;
+    if ((prod.frete_comprimento || 30) > pkgLength) pkgLength = prod.frete_comprimento || 30;
+    return { name: it.nome_produto, quantity: qty, unitary_value: Number(it.preco_unitario) || 0 };
   });
 
   // Service ID: 1=PAC, 2=SEDEX, 17=Mini Envios
@@ -123,9 +132,9 @@ async function criarEnvioSuperFrete(sf, pedido, cliente, itens) {
     service: serviceId,
     products: products,
     package: {
-      height: 15,
-      width: 30,
-      length: 40,
+      height: Math.max(2, Math.ceil(pkgHeight)),
+      width: Math.max(11, Math.ceil(pkgWidth)),
+      length: Math.max(16, Math.ceil(pkgLength)),
       weight: Math.max(0.3, pesoTotal),
     },
     options: {
@@ -283,10 +292,10 @@ const handler = async (event) => {
       return resposta(400, { erro: 'Pedido precisa estar com status "pago" ou "preparando" para gerar etiqueta.' });
     }
 
-    // 2. Busca itens
+    // 2. Busca itens com dimensões do produto
     var { data: itens } = await db
       .from('pedido_itens')
-      .select('nome_produto, quantidade, preco_unitario')
+      .select('nome_produto, quantidade, preco_unitario, produto_id, produtos(peso_gramas, frete_altura, frete_largura, frete_comprimento)')
       .eq('pedido_id', pedidoId);
 
     var cliente = pedido.clientes || {};

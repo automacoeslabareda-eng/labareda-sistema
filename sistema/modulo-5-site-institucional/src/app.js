@@ -1471,6 +1471,10 @@
     if (existing) {
       existing.quantidade = Math.min(existing.quantidade + qty, product.estoque || 99);
       existing.nome = nome;
+      existing.peso_gramas = product.peso_gramas || null;
+      existing.frete_comprimento = product.frete_comprimento || null;
+      existing.frete_largura = product.frete_largura || null;
+      existing.frete_altura = product.frete_altura || null;
     } else {
       cart.push({
         produto_id: product.id,
@@ -1478,6 +1482,10 @@
         preco: preco,
         quantidade: qty,
         imagem_url: imgUrl,
+        peso_gramas: product.peso_gramas || null,
+        frete_comprimento: product.frete_comprimento || null,
+        frete_largura: product.frete_largura || null,
+        frete_altura: product.frete_altura || null,
       });
     }
 
@@ -1799,16 +1807,32 @@
     selectedFrete = null;
     container.innerHTML = '<p class="checkout-frete-hint">' + (currentLang === 'en' ? 'Calculating shipping...' : 'Calculando frete...') + '</p>';
 
+    /* Calcula dimensões dinâmicas do pacote baseado nos itens do carrinho.
+       Para cada eixo, usa a maior dimensão entre os itens (empilhamento).
+       Altura é somada (itens empilhados), comprimento e largura usam o maior. */
+    var cartItems = getCart();
+    var pkgWeight = 0, pkgHeight = 0, pkgWidth = 0, pkgLength = 0;
+    cartItems.forEach(function(i) {
+      var qty = i.quantidade || i.quantity || 1;
+      pkgWeight += ((i.peso_gramas || 200) / 1000) * qty;
+      var h = i.frete_altura || 5;
+      var w = i.frete_largura || 20;
+      var l = i.frete_comprimento || 30;
+      pkgHeight += h * qty;
+      if (w > pkgWidth) pkgWidth = w;
+      if (l > pkgLength) pkgLength = l;
+    });
+
     fetch('/api/cotacao-frete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         cep_destino: cepLimpo,
         package: {
-          height: 15,
-          width: 30,
-          length: 40,
-          weight: Math.max(0.3, getCart().reduce(function(s, i) { return s + ((i.peso_gramas || 200) / 1000) * (i.quantity || 1); }, 0))
+          height: Math.max(2, Math.ceil(pkgHeight)),
+          width: Math.max(11, Math.ceil(pkgWidth)),
+          length: Math.max(16, Math.ceil(pkgLength)),
+          weight: Math.max(0.3, pkgWeight)
         }
       }),
     })
