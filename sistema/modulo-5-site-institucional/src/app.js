@@ -115,7 +115,7 @@
       nav_contact: 'CONTATO',
       hero_location: 'Serra Grande \u00b7 Costa do Cacau \u00b7 Bahia',
       hero_headline: 'N\u00e3o \u00e9 um quarto com vista. \u00c9 uma vida por alguns dias.',
-      hero_subheadline: 'Um santu\u00e1rio de ro\u00e7a e arte no cora\u00e7\u00e3o da Costa do Cacau. Mata viva, lagoas cristalinas, praia logo ali e o caf\u00e9 da manh\u00e3 que a terra deu de manh\u00e3.',
+      hero_subheadline: 'Entre a mata e o mar, um lugar onde a ro\u00e7a encontra a arte. Lagoas de \u00e1guas cristalinas, praia logo ali e manh\u00e3s tranquilas, no ritmo da natureza.',
       hero_cta_book: 'Reservar sua estada',
       hero_cta_whatsapp: 'Falar no WhatsApp',
       hero_micro_1: 'Reserva direta',
@@ -267,7 +267,7 @@
       nav_contact: 'CONTACT',
       hero_location: 'Serra Grande \u00b7 Cocoa Coast \u00b7 Bahia',
       hero_headline: 'It\u2019s not a room with a view. It\u2019s a life for a few days.',
-      hero_subheadline: 'A sanctuary of farm and art in the heart of Brazil\u2019s Cocoa Coast. Living forest, crystal lagoons, beach just around the bend and breakfast the land gave this morning.',
+      hero_subheadline: 'Between the forest and the sea, a place where the farm meets art. Crystal clear lagoons, beach just around the bend and quiet mornings, in nature\u2019s rhythm.',
       hero_cta_book: 'Book your stay',
       hero_cta_whatsapp: 'Chat on WhatsApp',
       hero_micro_1: 'Direct booking',
@@ -2218,7 +2218,7 @@
           }
 
           var link = data.init_point || data.sandbox_init_point;
-          if (!link && !data.preference_id) throw new Error('Link de pagamento nao recebido');
+          if (!link && !data.preference_id) throw new Error('Link de pagamento não recebido');
 
           saveCart([]);
           updateCartBadge();
@@ -2268,11 +2268,11 @@
     if (pg === 'sucesso') {
       showToast((t.checkout_paid_ok || 'Pagamento aprovado! Pedido') + (num ? ' #' + num : ''));
     } else if (pg === 'pendente') {
-      showToast(t.checkout_paid_pending || 'Pagamento pendente. Voce recebera a confirmacao em breve.');
+      showToast(t.checkout_paid_pending || 'Pagamento pendente. Você receberá a confirmação em breve.');
     } else if (pg === 'falhou') {
-      showToast(t.checkout_paid_fail || 'Pagamento nao concluido. Tente novamente.', true);
+      showToast(t.checkout_paid_fail || 'Pagamento não concluído. Tente novamente.', true);
     }
-    /* Limpa os parametros da URL para nao repetir o aviso ao recarregar */
+    /* Limpa os parâmetros da URL para não repetir o aviso ao recarregar */
     if (window.history && window.history.replaceState) {
       window.history.replaceState({}, document.title, window.location.pathname + '#shop');
     }
