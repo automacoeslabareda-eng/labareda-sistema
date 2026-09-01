@@ -16,6 +16,10 @@
  *   - ECOMMERCE_SUPABASE_URL
  *   - ECOMMERCE_SUPABASE_SERVICE_ROLE_KEY (secreta)
  *   - N8N_WEBHOOK_URL                     (opcional) fluxo n8n p/ Telegram
+ *   - RESEND_API_KEY                      (opcional) email de confirmacao ao cliente
+ *   - EMAIL_FROM                          (opcional) remetente do email
+ *   - SITE_URL                            (opcional) URL base do site
+ *   - WHATSAPP_PEDIDOS                    (opcional) WhatsApp para duvidas
  * ============================================================
  */
 
@@ -31,6 +35,90 @@ function resolverAccessToken(env) {
   const ambiente = (env.MP_ENV || 'teste').toLowerCase();
   const prod = ambiente === 'producao' || ambiente === 'production' || ambiente === 'prod';
   return (prod ? env.MP_ACCESS_TOKEN_PROD : env.MP_ACCESS_TOKEN_TESTE) || env.MP_ACCESS_TOKEN || '';
+}
+
+/* ---- Email de confirmação de compra ---- */
+async function enviarEmailConfirmacao(cliente, pedido, itens) {
+  var resendKey = process.env.RESEND_API_KEY;
+  if (!resendKey || !cliente || !cliente.email) return false;
+
+  var siteUrl = (process.env.SITE_URL || 'https://sitiolabareda.com').replace(/\/+$/, '');
+  var whatsapp = process.env.WHATSAPP_PEDIDOS || '5573998150799';
+  var whatsappLink = 'https://wa.me/' + whatsapp + '?text=' + encodeURIComponent('Oi! Tenho uma duvida sobre o pedido #' + pedido.numero);
+  var acompanharUrl = siteUrl + '/pedido.html?numero=' + pedido.numero;
+  var from = process.env.EMAIL_FROM || 'Sitio Labareda <noreply@sitiolabareda.com>';
+
+  var itensHtml = (itens || []).map(function (it) {
+    return '<tr>'
+      + '<td style="padding:8px 12px;border-bottom:1px solid #e0d5c5;">' + (it.nome_produto || '') + '</td>'
+      + '<td style="padding:8px 12px;border-bottom:1px solid #e0d5c5;text-align:center;">' + it.quantidade + '</td>'
+      + '<td style="padding:8px 12px;border-bottom:1px solid #e0d5c5;text-align:right;">R$ ' + Number(it.preco_unitario).toFixed(2).replace('.', ',') + '</td>'
+      + '</tr>';
+  }).join('');
+
+  var endereco = pedido.endereco_entrega || {};
+  var enderecoTexto = endereco.rua
+    ? (endereco.rua + ', ' + endereco.numero + (endereco.complemento ? ' — ' + endereco.complemento : '') + '<br>' + endereco.bairro + ' — ' + endereco.cidade + '/' + endereco.estado + '<br>CEP: ' + endereco.cep)
+    : '';
+
+  var html = [
+    '<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;color:#2E2624;">',
+    '<h2 style="color:#AA3424;text-align:center;margin-bottom:24px;">Sitio Labareda</h2>',
+    '<p>Ola, ' + (cliente.nome || '').split(' ')[0] + '!</p>',
+    '<p>Seu pedido <strong>#' + pedido.numero + '</strong> foi confirmado! Obrigado pela compra. 🌿</p>',
+
+    '<div style="background:#f5f0e8;border-radius:8px;padding:20px;margin:20px 0;">',
+    '<table style="width:100%;border-collapse:collapse;font-size:.9rem;">',
+    '<thead><tr style="color:#6b5f56;font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;">',
+    '<th style="padding:8px 12px;text-align:left;border-bottom:2px solid #d4c9b8;">Produto</th>',
+    '<th style="padding:8px 12px;text-align:center;border-bottom:2px solid #d4c9b8;">Qtd</th>',
+    '<th style="padding:8px 12px;text-align:right;border-bottom:2px solid #d4c9b8;">Valor</th>',
+    '</tr></thead>',
+    '<tbody>' + itensHtml + '</tbody>',
+    '<tfoot>',
+    '<tr><td colspan="2" style="padding:8px 12px;text-align:right;font-size:.85rem;color:#6b5f56;">Subtotal</td><td style="padding:8px 12px;text-align:right;">R$ ' + Number(pedido.subtotal).toFixed(2).replace('.', ',') + '</td></tr>',
+    '<tr><td colspan="2" style="padding:8px 12px;text-align:right;font-size:.85rem;color:#6b5f56;">Frete</td><td style="padding:8px 12px;text-align:right;">R$ ' + Number(pedido.frete).toFixed(2).replace('.', ',') + '</td></tr>',
+    '<tr><td colspan="2" style="padding:8px 12px;text-align:right;font-weight:bold;">Total</td><td style="padding:8px 12px;text-align:right;font-weight:bold;">R$ ' + Number(pedido.total).toFixed(2).replace('.', ',') + '</td></tr>',
+    '</tfoot>',
+    '</table>',
+    '</div>',
+
+    enderecoTexto ? '<div style="margin:20px 0;"><p style="font-size:.85rem;color:#6b5f56;margin-bottom:4px;">Endereco de entrega:</p><p style="font-size:.9rem;">' + enderecoTexto + '</p></div>' : '',
+
+    '<p style="font-size:.9rem;">Quando seu pedido for despachado, voce recebera um email com o codigo de rastreamento.</p>',
+
+    '<div style="text-align:center;margin:24px 0;">',
+    '<a href="' + acompanharUrl + '" style="display:inline-block;background:#AA3424;color:#F3E9D2;padding:12px 28px;border-radius:4px;text-decoration:none;font-size:.9rem;">Acompanhar pedido</a>',
+    '</div>',
+
+    '<hr style="border:none;border-top:1px solid #e0d5c5;margin:24px 0;">',
+    '<p style="font-size:.85rem;color:#6b5f56;">Duvidas sobre seu pedido?</p>',
+    '<p style="font-size:.85rem;"><a href="' + whatsappLink + '" style="color:#AA3424;">Fale conosco pelo WhatsApp</a> — (73) 99815-0799</p>',
+    '<p style="font-size:.75rem;color:#9a8b7d;margin-top:20px;text-align:center;">Sitio Labareda — Roca & Arte<br>Serra Grande, Costa do Cacau, Bahia</p>',
+    '</div>',
+  ].join('');
+
+  try {
+    var res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: from,
+        to: [cliente.email],
+        subject: 'Pedido #' + pedido.numero + ' confirmado! — Sitio Labareda',
+        html: html,
+      }),
+    });
+    if (!res.ok) {
+      var errBody = await res.text().catch(function () { return ''; });
+      console.error('[webhook-mp] Erro Resend:', res.status, errBody);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('[webhook-mp] Erro ao enviar email confirmacao:', err);
+    return false;
+  }
 }
 
 const handler = async (event) => {
@@ -154,6 +242,13 @@ const handler = async (event) => {
         } catch (e) {
           console.error('webhook: falha ao chamar n8n (nao critico):', e.message);
         }
+      }
+
+      // Email de confirmacao de compra ao cliente
+      try {
+        await enviarEmailConfirmacao(cliente, pedido, itens);
+      } catch (e) {
+        console.error('webhook: falha ao enviar email confirmacao (nao critico):', e.message);
       }
     }
 
