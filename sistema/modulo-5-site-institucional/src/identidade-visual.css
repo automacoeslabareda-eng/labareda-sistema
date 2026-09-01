@@ -497,8 +497,8 @@ header.site-header.sticky {
   margin: 22px 0 10px;
 }
 .j-desc {
-  font-family: var(--font-display);
-  font-size: .88rem;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: .92rem;
   line-height: 1.75;
   color: #5b4a3c;
   max-width: 310px;
