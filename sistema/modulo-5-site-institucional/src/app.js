@@ -746,9 +746,14 @@
         ? '<span class="product-price-promo">' + promoPrice + '</span> <span class="product-price-original">' + price + '</span>'
         : price;
 
-      gridHTML += '<article class="product-card product-card--clickable reveal' + delayClass + '" data-category="' + catSlug + '" data-product-idx="' + idx + '" role="button" tabindex="0" aria-label="' + productName + '">'
+      var esgotado = p.estoque != null && p.estoque <= 0;
+      var esgotadoLabel = currentLang === 'pt' ? 'Esgotado' : 'Sold out';
+      var esgotadoBadge = esgotado ? '<span class="product-badge-esgotado">' + esgotadoLabel + '</span>' : '';
+
+      gridHTML += '<article class="product-card product-card--clickable reveal' + delayClass + (esgotado ? ' product-card--esgotado' : '') + '" data-category="' + catSlug + '" data-product-idx="' + idx + '" role="button" tabindex="0" aria-label="' + productName + '">'
         + '<div class="product-image">'
         + imageHTML
+        + esgotadoBadge
         + '</div>'
         + '<div class="product-info">'
         + '<span class="product-category">' + catName + '</span>'

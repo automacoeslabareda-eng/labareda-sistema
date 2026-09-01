@@ -445,6 +445,20 @@ header.site-header.sticky {
 }
 
 /* ==========================================================================
+   PRODUTO ESGOTADO — badge + card esmaecido
+   ========================================================================== */
+.product-card--esgotado { opacity: 0.55; }
+.product-card--esgotado:hover { opacity: 0.75; }
+.product-image { position: relative; }
+.product-badge-esgotado {
+  position: absolute; top: 10px; left: 10px; z-index: 2;
+  background: var(--cacau, #2E2624); color: var(--creme, #F3E9D2);
+  font-family: var(--font-mono, monospace);
+  font-size: .65rem; letter-spacing: .12em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 2px;
+}
+
+/* ==========================================================================
    ITERAÇÃO 7 — JOURNAL (cards emoldurados, estilo editorial do PSD)
    ========================================================================== */
 .section--journal .journal-grid {
