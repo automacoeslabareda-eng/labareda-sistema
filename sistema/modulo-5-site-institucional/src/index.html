@@ -846,17 +846,6 @@
           <input type="text" id="checkout-cpf" autocomplete="off" maxlength="14">
         </div>
         <button class="btn btn--primary btn--full" id="checkout-next-1" type="button" data-i18n="checkout_next">Continuar</button>
-
-        <!-- Verificação de e-mail (aparece após clicar Continuar) -->
-        <div id="checkout-verify" style="display:none;">
-          <p class="checkout-verify-msg" data-i18n="checkout_verify_msg">Enviamos um código de 6 dígitos para seu e-mail.</p>
-          <div class="checkout-field">
-            <label for="checkout-codigo" data-i18n="checkout_verify_label">Código de validação</label>
-            <input type="text" id="checkout-codigo" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" style="text-align:center;font-size:1.4rem;letter-spacing:.3em;">
-          </div>
-          <button class="btn btn--primary btn--full" id="checkout-verify-btn" type="button" data-i18n="checkout_verify_btn">Validar código</button>
-          <button class="btn btn--link" id="checkout-resend-btn" type="button" data-i18n="checkout_resend">Reenviar código</button>
-        </div>
       </div>
 
       <!-- Step 2: Endereco & Frete -->

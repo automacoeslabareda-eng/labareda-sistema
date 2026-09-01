@@ -1772,14 +1772,6 @@
     document.getElementById('checkout-success').style.display = 'none';
     document.getElementById('checkout-steps').style.display = '';
 
-    /* Reset verification UI when going back to step 1 */
-    if (step === 1) {
-      var verifyEl = document.getElementById('checkout-verify');
-      var nextBtn = document.getElementById('checkout-next-1');
-      if (verifyEl) verifyEl.style.display = 'none';
-      if (nextBtn) nextBtn.style.display = '';
-    }
-
     /* Update step indicators */
     document.querySelectorAll('.checkout-step-dot').forEach(function (dot) {
       var s = parseInt(dot.dataset.step, 10);
@@ -1988,45 +1980,7 @@
     if (e.target === this) closeCheckout();
   });
 
-  /* --- Email validation code state --- */
-  var codigoState = { assinatura: '', expira: '', emailValidado: false };
-
-  function enviarCodigo() {
-    var email = document.getElementById('checkout-email').value.trim();
-    var btn = document.getElementById('checkout-next-1');
-    var t = translations[currentLang];
-    btn.disabled = true;
-    btn.textContent = t.checkout_sending_code;
-
-    fetch('/api/codigo-validacao', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ acao: 'enviar', email: email }),
-    })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        if (data.ok) {
-          codigoState.assinatura = data.assinatura;
-          codigoState.expira = data.expira;
-          document.getElementById('checkout-next-1').style.display = 'none';
-          document.getElementById('checkout-verify').style.display = 'block';
-          document.getElementById('checkout-codigo').value = '';
-          document.getElementById('checkout-codigo').focus();
-          showToast(t.checkout_code_sent);
-        } else {
-          showToast(data.erro || t.checkout_code_error, true);
-        }
-      })
-      .catch(function () {
-        showToast(t.checkout_code_error, true);
-      })
-      .finally(function () {
-        btn.disabled = false;
-        btn.textContent = t.checkout_next;
-      });
-  }
-
-  /* Step 1 -> send validation code */
+  /* Step 1 -> go directly to step 2 (no email verification) */
   document.getElementById('checkout-next-1').addEventListener('click', function () {
     var nome = document.getElementById('checkout-nome').value.trim();
     var email = document.getElementById('checkout-email').value.trim();
@@ -2037,65 +1991,7 @@
       return;
     }
 
-    /* If already validated this email, skip code */
-    if (codigoState.emailValidado && codigoState.emailUsado === email) {
-      showCheckoutStep(2);
-      return;
-    }
-
-    enviarCodigo();
-  });
-
-  /* Validate code */
-  document.getElementById('checkout-verify-btn').addEventListener('click', function () {
-    var email = document.getElementById('checkout-email').value.trim();
-    var codigo = document.getElementById('checkout-codigo').value.trim();
-    var t = translations[currentLang];
-    var btn = this;
-
-    if (!codigo || codigo.length < 6) {
-      showToast(t.checkout_code_invalid, true);
-      return;
-    }
-
-    btn.disabled = true;
-    btn.textContent = t.checkout_validating;
-
-    fetch('/api/codigo-validacao', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        acao: 'validar',
-        email: email,
-        codigo: codigo,
-        assinatura: codigoState.assinatura,
-        expira: codigoState.expira,
-      }),
-    })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        if (data.ok && data.validado) {
-          codigoState.emailValidado = true;
-          codigoState.emailUsado = email;
-          showCheckoutStep(2);
-        } else if (data.erro && data.erro.indexOf('expirado') !== -1) {
-          showToast(t.checkout_code_expired, true);
-        } else {
-          showToast(t.checkout_code_invalid, true);
-        }
-      })
-      .catch(function () {
-        showToast(t.checkout_code_invalid, true);
-      })
-      .finally(function () {
-        btn.disabled = false;
-        btn.textContent = t.checkout_verify_btn;
-      });
-  });
-
-  /* Resend code */
-  document.getElementById('checkout-resend-btn').addEventListener('click', function () {
-    enviarCodigo();
+    showCheckoutStep(2);
   });
 
   /* Step 2 -> Step 3 */
