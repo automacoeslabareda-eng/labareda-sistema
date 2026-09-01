@@ -35,6 +35,11 @@
       color:var(--creme);
       text-align:center;
       padding:44px 70px 32px;
+      overflow:hidden;
+    }
+    @media (max-width:480px){
+      .jp-header { padding:32px 24px 24px; }
+      .jp-vert { display:none; }
     }
     .jp-header__logo {
       font-family:var(--disp);
@@ -103,9 +108,9 @@
     /* texto do conteúdo */
     .jp-texto {
       max-width:520px; margin:0 auto 52px;
-      font-family:var(--disp);
-      font-size:.82rem; line-height:2; color:#3a3028;
-      text-align:center;
+      font-family:Georgia,'Times New Roman',serif;
+      font-size:.95rem; line-height:1.9; color:#3a3028;
+      text-align:left;
     }
     .jp-texto p { margin-bottom:1.4em; }
     .jp-texto p:last-child { margin-bottom:0; }
