@@ -115,7 +115,7 @@
       nav_contact: 'CONTATO',
       hero_location: 'Serra Grande \u00b7 Costa do Cacau \u00b7 Bahia',
       hero_headline: 'N\u00e3o \u00e9 um quarto com vista. \u00c9 uma vida por alguns dias.',
-      hero_subheadline: 'Um santu\u00e1rio de ro\u00e7a e arte no cora\u00e7\u00e3o da Costa do Cacau. Mata viva, lagoas cristalinas, praia logo ali \u2014 e o caf\u00e9 da manh\u00e3 que a terra deu de manh\u00e3.',
+      hero_subheadline: 'Um santu\u00e1rio de ro\u00e7a e arte no cora\u00e7\u00e3o da Costa do Cacau. Mata viva, lagoas cristalinas, praia logo ali e o caf\u00e9 da manh\u00e3 que a terra deu de manh\u00e3.',
       hero_cta_book: 'Reservar sua estada',
       hero_cta_whatsapp: 'Falar no WhatsApp',
       hero_micro_1: 'Reserva direta',
@@ -132,14 +132,14 @@
       pillar_4_title: 'Calor de verdade',
       pillar_4_text: 'Poucas unidades, aten\u00e7\u00e3o que \u00e9 gente, n\u00e3o protocolo.',
       about_label: 'A terra',
-      about_title: 'A terra aqui n\u00e3o \u00e9 paisagem \u2014 \u00e9 despensa, \u00e9 rem\u00e9dio, \u00e9 come\u00e7o de tudo.',
+      about_title: 'A terra aqui n\u00e3o \u00e9 paisagem. \u00c9 despensa, \u00e9 rem\u00e9dio, \u00e9 come\u00e7o de tudo.',
       about_p1: 'Nossa agrofloresta \u00e9 um organismo vivo no meio da Mata Atl\u00e2ntica. \u00c9 dela que vem a fruta do seu caf\u00e9, o cheiro do nosso creme, a cor que vira arte. Quando voc\u00ea caminha entre o cacau, est\u00e1 caminhando dentro da fonte.',
       about_p2: 'Sem cen\u00e1rio. Sem fachada. S\u00f3 o que se vive.',
       about_detail_label: 'Localiza\u00e7\u00e3o',
-      about_detail_value: 'Serra Grande, Uru\u00e7uca \u2014 BA',
+      about_detail_value: 'Serra Grande, Uru\u00e7uca, BA',
       book_label: 'Hospedagem',
       book_title: 'Sua data est\u00e1 esperando.',
-      book_description: 'Escolha quando quer viver a ro\u00e7a e a arte. Poucas unidades, aten\u00e7\u00e3o de verdade \u2014 os melhores per\u00edodos costumam fechar cedo.',
+      book_description: 'Escolha quando quer viver a ro\u00e7a e a arte. Poucas unidades, aten\u00e7\u00e3o de verdade. Os melhores per\u00edodos costumam fechar cedo.',
       book_cta: 'Ver disponibilidade e reservar',
       book_cta_whatsapp: 'Prefere conversar? Chame no WhatsApp',
       radio_label: 'R\u00e1dio',
@@ -158,13 +158,13 @@
       journal_subtitle: '',
       testimonials_label: 'Depoimentos',
       testimonials_title: 'Quem j\u00e1 viveu, conta',
-      testimonial_1_quote: '\u201CChegamos para ficar dois dias e ficamos cinco. O caf\u00e9 da manh\u00e3 com frutas colhidas na hora, o sil\u00eancio da mata, a arte por todo canto \u2014 n\u00e3o d\u00e1 vontade de ir embora.\u201D',
+      testimonial_1_quote: '\u201CChegamos para ficar dois dias e ficamos cinco. O caf\u00e9 da manh\u00e3 com frutas colhidas na hora, o sil\u00eancio da mata, a arte por todo canto. N\u00e3o d\u00e1 vontade de ir embora.\u201D',
       testimonial_1_name: 'Carolina & Pedro',
       testimonial_1_origin: 'S\u00e3o Paulo, SP',
-      testimonial_2_quote: '\u201CViemos procurando praias e encontramos um universo. A caminhada na agrofloresta, as estampas feitas \u00e0 m\u00e3o, o calor dos anfitri\u00f5es \u2014 isso \u00e9 a Bahia de verdade.\u201D',
+      testimonial_2_quote: '\u201CViemos procurando praias e encontramos um universo. A caminhada na agrofloresta, as estampas feitas \u00e0 m\u00e3o, o calor dos anfitri\u00f5es. Isso \u00e9 a Bahia de verdade.\u201D',
       testimonial_2_name: 'Lukas & Sofia',
       testimonial_2_origin: 'Berlim, Alemanha',
-      testimonial_3_quote: '\u201COs cosm\u00e9ticos naturais s\u00e3o incr\u00edveis \u2014 comprei tudo. Mas o que levo de verdade \u00e9 a sensa\u00e7\u00e3o de ter vivido num lugar que faz sentido.\u201D',
+      testimonial_3_quote: '\u201COs cosm\u00e9ticos naturais s\u00e3o incr\u00edveis, comprei tudo. Mas o que levo de verdade \u00e9 a sensa\u00e7\u00e3o de ter vivido num lugar que faz sentido.\u201D',
       testimonial_3_name: 'Marina R.',
       testimonial_3_origin: 'Rio de Janeiro, RJ',
       faq_label: 'D\u00favidas frequentes',
@@ -176,7 +176,7 @@
       faq_q3: 'Qual a dist\u00e2ncia da praia?',
       faq_a3: 'Estamos em uma localiza\u00e7\u00e3o excelente, perto das praias de Serra Grande (12min de carro) e das praias da Engenhoca / Itacar\u00e9zinho (15 a 20min de carro).',
       faq_q4: 'Posso visitar o Ateli\u00ea Tartaruga?',
-      faq_a4: 'Com certeza! O est\u00fadio \u00e9 o cora\u00e7\u00e3o criativo do s\u00edtio \u2014 serigrafia, fotografia anal\u00f3gica, arte manual. H\u00f3spedes podem visitar e participar de atividades quando dispon\u00edveis.',
+      faq_a4: 'Com certeza! O est\u00fadio \u00e9 o cora\u00e7\u00e3o criativo do s\u00edtio, com serigrafia, fotografia anal\u00f3gica e arte manual. H\u00f3spedes podem visitar e participar de atividades quando dispon\u00edveis.',
       faq_q5: 'Tem cozinha para os h\u00f3spedes?',
       faq_a5: 'Temos o chal\u00e9 que tem cozinha dentro da casa e uma cozinha compartilhada lind\u00edssima para os h\u00f3spedes usarem.',
       faq_q6: '\u00c9 bom para crian\u00e7as?',
@@ -243,6 +243,19 @@
       checkout_error: 'Erro ao processar pedido. Tente novamente.',
       checkout_sending: 'Processando...',
       checkout_days: 'dias \u00fateis',
+      checkout_verify_msg: 'Enviamos um c\u00f3digo de 6 d\u00edgitos para seu e-mail.',
+      checkout_verify_label: 'C\u00f3digo de valida\u00e7\u00e3o',
+      checkout_verify_btn: 'Validar c\u00f3digo',
+      checkout_resend: 'Reenviar c\u00f3digo',
+      checkout_sending_code: 'Enviando c\u00f3digo...',
+      checkout_code_sent: 'C\u00f3digo enviado! Verifique seu e-mail.',
+      checkout_code_invalid: 'C\u00f3digo incorreto. Tente novamente.',
+      checkout_code_expired: 'C\u00f3digo expirado. Clique em reenviar.',
+      checkout_code_error: 'Erro ao enviar c\u00f3digo. Tente novamente.',
+      checkout_validating: 'Validando...',
+      checkout_mp_redirect_msg: 'Voc\u00ea ser\u00e1 direcionado ao ambiente seguro do Mercado Pago para concluir o pagamento.',
+      checkout_mp_redirect_btn: 'Ir para o pagamento',
+      checkout_mp_cancel: 'Cancelar',
     },
     en: {
       skip: 'Skip to content',
@@ -254,7 +267,7 @@
       nav_contact: 'CONTACT',
       hero_location: 'Serra Grande \u00b7 Cocoa Coast \u00b7 Bahia',
       hero_headline: 'It\u2019s not a room with a view. It\u2019s a life for a few days.',
-      hero_subheadline: 'A sanctuary of farm and art in the heart of Brazil\u2019s Cocoa Coast. Living forest, crystal lagoons, beach just around the bend \u2014 and breakfast the land gave this morning.',
+      hero_subheadline: 'A sanctuary of farm and art in the heart of Brazil\u2019s Cocoa Coast. Living forest, crystal lagoons, beach just around the bend and breakfast the land gave this morning.',
       hero_cta_book: 'Book your stay',
       hero_cta_whatsapp: 'Chat on WhatsApp',
       hero_micro_1: 'Direct booking',
@@ -271,14 +284,14 @@
       pillar_4_title: 'Real warmth',
       pillar_4_text: 'Few units, attention that is human, not protocol.',
       about_label: 'The land',
-      about_title: 'The land here isn\u2019t scenery \u2014 it\u2019s pantry, medicine, the beginning of everything.',
+      about_title: 'The land here isn\u2019t scenery. It\u2019s pantry, medicine, the beginning of everything.',
       about_p1: 'Our agroforest is a living organism in the heart of the Atlantic Forest. It\u2019s where the fruit in your coffee comes from, the scent of our cream, the color that becomes art. When you walk among the cacao, you\u2019re walking inside the source.',
       about_p2: 'No set. No facade. Just what is lived.',
       about_detail_label: 'Location',
-      about_detail_value: 'Serra Grande, Uru\u00e7uca \u2014 BA',
+      about_detail_value: 'Serra Grande, Uru\u00e7uca, BA',
       book_label: 'Accommodation',
       book_title: 'Your date is waiting.',
-      book_description: 'Choose when you want to live the farm and the art. Few units, real attention \u2014 the best periods tend to close early.',
+      book_description: 'Choose when you want to live the farm and the art. Few units, real attention. The best periods tend to close early.',
       book_cta: 'See availability and book',
       book_cta_whatsapp: 'Prefer to talk? Chat on WhatsApp',
       radio_label: 'Radio',
@@ -297,13 +310,13 @@
       journal_subtitle: '',
       testimonials_label: 'Testimonials',
       testimonials_title: 'Those who lived it, tell it',
-      testimonial_1_quote: '\u201CWe came for two days and stayed five. Breakfast with fruit picked on the spot, the silence of the forest, art everywhere \u2014 you just don\u2019t want to leave.\u201D',
+      testimonial_1_quote: '\u201CWe came for two days and stayed five. Breakfast with fruit picked on the spot, the silence of the forest, art everywhere. You just don\u2019t want to leave.\u201D',
       testimonial_1_name: 'Carolina & Pedro',
       testimonial_1_origin: 'S\u00e3o Paulo, Brazil',
-      testimonial_2_quote: '\u201CWe came looking for beaches and found a universe. The agroforest walk, the handmade prints, the warmth of the hosts \u2014 this is the real Bahia.\u201D',
+      testimonial_2_quote: '\u201CWe came looking for beaches and found a universe. The agroforest walk, the handmade prints, the warmth of the hosts. This is the real Bahia.\u201D',
       testimonial_2_name: 'Lukas & Sofia',
       testimonial_2_origin: 'Berlin, Germany',
-      testimonial_3_quote: '\u201CThe natural cosmetics are incredible \u2014 I bought everything. But what I really take away is the feeling of having lived in a place that makes sense.\u201D',
+      testimonial_3_quote: '\u201CThe natural cosmetics are incredible, I bought everything. But what I really take away is the feeling of having lived in a place that makes sense.\u201D',
       testimonial_3_name: 'Marina R.',
       testimonial_3_origin: 'Rio de Janeiro, Brazil',
       faq_label: 'FAQ',
@@ -315,7 +328,7 @@
       faq_q3: 'How far is the beach?',
       faq_a3: 'We\u2019re in Serra Grande, minutes from wild beaches and crystal lagoons. Itacar\u00e9 and Mara\u00fa are also nearby for day trips.',
       faq_q4: 'Can I visit Ateli\u00ea Tartaruga?',
-      faq_a4: 'Absolutely. The studio is the creative heart of the farm \u2014 screen printing, analog photography, handmade art. Guests can visit and join activities when available.',
+      faq_a4: 'Absolutely. The studio is the creative heart of the farm, with screen printing, analog photography and handmade art. Guests can visit and join activities when available.',
       faq_q5: 'Do you sell products online?',
       faq_a5: 'Yes! Clothing, Ateli\u00ea Tartaruga art, natural cosmetics and farm foods. Buy through the shop on the site or order via WhatsApp.',
       faq_q6: 'Is it good for children?',
@@ -382,6 +395,19 @@
       checkout_error: 'Error processing order. Please try again.',
       checkout_sending: 'Processing...',
       checkout_days: 'business days',
+      checkout_verify_msg: 'We sent a 6-digit code to your email.',
+      checkout_verify_label: 'Validation code',
+      checkout_verify_btn: 'Validate code',
+      checkout_resend: 'Resend code',
+      checkout_sending_code: 'Sending code...',
+      checkout_code_sent: 'Code sent! Check your email.',
+      checkout_code_invalid: 'Incorrect code. Please try again.',
+      checkout_code_expired: 'Code expired. Click resend.',
+      checkout_code_error: 'Error sending code. Please try again.',
+      checkout_validating: 'Validating...',
+      checkout_mp_redirect_msg: 'You will be redirected to Mercado Pago\u2019s secure environment to complete the payment.',
+      checkout_mp_redirect_btn: 'Go to payment',
+      checkout_mp_cancel: 'Cancel',
     },
   };
 
@@ -699,7 +725,6 @@
         : '';
       var hue = getProductHue(catSlug);
       var delayClass = delays[idx % 4];
-      var badgeLabel = currentLang === 'pt' ? 'Novo' : 'New';
       var viewLabel = currentLang === 'pt' ? 'Ver produto' : 'View product';
 
       var imageHTML;
@@ -724,7 +749,6 @@
       gridHTML += '<article class="product-card product-card--clickable reveal' + delayClass + '" data-category="' + catSlug + '" data-product-idx="' + idx + '" role="button" tabindex="0" aria-label="' + productName + '">'
         + '<div class="product-image">'
         + imageHTML
-        + (p.destaque ? '<span class="product-badge">' + badgeLabel + '</span>' : '')
         + '</div>'
         + '<div class="product-info">'
         + '<span class="product-category">' + catName + '</span>'
@@ -1740,6 +1764,14 @@
     document.getElementById('checkout-success').style.display = 'none';
     document.getElementById('checkout-steps').style.display = '';
 
+    /* Reset verification UI when going back to step 1 */
+    if (step === 1) {
+      var verifyEl = document.getElementById('checkout-verify');
+      var nextBtn = document.getElementById('checkout-next-1');
+      if (verifyEl) verifyEl.style.display = 'none';
+      if (nextBtn) nextBtn.style.display = '';
+    }
+
     /* Update step indicators */
     document.querySelectorAll('.checkout-step-dot').forEach(function (dot) {
       var s = parseInt(dot.dataset.step, 10);
@@ -1825,6 +1857,8 @@
 
       if (idx === 0) {
         selectedFrete = {
+          id: op.id || '',
+          nome: op.nome || '',
           regiao: op.nome || '',
           valor: parseFloat(op.preco || 0),
           prazo: op.prazo_dias || '',
@@ -1845,6 +1879,8 @@
         var op = freteOpcoes[idx];
         if (op) {
           selectedFrete = {
+            id: op.id || '',
+            nome: op.nome || '',
             regiao: op.nome || '',
             valor: parseFloat(op.preco || 0),
             prazo: op.prazo_dias || '',
@@ -1900,6 +1936,27 @@
       + '</div>';
   }
 
+  /* --- Aviso de redirect para Mercado Pago (fallback do modal) --- */
+  function mostrarAvisoRedirect(mensagem, link) {
+    var t = translations[currentLang];
+    var overlay = document.createElement('div');
+    overlay.className = 'mp-redirect-overlay';
+    overlay.innerHTML = '<div class="mp-redirect-box">'
+      + '<p class="mp-redirect-msg">' + mensagem + '</p>'
+      + '<div class="mp-redirect-btns">'
+      + '<a href="' + link + '" class="btn btn--primary">' + (t.checkout_mp_redirect_btn || 'Ir para o pagamento') + '</a>'
+      + '<button class="btn btn--outline mp-redirect-cancel">' + (t.checkout_mp_cancel || 'Cancelar') + '</button>'
+      + '</div>'
+      + '</div>';
+    document.body.appendChild(overlay);
+    overlay.querySelector('.mp-redirect-cancel').addEventListener('click', function () {
+      overlay.remove();
+    });
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) overlay.remove();
+    });
+  }
+
   /* Checkout event bindings */
   document.getElementById('checkout-close').addEventListener('click', closeCheckout);
 
@@ -1907,7 +1964,45 @@
     if (e.target === this) closeCheckout();
   });
 
-  /* Step 1 -> Step 2 */
+  /* --- Email validation code state --- */
+  var codigoState = { assinatura: '', expira: '', emailValidado: false };
+
+  function enviarCodigo() {
+    var email = document.getElementById('checkout-email').value.trim();
+    var btn = document.getElementById('checkout-next-1');
+    var t = translations[currentLang];
+    btn.disabled = true;
+    btn.textContent = t.checkout_sending_code;
+
+    fetch('/api/codigo-validacao', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ acao: 'enviar', email: email }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.ok) {
+          codigoState.assinatura = data.assinatura;
+          codigoState.expira = data.expira;
+          document.getElementById('checkout-next-1').style.display = 'none';
+          document.getElementById('checkout-verify').style.display = 'block';
+          document.getElementById('checkout-codigo').value = '';
+          document.getElementById('checkout-codigo').focus();
+          showToast(t.checkout_code_sent);
+        } else {
+          showToast(data.erro || t.checkout_code_error, true);
+        }
+      })
+      .catch(function () {
+        showToast(t.checkout_code_error, true);
+      })
+      .finally(function () {
+        btn.disabled = false;
+        btn.textContent = t.checkout_next;
+      });
+  }
+
+  /* Step 1 -> send validation code */
   document.getElementById('checkout-next-1').addEventListener('click', function () {
     var nome = document.getElementById('checkout-nome').value.trim();
     var email = document.getElementById('checkout-email').value.trim();
@@ -1918,7 +2013,65 @@
       return;
     }
 
-    showCheckoutStep(2);
+    /* If already validated this email, skip code */
+    if (codigoState.emailValidado && codigoState.emailUsado === email) {
+      showCheckoutStep(2);
+      return;
+    }
+
+    enviarCodigo();
+  });
+
+  /* Validate code */
+  document.getElementById('checkout-verify-btn').addEventListener('click', function () {
+    var email = document.getElementById('checkout-email').value.trim();
+    var codigo = document.getElementById('checkout-codigo').value.trim();
+    var t = translations[currentLang];
+    var btn = this;
+
+    if (!codigo || codigo.length < 6) {
+      showToast(t.checkout_code_invalid, true);
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = t.checkout_validating;
+
+    fetch('/api/codigo-validacao', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        acao: 'validar',
+        email: email,
+        codigo: codigo,
+        assinatura: codigoState.assinatura,
+        expira: codigoState.expira,
+      }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.ok && data.validado) {
+          codigoState.emailValidado = true;
+          codigoState.emailUsado = email;
+          showCheckoutStep(2);
+        } else if (data.erro && data.erro.indexOf('expirado') !== -1) {
+          showToast(t.checkout_code_expired, true);
+        } else {
+          showToast(t.checkout_code_invalid, true);
+        }
+      })
+      .catch(function () {
+        showToast(t.checkout_code_invalid, true);
+      })
+      .finally(function () {
+        btn.disabled = false;
+        btn.textContent = t.checkout_verify_btn;
+      });
+  });
+
+  /* Resend code */
+  document.getElementById('checkout-resend-btn').addEventListener('click', function () {
+    enviarCodigo();
   });
 
   /* Step 2 -> Step 3 */
@@ -2031,7 +2184,7 @@
       body: JSON.stringify({
         cliente: { nome: nome, email: email, telefone: telefone, cpf: cpf, endereco: endereco },
         itens: itensCarrinho,
-        frete: selectedFrete ? { regiao: selectedFrete.regiao, valor: selectedFrete.valor } : { valor: 0 },
+        frete: selectedFrete ? { regiao: selectedFrete.regiao, valor: selectedFrete.valor, service_id: selectedFrete.id, service_name: selectedFrete.nome } : { valor: 0 },
       }),
     })
       .then(function (r) {
@@ -2039,11 +2192,33 @@
           if (!r.ok || !data.ok) {
             throw new Error((data && data.erro) || 'Falha ao iniciar o pagamento');
           }
+
           var link = data.init_point || data.sandbox_init_point;
-          if (!link) throw new Error('Link de pagamento nao recebido');
+          if (!link && !data.preference_id) throw new Error('Link de pagamento nao recebido');
+
           saveCart([]);
           updateCartBadge();
-          window.location.href = link;
+
+          /* Tenta abrir modal do Mercado Pago */
+          var modalAberto = false;
+          if (data.preference_id && data.mp_public_key && typeof MercadoPago !== 'undefined') {
+            try {
+              var mp = new MercadoPago(data.mp_public_key, { locale: 'pt-BR' });
+              mp.checkout({
+                preference: { id: data.preference_id },
+                autoOpen: true,
+              });
+              modalAberto = true;
+            } catch (mpErr) {
+              console.warn('MP modal nao disponivel, usando redirect:', mpErr);
+            }
+          }
+
+          /* Fallback: mostra aviso e redireciona */
+          if (!modalAberto && link) {
+            var t = translations[currentLang];
+            mostrarAvisoRedirect(t.checkout_mp_redirect_msg, link);
+          }
         });
       })
       .catch(function (err) {

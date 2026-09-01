@@ -180,6 +180,10 @@ h1, h2, h3,
 }
 .section--shop .product-card { background: transparent; }
 
+/* Tipografia loja: fonte local (JetBrains Mono) garante acentos (Vestuário, Cosmético) */
+.shop-cat-btn,
+.product-category { font-family: var(--font-mono); }
+
 /* ---- Botões: contorno, cantos quase-retos ---- */
 .btn { border-radius: 3px; }
 .btn--primary { background: var(--terracota); color: var(--branco); }
@@ -328,7 +332,8 @@ header.site-header.sticky {
   margin-top: 22px;
 }
 .p2-dot {
-  width: 11px; height: 11px; padding: 0;
+  width: 11px; height: 11px; min-width: 11px; min-height: 11px;
+  padding: 0; flex-shrink: 0;
   border-radius: 50%;
   border: 1.5px solid rgba(243, 233, 210, .55);
   background: transparent; cursor: pointer;
@@ -366,6 +371,8 @@ header.site-header.sticky {
   .p2-tagline-texto { font-size: .88rem; line-height: 1.85; padding: 0 8px; }
   .p2-microbar { font-size: .7rem; gap: 10px; }
   .p2-galeria { margin-top: 30px; }
+  .p2-dots { gap: 7px; flex-wrap: wrap; }
+  .p2-dot { width: 8px; height: 8px; min-width: 8px; min-height: 8px; }
   .section--book { padding: 40px 0; }
   .p3-frase { font-size: .9rem !important; padding: 0 16px; }
   .p3-reserva-btns { flex-direction: column; gap: 10px; padding: 0 16px; }
@@ -479,10 +486,10 @@ header.site-header.sticky {
 }
 .j-card:hover .j-img { transform: scale(1.05); }
 .j-title {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: .06em;
-  font-size: 1.15rem;
+  font-size: 1rem;
   color: var(--cacau, #2E2624);
   margin: 22px 0 10px;
 }
@@ -521,14 +528,71 @@ header.site-header.sticky {
 
 /* Estrela original no footer (substituiu SVG genérico) */
 .footer-star-img {
-  width: 36px;
-  height: 36px;
+  width: 90px;
+  height: 90px;
   object-fit: contain;
   filter: brightness(0) invert(1);
 }
+.footer-logo-text { display: none; }
 
 /* Contato sem foto: grid 2 colunas */
 .contact-grid { grid-template-columns: 1fr !important; }
 @media (min-width: 768px) {
   .contact-grid { grid-template-columns: 1fr 1fr !important; gap: 48px; }
 }
+
+/* --- Journal: titulos legíveis (mono em vez de display) --- */
+.journal-card-title,
+.journal-modal__title { font-family: var(--font-mono); }
+.journal-modal__tags { display: none; }
+
+/* --- Verificação de email (checkout step 1) --- */
+.checkout-verify-msg {
+  font-family: var(--font-mono);
+  font-size: .85rem;
+  color: var(--cinza);
+  text-align: center;
+  margin: 18px 0 12px;
+}
+#checkout-verify .btn--link {
+  display: block;
+  margin: 8px auto 0;
+  background: none;
+  border: none;
+  color: var(--terracota);
+  font-family: var(--font-mono);
+  font-size: .78rem;
+  letter-spacing: .08em;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* --- Overlay aviso Mercado Pago (fallback do modal) --- */
+.mp-redirect-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, .65);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+.mp-redirect-box {
+  background: var(--creme, #EFE6D2);
+  border-radius: 8px;
+  padding: 36px 28px;
+  max-width: 420px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .35);
+}
+.mp-redirect-msg {
+  font-family: var(--font-mono);
+  font-size: .92rem;
+  line-height: 1.7;
+  color: var(--cacau, #2E2624);
+  margin-bottom: 24px;
+}
+.mp-redirect-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mp-redirect-btns .btn { width: 100%; text-align: center; }

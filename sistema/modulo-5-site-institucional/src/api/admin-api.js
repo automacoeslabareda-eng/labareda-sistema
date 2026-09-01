@@ -152,7 +152,48 @@ const handler = async (event) => {
         if (error) throw error;
         // Buscar dados do pedido + cliente para notificacao
         const { data: pedidoData } = await db.from('pedidos').select('*,clientes(nome,email,telefone)').eq('id', body.pedido_id).single();
-        return resposta(200, { ok: true, pedido: pedidoData, rastreio_url: rastreioUrl });
+        // Envia email de rastreamento ao cliente
+        var emailEnviado = false;
+        if (pedidoData && pedidoData.clientes && pedidoData.clientes.email && process.env.RESEND_API_KEY) {
+          try {
+            var cli = pedidoData.clientes;
+            var sUrl = (process.env.SITE_URL || 'https://sitiolabareda.com').replace(/\/+$/, '');
+            var wpp = process.env.WHATSAPP_PEDIDOS || '5573998150799';
+            var wppLink = 'https://wa.me/' + wpp + '?text=' + encodeURIComponent('Oi! Tenho uma duvida sobre o pedido #' + pedidoData.numero);
+            var acompUrl = sUrl + '/pedido.html?numero=' + pedidoData.numero;
+            var emailHtml = '<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;color:#2E2624;">'
+              + '<h2 style="color:#AA3424;text-align:center;margin-bottom:24px;">Sitio Labareda</h2>'
+              + '<p>Ola, ' + (cli.nome || '').split(' ')[0] + '!</p>'
+              + '<p>Seu pedido <strong>#' + pedidoData.numero + '</strong> foi enviado!</p>'
+              + '<div style="background:#f5f0e8;border-radius:8px;padding:20px;margin:20px 0;text-align:center;">'
+              + '<p style="margin:0 0 8px;font-size:.85rem;color:#6b5f56;">Codigo de rastreamento</p>'
+              + '<p style="font-size:1.3rem;font-weight:bold;letter-spacing:.15em;margin:0;">' + body.codigo_rastreio + '</p>'
+              + '</div>'
+              + '<div style="text-align:center;margin:20px 0;">'
+              + '<a href="' + rastreioUrl + '" style="display:inline-block;background:#AA3424;color:#F3E9D2;padding:12px 28px;border-radius:4px;text-decoration:none;font-size:.9rem;">Rastrear meu pedido</a>'
+              + '</div>'
+              + '<p style="font-size:.85rem;color:#6b5f56;">Acompanhe seu pedido em: <a href="' + acompUrl + '">' + acompUrl + '</a></p>'
+              + '<hr style="border:none;border-top:1px solid #e0d5c5;margin:24px 0;">'
+              + '<p style="font-size:.85rem;color:#6b5f56;">Duvidas sobre seu pedido?</p>'
+              + '<p style="font-size:.85rem;"><a href="' + wppLink + '" style="color:#AA3424;">Fale conosco pelo WhatsApp</a> — (73) 99815-0799</p>'
+              + '<p style="font-size:.75rem;color:#9a8b7d;margin-top:20px;text-align:center;">Sitio Labareda — Roca & Arte<br>Serra Grande, Costa do Cacau, Bahia</p>'
+              + '</div>';
+            var emailRes = await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: { 'Authorization': 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                from: process.env.EMAIL_FROM || 'Sitio Labareda <noreply@sitiolabareda.com>',
+                to: [cli.email],
+                subject: 'Seu pedido #' + pedidoData.numero + ' foi enviado! — Sitio Labareda',
+                html: emailHtml,
+              }),
+            });
+            emailEnviado = emailRes.ok;
+          } catch (emailErr) {
+            console.error('admin-api: erro ao enviar email de rastreio:', emailErr.message);
+          }
+        }
+        return resposta(200, { ok: true, pedido: pedidoData, rastreio_url: rastreioUrl, email_enviado: emailEnviado });
       }
       case 'mensagens': {
         const { data, error } = await db.from('mensagens_contato').select('*').order('created_at', { ascending: false });

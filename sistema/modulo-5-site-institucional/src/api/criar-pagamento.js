@@ -136,17 +136,21 @@ const handler = async (event) => {
     const total = subtotal + frete;
 
     // --- 4. Cria pedido + itens ---
+    const pedidoInsert = {
+      cliente_id: clienteId,
+      status: 'pendente',
+      subtotal,
+      frete,
+      total,
+      metodo_pagamento: 'mercadopago',
+      endereco_entrega: end,
+    };
+    // Salva dados do frete para emissão da etiqueta
+    if (freteReq.service_id) pedidoInsert.frete_service_id = freteReq.service_id;
+    if (freteReq.service_name) pedidoInsert.frete_service_name = freteReq.service_name;
     const { data: pedido, error: errPed } = await supabase
       .from('pedidos')
-      .insert({
-        cliente_id: clienteId,
-        status: 'pendente',
-        subtotal,
-        frete,
-        total,
-        metodo_pagamento: 'mercadopago',
-        endereco_entrega: end,
-      })
+      .insert(pedidoInsert)
       .select('id, numero')
       .single();
     if (errPed) throw errPed;
@@ -175,10 +179,17 @@ const handler = async (event) => {
 
     await supabase.from('pedidos').update({ mercadopago_id: pref.id }).eq('id', pedido.id);
 
+    // Public key para o SDK do Mercado Pago (modal no frontend)
+    const mpEnv = (process.env.MP_ENV || 'teste').toLowerCase();
+    const isProd = mpEnv === 'producao' || mpEnv === 'production' || mpEnv === 'prod';
+    const mpPublicKey = isProd ? (process.env.MP_PUBLIC_KEY_PROD || '') : (process.env.MP_PUBLIC_KEY_TESTE || '');
+
     return resposta(200, {
       ok: true,
       pedido_id: pedido.id,
       pedido_numero: pedido.numero,
+      preference_id: pref.id,
+      mp_public_key: mpPublicKey,
       init_point: pref.init_point,
       sandbox_init_point: pref.sandbox_init_point,
       total,
