@@ -7,134 +7,50 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 10 * * *"
+              "expression": "0 7 * * *"
             }
           ]
         }
       },
+      "id": "trg-cron-rotinas",
+      "name": "Todo dia 07h00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [-400, 300],
-      "id": "cron-trigger-001",
-      "name": "Cron 07h00 Brasilia"
+      "position": [
+        -220,
+        0
+      ]
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/propriedades",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "ativo",
-              "value": "eq.true"
-            },
-            {
-              "name": "select",
-              "value": "*"
-            }
-          ]
-        },
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            },
-            {
-              "name": "Authorization",
-              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
+        "httpMethod": "POST",
+        "path": "gerar-rotinas",
+        "responseMode": "lastNode",
         "options": {}
       },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [-160, 300],
-      "id": "get-propriedades-001",
-      "name": "GET Propriedades Ativas"
+      "id": "trg-webhook-rotinas",
+      "name": "Disparo Manual",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -220,
+        180
+      ],
+      "webhookId": "a7c1e2f0-1111-4aaa-9bbb-gerarrotinas"
     },
     {
       "parameters": {
-        "options": {}
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* ==================================================================\n   GERAR TAREFAS DO DIA — a partir das rotinas cadastradas\n   Roda 1x por dia (07h00 Brasilia). Um unico node Code faz tudo:\n   le propriedades + rotinas + rotina_items, decide o que dispara hoje,\n   cria a tarefa e TODOS os itens do checklist de uma vez.\n\n   Regras de disparo (com catch-up: se o cron falhar no dia certo,\n   ele gera assim que voltar a rodar, dentro do mesmo periodo):\n     diaria     -> todo dia\n     semanal    -> 1x por semana, a partir do dia_semana da rotina\n     quinzenal  -> 1x por quinzena, ja no 1o dia dela (dia 1 e dia 16)\n     mensal     -> 1x por mes, ja no 1o dia do mes\n\n   Quinzenal e mensal abrem no inicio do periodo de proposito: assim o\n   colaborador ve esse checklist no painel durante o periodo inteiro,\n   e nao apenas no dia em que a rotina dispararia.\n   ================================================================== */\n\nconst SUPA = 'https://tidngxclgaspltzqoemi.supabase.co/rest/v1';\nconst KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE';\nconst TZ = 'America/Bahia'; // UTC-3 fixo, sem horario de verao\n\nconst H = { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' };\n\n// o Code node do n8n roda em sandbox sem fetch global; o helper oficial e este\nconst http = this.helpers.httpRequest;\n\nconst get = (path) => http({ method: 'GET', url: SUPA + '/' + path, headers: H, json: true });\nconst post = (path, body) =>\n  http({\n    method: 'POST',\n    url: SUPA + '/' + path,\n    headers: Object.assign({}, H, { Prefer: 'return=representation' }),\n    body: body,\n    json: true,\n  });\n\n/* ---------- datas ---------- */\n// \"hoje\" no fuso do sitio, como YYYY-MM-DD\nconst hojeStr = new Intl.DateTimeFormat('en-CA', {\n  timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit',\n}).format(new Date());\n\nconst hojeD = new Date(hojeStr + 'T12:00:00Z'); // meio-dia UTC evita virada de fuso\nconst diaSemana = hojeD.getUTCDay();            // 0=Dom ... 6=Sab\nconst diaMes = hojeD.getUTCDate();\n\nfunction addDias(d, n) {\n  const x = new Date(d.getTime());\n  x.setUTCDate(x.getUTCDate() + n);\n  return x;\n}\nconst iso = (d) => d.toISOString().slice(0, 10);\n\n// segunda-feira da semana corrente ... domingo\nconst offsetSemana = (dia) => (dia + 6) % 7; // Seg=0, Ter=1, ..., Dom=6\nconst semanaInicio = addDias(hojeD, -offsetSemana(diaSemana));\nconst semanaFim = addDias(semanaInicio, 6);\nconst mesInicio = new Date(Date.UTC(hojeD.getUTCFullYear(), hojeD.getUTCMonth(), 1, 12));\nconst mesFim = new Date(Date.UTC(hojeD.getUTCFullYear(), hojeD.getUTCMonth() + 1, 0, 12));\n\n// quinzena corrente: A = dias 1-15, B = dia 16 ate o fim do mes\nconst quinzenaInicio = diaMes <= 15\n  ? mesInicio\n  : new Date(Date.UTC(hojeD.getUTCFullYear(), hojeD.getUTCMonth(), 16, 12));\nconst quinzenaFim = diaMes <= 15\n  ? new Date(Date.UTC(hojeD.getUTCFullYear(), hojeD.getUTCMonth(), 15, 12))\n  : mesFim;\n\n/* ---------- leitura ---------- */\nconst propriedades = await get('propriedades?ativo=eq.true&select=id,nome,slug');\nconst rotinas = await get(\n  'rotinas_semanais?ativo=eq.true&select=id,propriedade_id,nome,setor_id,dia_semana,frequencia,responsavel_id,setores(nome)'\n);\nconst rotinaItems = await get('rotina_items?select=id,rotina_id,descricao,ordem,colaborador_id&order=rotina_id,ordem');\n\n// tarefas dos ultimos 40 dias, para deduplicar por periodo\nconst desde = iso(addDias(hojeD, -40));\nconst tarefasRecentes = await get(\n  'tarefas?origem=eq.rotina&rotina_id=not.is.null&created_at=gte.' + desde + 'T00:00:00&select=id,rotina_id,created_at'\n);\n\nconst propsAtivas = new Set(propriedades.map((p) => p.id));\nconst nomeProp = {};\npropriedades.forEach((p) => { nomeProp[p.id] = p.nome; });\n\nconst itensPorRotina = {};\nrotinaItems.forEach((i) => {\n  (itensPorRotina[i.rotina_id] = itensPorRotina[i.rotina_id] || []).push(i);\n});\n\n// ultima geracao de cada rotina (data YYYY-MM-DD no fuso do sitio)\nconst ultimaGeracao = {};\ntarefasRecentes.forEach((t) => {\n  const d = new Intl.DateTimeFormat('en-CA', {\n    timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit',\n  }).format(new Date(t.created_at));\n  if (!ultimaGeracao[t.rotina_id] || d > ultimaGeracao[t.rotina_id]) ultimaGeracao[t.rotina_id] = d;\n});\n\n/* ---------- decisao: essa rotina dispara hoje? ---------- */\nfunction avaliar(rotina) {\n  const freq = String(rotina.frequencia || 'semanal').toLowerCase();\n  const ultima = ultimaGeracao[rotina.id] || null;\n  // rotina sem dia definido dispara no primeiro dia do periodo (segunda)\n  const diaAlvo = rotina.dia_semana === null || rotina.dia_semana === undefined ? 1 : Number(rotina.dia_semana);\n  const chegouNoDia = offsetSemana(diaSemana) >= offsetSemana(diaAlvo);\n\n  if (freq === 'diaria' || freq === 'diario') {\n    if (ultima === hojeStr) return { gerar: false, motivo: 'ja gerou hoje' };\n    return { gerar: true, inicio: hojeStr, fim: hojeStr };\n  }\n\n  // quinzenal e mensal abrem no inicio do periodo, para ficarem visiveis\n  // no painel do colaborador durante todo o periodo\n  if (freq === 'quinzenal') {\n    if (ultima && ultima >= iso(quinzenaInicio)) return { gerar: false, motivo: 'ja gerou nesta quinzena' };\n    return { gerar: true, inicio: iso(quinzenaInicio), fim: iso(quinzenaFim) };\n  }\n\n  if (freq === 'mensal') {\n    if (ultima && ultima >= iso(mesInicio)) return { gerar: false, motivo: 'ja gerou neste mes' };\n    return { gerar: true, inicio: iso(mesInicio), fim: iso(mesFim) };\n  }\n\n  // semanal (default)\n  if (ultima && ultima >= iso(semanaInicio)) return { gerar: false, motivo: 'ja gerou nesta semana' };\n  if (!chegouNoDia) return { gerar: false, motivo: 'ainda nao chegou o dia da rotina' };\n  return { gerar: true, inicio: iso(semanaInicio), fim: iso(semanaFim) };\n}\n\n/* ---------- execucao ---------- */\nconst criadas = [];\nconst puladas = [];\nconst erros = [];\n\nfor (const rotina of rotinas) {\n  if (!propsAtivas.has(rotina.propriedade_id)) continue;\n\n  const decisao = avaliar(rotina);\n  if (!decisao.gerar) {\n    puladas.push({ rotina: rotina.nome, motivo: decisao.motivo });\n    continue;\n  }\n\n  const itens = itensPorRotina[rotina.id] || [];\n  if (itens.length === 0) {\n    puladas.push({ rotina: rotina.nome, motivo: 'rotina sem itens cadastrados' });\n    continue;\n  }\n\n  try {\n    const freq = String(rotina.frequencia || 'semanal').toLowerCase();\n    const tarefa = (await post('tarefas', {\n      propriedade_id: rotina.propriedade_id,\n      comando_original: rotina.nome,\n      descricao: rotina.nome,\n      setor_id: rotina.setor_id,\n      setor_interpretado: (rotina.setores && rotina.setores.nome) || 'geral',\n      status: 'pendente',\n      prioridade: freq === 'mensal' ? 'alta' : 'normal',\n      origem: 'rotina',\n      rotina_id: rotina.id,\n      frequencia: freq,\n      responsavel_id: rotina.responsavel_id || null,\n      data_inicio: decisao.inicio,\n      data_fim: decisao.fim,\n      data_limite: decisao.fim,\n    }))[0];\n\n    // insert em lote: todos os itens do checklist de uma vez\n    const payload = itens.map((it) => ({\n      tarefa_id: tarefa.id,\n      propriedade_id: rotina.propriedade_id,\n      colaborador_id: it.colaborador_id || rotina.responsavel_id || null,\n      descricao: it.descricao,\n      ordem: it.ordem,\n      status: 'pendente',\n    }));\n    const inseridos = await post('checklist_items', payload);\n\n    criadas.push({\n      propriedade: nomeProp[rotina.propriedade_id],\n      rotina: rotina.nome,\n      frequencia: freq,\n      tarefa_id: tarefa.id,\n      itens: inseridos.length,\n    });\n  } catch (e) {\n    erros.push({ rotina: rotina.nome, erro: String(e.message || e) });\n  }\n}\n\nreturn [{\n  json: {\n    data: hojeStr,\n    dia_semana: diaSemana,\n    rotinas_avaliadas: rotinas.length,\n    tarefas_criadas: criadas.length,\n    itens_criados: criadas.reduce((s, c) => s + c.itens, 0),\n    criadas,\n    puladas,\n    erros,\n    tem_novidade: criadas.length > 0,\n  },\n}];\n"
       },
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 3,
-      "position": [80, 300],
-      "id": "loop-propriedades-001",
-      "name": "Loop Propriedades"
-    },
-    {
-      "parameters": {
-        "jsCode": "const now = new Date();\nconst brasilOffset = -3;\nconst brasilTime = new Date(now.getTime() + (brasilOffset * 60 * 60 * 1000 - now.getTimezoneOffset() * 60 * 1000));\nconst diaSemana = brasilTime.getDay();\nconst diaMes = brasilTime.getDate();\nconst hoje = brasilTime.toISOString().split('T')[0];\n\n// Calcular inicio e fim da semana (seg-dom)\nconst seg = new Date(brasilTime);\nseg.setDate(brasilTime.getDate() - ((diaSemana + 6) % 7));\nconst dom = new Date(seg);\ndom.setDate(seg.getDate() + 6);\nconst semanaInicio = seg.toISOString().split('T')[0];\nconst semanaFim = dom.toISOString().split('T')[0];\n\n// Semana par/impar do ano (para quinzenal)\nconst inicioAno = new Date(brasilTime.getFullYear(), 0, 1);\nconst semanaAno = Math.ceil(((brasilTime - inicioAno) / 86400000 + inicioAno.getDay() + 1) / 7);\nconst semanaPar = semanaAno % 2 === 0;\n\nreturn [\n  {\n    json: {\n      ...$input.item.json,\n      dia_semana: diaSemana,\n      dia_mes: diaMes,\n      hoje: hoje,\n      semana_inicio: semanaInicio,\n      semana_fim: semanaFim,\n      semana_par: semanaPar\n    }\n  }\n];"
-      },
+      "id": "code-gerar",
+      "name": "Gerar Tarefas do Dia",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [320, 300],
-      "id": "calc-dia-semana-001",
-      "name": "Calcular Dia Semana"
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/rotinas_semanais",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "propriedade_id",
-              "value": "=eq.{{ $json.id }}"
-            },
-            {
-              "name": "ativo",
-              "value": "eq.true"
-            },
-            {
-              "name": "select",
-              "value": "*,setores(nome),colaboradores:responsavel_id(nome)"
-            }
-          ]
-        },
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            },
-            {
-              "name": "Authorization",
-              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [560, 300],
-      "id": "get-rotinas-dia-001",
-      "name": "GET Rotinas do Dia"
-    },
-    {
-      "parameters": {
-        "jsCode": "const rotinas = $input.item.json;\nconst prop = $('Calcular Dia Semana').item.json;\n\nif (!rotinas || (Array.isArray(rotinas) && rotinas.length === 0)) {\n  return [];\n}\n\nconst lista = Array.isArray(rotinas) ? rotinas : [rotinas];\nconst resultado = [];\n\nfor (const r of lista) {\n  const freq = r.frequencia || 'semanal';\n  let disparar = false;\n\n  if (freq === 'semanal') {\n    disparar = r.dia_semana === prop.dia_semana;\n  } else if (freq === 'quinzenal') {\n    disparar = r.dia_semana === prop.dia_semana && prop.semana_par;\n  } else if (freq === 'mensal') {\n    disparar = r.dia_semana === prop.dia_semana && prop.dia_mes <= 7;\n  }\n\n  if (disparar) {\n    resultado.push({\n      json: {\n        rotina_id: r.id,\n        rotina_nome: r.nome,\n        setor_id: r.setor_id,\n        setor_nome: r.setores ? r.setores.nome : 'geral',\n        propriedade_id: prop.id,\n        propriedade_nome: prop.nome,\n        hoje: prop.hoje,\n        semana_inicio: prop.semana_inicio,\n        semana_fim: prop.semana_fim,\n        frequencia: freq,\n        responsavel_id: r.responsavel_id || null\n      }\n    });\n  }\n}\n\nreturn resultado;"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [800, 300],
-      "id": "preparar-rotinas-001",
-      "name": "Preparar Rotinas"
+      "position": [
+        20,
+        60
+      ]
     },
     {
       "parameters": {
@@ -142,512 +58,114 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "loose",
+            "version": 2
           },
           "conditions": [
             {
-              "id": "check-rotinas",
-              "leftValue": "={{ $input.item.json.rotina_id }}",
-              "rightValue": "",
+              "id": "tem-novidade",
+              "leftValue": "={{ $json.tem_novidade }}",
+              "rightValue": true,
               "operator": {
-                "type": "string",
-                "operation": "exists",
+                "type": "boolean",
+                "operation": "true",
                 "singleValue": true
               }
             }
           ],
           "combinator": "and"
         },
+        "looseTypeValidation": true,
         "options": {}
       },
+      "id": "if-novidade",
+      "name": "Criou tarefa?",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [1040, 300],
-      "id": "check-rotinas-001",
-      "name": "Tem Rotinas?"
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/tarefas",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "propriedade_id",
-              "value": "=eq.{{ $json.propriedade_id }}"
-            },
-            {
-              "name": "origem",
-              "value": "eq.rotina"
-            },
-            {
-              "name": "rotina_id",
-              "value": "=eq.{{ $json.rotina_id }}"
-            },
-            {
-              "name": "created_at",
-              "value": "=gte.{{ $json.hoje }}T00:00:00"
-            },
-            {
-              "name": "select",
-              "value": "id"
-            }
-          ]
-        },
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            },
-            {
-              "name": "Authorization",
-              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1280, 200],
-      "id": "check-ja-gerou-001",
-      "name": "Verificar Ja Gerou Hoje"
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "const items = $input.all();\nconst rotinas = $('Tem Rotinas?').all();\n\nreturn items.map((item, index) => {\n  const resp = item.json;\n  const rotina = rotinas[index]?.json || {};\n\n  const jaGerou = Array.isArray(resp) ? resp.length > 0 : !!(resp && resp.id);\n\n  return {\n    json: {\n      ...rotina,\n      ja_gerou: jaGerou\n    }\n  };\n});"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1520, 200],
-      "id": "avaliar-duplicata-001",
-      "name": "Avaliar Duplicata"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "check-nao-gerou",
-              "leftValue": "={{ $json.ja_gerou }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "notEquals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [1760, 200],
-      "id": "if-nao-gerou-001",
-      "name": "Nao Gerou Ainda?"
+      "typeVersion": 2.2,
+      "position": [
+        260,
+        60
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/tarefas",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            },
-            {
-              "name": "Authorization",
-              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=representation"
-            }
-          ]
-        },
+        "url": "https://n8n.sitiolabareda.com/webhook/avisar-colaboradores",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"propriedade_id\": {{ $json.propriedade_id }},\n  \"comando_original\": \"{{ $json.rotina_nome }}\",\n  \"descricao\": \"{{ $json.rotina_nome }}\",\n  \"setor_id\": {{ $json.setor_id }},\n  \"setor_interpretado\": \"{{ $json.setor_nome }}\",\n  \"status\": \"pendente\",\n  \"prioridade\": \"normal\",\n  \"origem\": \"rotina\",\n  \"rotina_id\": {{ $json.rotina_id }},\n  \"data_limite\": \"{{ $json.semana_fim }}\",\n  \"data_inicio\": \"{{ $json.semana_inicio }}\",\n  \"data_fim\": \"{{ $json.semana_fim }}\",\n  \"frequencia\": \"{{ $json.frequencia }}\",\n  \"responsavel_id\": {{ $json.responsavel_id ? '\"' + $json.responsavel_id + '\"' : 'null' }}\n}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [2000, 100],
-      "id": "criar-tarefa-001",
-      "name": "POST Criar Tarefa"
-    },
-    {
-      "parameters": {
-        "jsCode": "const tarefa = $input.item.json;\n\n// POST com Prefer: return=representation ja retorna os campos\nconst tarefaData = Array.isArray(tarefa) ? tarefa[0] : tarefa;\n\nreturn [\n  {\n    json: {\n      tarefa_id: tarefaData.id,\n      propriedade_id: tarefaData.propriedade_id,\n      rotina_id: tarefaData.rotina_id\n    }\n  }\n];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [2240, 100],
-      "id": "extrair-tarefa-id-001",
-      "name": "Extrair Tarefa ID"
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/rotina_items",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "rotina_id",
-              "value": "=eq.{{ $json.rotina_id }}"
-            },
-            {
-              "name": "select",
-              "value": "*"
-            },
-            {
-              "name": "order",
-              "value": "ordem.asc"
-            }
-          ]
-        },
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            },
-            {
-              "name": "Authorization",
-              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [2480, 100],
-      "id": "get-rotina-items-001",
-      "name": "GET Rotina Items"
-    },
-    {
-      "parameters": {
-        "jsCode": "const items = $input.item.json;\nconst tarefaInfo = $('Extrair Tarefa ID').first().json;\n\nconst itemsList = Array.isArray(items) ? items : [items];\n\nif (!itemsList[0] || !itemsList[0].id) {\n  return [];\n}\n\nreturn itemsList.map(item => ({\n  json: {\n    tarefa_id: tarefaInfo.tarefa_id,\n    propriedade_id: tarefaInfo.propriedade_id,\n    colaborador_id: item.colaborador_id,\n    descricao: item.descricao,\n    ordem: item.ordem\n  }\n}));"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [2720, 100],
-      "id": "preparar-checklist-001",
-      "name": "Preparar Checklist Items"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://tidngxclgaspltzqoemi.supabase.co/rest/v1/checklist_items",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            },
-            {
-              "name": "Authorization",
-              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=representation"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"tarefa_id\": {{ $json.tarefa_id }},\n  \"propriedade_id\": {{ $json.propriedade_id }},\n  \"colaborador_id\": {{ $json.colaborador_id }},\n  \"descricao\": \"{{ $json.descricao }}\",\n  \"ordem\": {{ $json.ordem }},\n  \"status\": \"pendente\"\n}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [2960, 100],
-      "id": "criar-checklist-item-001",
-      "name": "POST Criar Checklist Item"
-    },
-    {
-      "parameters": {},
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [1040, 500],
-      "id": "no-op-sem-rotinas-001",
-      "name": "Sem Rotinas"
-    },
-    {
-      "parameters": {},
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [2000, 300],
-      "id": "no-op-ja-gerou-001",
-      "name": "Ja Gerou Hoje"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://n8n.sitiolabareda.com/webhook/whatsapp-tarefas",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={ \"origem\": \"rotina\" }",
+        "jsonBody": "={ \"origem\": \"cron-rotinas\" }",
         "options": {
-          "timeout": 10000
+          "timeout": 60000
         }
       },
+      "id": "http-avisos",
+      "name": "Disparar Avisos WhatsApp",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3200, 100],
-      "id": "disparar-whatsapp-001",
-      "name": "Disparar WhatsApp Tarefas"
+      "position": [
+        500,
+        -40
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "id": "noop-sem-novidade",
+      "name": "Nada novo hoje",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        500,
+        160
+      ]
     }
   ],
   "connections": {
-    "Cron 07h00 Brasilia": {
+    "Todo dia 07h00": {
       "main": [
         [
           {
-            "node": "GET Propriedades Ativas",
+            "node": "Gerar Tarefas do Dia",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "GET Propriedades Ativas": {
+    "Disparo Manual": {
       "main": [
         [
           {
-            "node": "Loop Propriedades",
+            "node": "Gerar Tarefas do Dia",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Loop Propriedades": {
+    "Gerar Tarefas do Dia": {
       "main": [
         [
           {
-            "node": "Calcular Dia Semana",
+            "node": "Criou tarefa?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Calcular Dia Semana": {
+    "Criou tarefa?": {
       "main": [
         [
           {
-            "node": "GET Rotinas do Dia",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "GET Rotinas do Dia": {
-      "main": [
-        [
-          {
-            "node": "Preparar Rotinas",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Preparar Rotinas": {
-      "main": [
-        [
-          {
-            "node": "Tem Rotinas?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Tem Rotinas?": {
-      "main": [
-        [
-          {
-            "node": "Verificar Ja Gerou Hoje",
+            "node": "Disparar Avisos WhatsApp",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Sem Rotinas",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Verificar Ja Gerou Hoje": {
-      "main": [
-        [
-          {
-            "node": "Avaliar Duplicata",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Avaliar Duplicata": {
-      "main": [
-        [
-          {
-            "node": "Nao Gerou Ainda?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Nao Gerou Ainda?": {
-      "main": [
-        [
-          {
-            "node": "POST Criar Tarefa",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Ja Gerou Hoje",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "POST Criar Tarefa": {
-      "main": [
-        [
-          {
-            "node": "Extrair Tarefa ID",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Extrair Tarefa ID": {
-      "main": [
-        [
-          {
-            "node": "GET Rotina Items",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "GET Rotina Items": {
-      "main": [
-        [
-          {
-            "node": "Preparar Checklist Items",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Preparar Checklist Items": {
-      "main": [
-        [
-          {
-            "node": "POST Criar Checklist Item",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Sem Rotinas": {
-      "main": [
-        [
-          {
-            "node": "Loop Propriedades",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Ja Gerou Hoje": {
-      "main": [
-        [
-          {
-            "node": "Loop Propriedades",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "POST Criar Checklist Item": {
-      "main": [
-        [
-          {
-            "node": "Disparar WhatsApp Tarefas",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Disparar WhatsApp Tarefas": {
-      "main": [
-        [
-          {
-            "node": "Loop Propriedades",
+            "node": "Nada novo hoje",
             "type": "main",
             "index": 0
           }
@@ -657,11 +175,16 @@
   },
   "settings": {
     "executionOrder": "v1",
-    "timezone": "America/Sao_Paulo"
+    "timezone": "America/Bahia",
+    "binaryMode": "separate",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": false,
+    "saveManualExecutions": true
   },
-  "staticData": null,
-  "tags": [],
-  "triggerCount": 1,
-  "updatedAt": "2026-07-30T00:00:00.000Z",
-  "versionId": "1"
+  "active": true,
+  "meta": {
+    "n8nWorkflowId": "IlwQEAde7P0YN8vH",
+    "exportadoEm": "2026-09-02"
+  }
 }

@@ -192,7 +192,7 @@ function apiHeaders() {
 /* ================================================================== */
 async function carregarItens() {
   const uid = estado.usuario.colaborador_id;
-  const url = `${CONFIG.SUPABASE_URL}/rest/v1/checklist_items?colaborador_id=eq.${uid}&status=neq.bloqueado&select=id,descricao,status,observacao,foto_url,audio_url,tarefa_id,ordem,tarefas(comando_original,setor_interpretado,setor_id,data_inicio,data_fim,setores(nome,icone))&order=ordem.asc`;
+  const url = `${CONFIG.SUPABASE_URL}/rest/v1/checklist_items?colaborador_id=eq.${uid}&status=neq.bloqueado&select=id,descricao,status,observacao,foto_url,audio_url,tarefa_id,ordem,tarefas(comando_original,descricao,setor_interpretado,setor_id,frequencia,data_inicio,data_fim,setores(nome,icone))&order=ordem.asc`;
 
   const resp = await fetch(url, { headers: apiHeaders() });
   if (!resp.ok) throw new Error(`Erro ${resp.status}`);
@@ -519,6 +519,21 @@ function renderizarTarefas() {
   const itensPendentes = estado.itens.filter((i) => i.status !== 'concluido');
   const itensConcluidos = estado.itens.filter((i) => i.status === 'concluido');
 
+  // Periodo do checklist. Tarefa criada na mao (Hermes, Telegram,
+  // dashboard) vem sem frequencia e entra como 'avulsa'.
+  function periodoDe(item) {
+    const f = String(item.tarefas?.frequencia || '').toLowerCase();
+    if (f === 'diario') return 'diaria';
+    return ['diaria', 'semanal', 'quinzenal', 'mensal'].includes(f) ? f : 'avulsa';
+  }
+
+  const SELO = {
+    diaria: { texto: 'hoje', cor: '#B8964E' },
+    semanal: { texto: 'semana', cor: '#3D6B4F' },
+    quinzenal: { texto: 'quinzena', cor: '#4A6FA5' },
+    mensal: { texto: 'mes', cor: '#7A4E8C' },
+  };
+
   function renderizarGrupo(itensLista, containerEl) {
     const grupos = {};
     itensLista.forEach((item) => {
@@ -532,6 +547,7 @@ function renderizarTarefas() {
       const setorNome = tarefa?.setores?.nome || tarefa?.setor_interpretado || 'Geral';
       const setorIcone = tarefa?.setores?.icone || '📋';
       const todosCompletos = itens.every((i) => i.status === 'concluido');
+      const selo = SELO[periodoDe(itens[0])];
 
       let periodo = '';
       if (tarefa?.data_inicio && tarefa?.data_fim) {
@@ -548,6 +564,7 @@ function renderizarTarefas() {
         <div class="grupo-tarefa__header">
           <span class="grupo-tarefa__icone" aria-hidden="true">${setorIcone}</span>
           <h2 class="grupo-tarefa__nome">${setorNome}${periodo ? ' — ' + periodo : ''}</h2>
+          ${selo ? `<span class="grupo-tarefa__selo" style="background:${selo.cor}">${selo.texto}</span>` : ''}
         </div>
         <div class="banner-completa ${todosCompletos ? 'visivel' : ''}" role="status" aria-live="polite">
           <span class="banner-completa__icone" aria-hidden="true">&#10003;</span>
@@ -591,9 +608,31 @@ function renderizarTarefas() {
     });
   }
 
-  // Pendentes primeiro
+  // Pendentes primeiro, separados por periodo: hoje, semana, quinzena, mes.
+  // Assim o checklist quinzenal e o mensal ficam sempre a vista, e nao
+  // misturados com as tarefas do dia.
   if (itensPendentes.length > 0) {
-    renderizarGrupo(itensPendentes, container);
+    const SECOES = [
+      { chaves: ['diaria', 'avulsa'], icone: '&#9728;', titulo: 'Hoje' },
+      { chaves: ['semanal'], icone: '&#128197;', titulo: 'Desta semana' },
+      { chaves: ['quinzenal'], icone: '&#128260;', titulo: 'Desta quinzena' },
+      { chaves: ['mensal'], icone: '&#128198;', titulo: 'Deste mes' },
+    ];
+
+    SECOES.forEach((secao) => {
+      const doPeriodo = itensPendentes.filter((i) => secao.chaves.includes(periodoDe(i)));
+      if (doPeriodo.length === 0) return;
+
+      const cab = document.createElement('div');
+      cab.className = 'secao-header';
+      cab.innerHTML = `
+        <span class="secao-header__icone" aria-hidden="true">${secao.icone}</span>
+        <span class="secao-header__titulo">${secao.titulo}</span>
+        <span class="secao-header__contagem">${doPeriodo.length}</span>
+      `;
+      container.appendChild(cab);
+      renderizarGrupo(doPeriodo, container);
+    });
   } else {
     container.innerHTML = `
       <div class="empty-state" role="status">

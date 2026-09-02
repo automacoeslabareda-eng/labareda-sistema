@@ -1,0 +1,230 @@
+{
+  "name": "Avisos WhatsApp - Colaboradores",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "15 7 * * *"
+            }
+          ]
+        }
+      },
+      "id": "trg-cron-resumo",
+      "name": "Resumo do dia 07h15",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -460,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/10 6-20 * * *"
+            }
+          ]
+        }
+      },
+      "id": "trg-cron-novos",
+      "name": "Vigia tarefas novas (10 em 10 min)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -460,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "avisar-colaboradores",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "trg-webhook-avisos",
+      "name": "Disparo Manual",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -460,
+        220
+      ],
+      "webhookId": "b8d2f3a1-2222-4bbb-8ccc-avisarcolab"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "modo",
+              "name": "modo",
+              "value": "resumo",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "set-resumo",
+      "name": "Modo: resumo",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -200,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "modo",
+              "name": "modo",
+              "value": "novos",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "set-novos",
+      "name": "Modo: novos",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -200,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "modo",
+              "name": "modo",
+              "value": "={{ $json.body?.modo || \"resumo\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "set-manual",
+      "name": "Modo: manual",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -200,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* ==================================================================\n   AVISAR COLABORADORES — ponto unico de notificacao\n   Cobre QUALQUER origem de tarefa: rotina (cron), Hermes, bot do\n   Telegram, dashboard. Ninguem mais precisa mandar WhatsApp sozinho.\n\n   Faz 3 coisas, nesta ordem:\n     1) SINCRONIZA  tarefa com responsavel mas sem checklist_item\n                    ganha um item (senao ela nao aparece no painel)\n     2) AVISA       manda 1 mensagem por colaborador\n     3) MARCA       whatsapp_enviado = true, para nao repetir\n\n   Modos (vem do node Set anterior, campo `modo`):\n     resumo -> tudo que esta pendente (usado 1x por dia, de manha)\n     novos  -> so o que ainda nao foi avisado (roda de 10 em 10 min,\n               para tarefa criada pelo Hermes/Telegram durante o dia)\n   ================================================================== */\n\nconst SUPA = 'https://tidngxclgaspltzqoemi.supabase.co/rest/v1';\nconst KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZG5neGNsZ2FzcGx0enFvZW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjA0NTUsImV4cCI6MjA5ODQ5NjQ1NX0.RXKWEePM6xsmXgd1ZVgkgavegQTNAIw-9FkMh-7vfFE';\nconst ENVIO_WEBHOOK = 'https://n8n.sitiolabareda.com/webhook/whatsapp-envio-direto';\nconst PAINEL_URL = 'https://painel.sitiolabareda.com';\nconst TZ = 'America/Bahia';\n\nconst H = { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' };\n\n// o Code node do n8n roda em sandbox sem fetch global; o helper oficial e este\nconst http = this.helpers.httpRequest;\n\nconst get = (path) => http({ method: 'GET', url: SUPA + '/' + path, headers: H, json: true });\nconst post = (path, body) =>\n  http({\n    method: 'POST',\n    url: SUPA + '/' + path,\n    headers: Object.assign({}, H, { Prefer: 'return=representation' }),\n    body: body,\n    json: true,\n  });\nconst patch = (path, body) =>\n  http({\n    method: 'PATCH',\n    url: SUPA + '/' + path,\n    headers: Object.assign({}, H, { Prefer: 'return=minimal' }),\n    body: body,\n    json: true,\n    returnFullResponse: true,\n  });\nconst enviarWhats = (telefone, mensagem) =>\n  http({\n    method: 'POST',\n    url: ENVIO_WEBHOOK,\n    headers: { 'Content-Type': 'application/json' },\n    body: { telefone: telefone, mensagem: mensagem },\n    json: true,\n    returnFullResponse: true,\n  });\n\nconst entrada = $input.first() ? $input.first().json : {};\nconst modo = String(entrada.modo || (entrada.body && entrada.body.modo) || 'resumo').toLowerCase();\n\nconst diaFmt = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });\nconst hojeStr = diaFmt.format(new Date());\nconst horaBr = Number(new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, hour: '2-digit', hour12: false }).format(new Date()));\nconst saudacao = horaBr >= 5 && horaBr < 12 ? 'Bom dia' : horaBr < 18 ? 'Boa tarde' : 'Boa noite';\n\n// sexta e o dia de fechar a semana: o resumo vira cobranca de prazo e\n// leva email + senha, para ninguem travar na hora de entrar no painel\nconst ehSexta = new Date(hojeStr + 'T12:00:00Z').getUTCDay() === 5;\n\n/* ================================================================\n   1) SINCRONIZAR — tarefa orfa vira item no painel do responsavel\n   ================================================================ */\nconst desde7d = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);\nconst tarefasRecentes = await get(\n  'tarefas?status=neq.concluida&responsavel_id=not.is.null&created_at=gte.' + desde7d +\n  'T00:00:00&select=id,descricao,comando_original,responsavel_id,propriedade_id,origem,frequencia,data_limite'\n);\nconst idsTarefas = tarefasRecentes.map((t) => t.id);\n\nlet itensDasTarefas = [];\nif (idsTarefas.length > 0) {\n  itensDasTarefas = await get(\n    'checklist_items?tarefa_id=in.(' + idsTarefas.join(',') + ')&select=id,tarefa_id'\n  );\n}\nconst temItem = new Set(itensDasTarefas.map((i) => i.tarefa_id));\n\nconst orfas = tarefasRecentes.filter((t) => !temItem.has(t.id));\nconst sincronizadas = [];\nif (orfas.length > 0) {\n  const novos = orfas.map((t) => ({\n    tarefa_id: t.id,\n    propriedade_id: t.propriedade_id,\n    colaborador_id: t.responsavel_id,\n    descricao: t.descricao || t.comando_original || 'Tarefa',\n    ordem: 1,\n    status: 'pendente',\n    whatsapp_enviado: false,\n  }));\n  const criados = await post('checklist_items', novos);\n  criados.forEach((c) => sincronizadas.push({ tarefa_id: c.tarefa_id, item_id: c.id }));\n}\n\n/* ================================================================\n   2) AVISAR\n   ================================================================ */\nconst colaboradores = await get(\n  'colaboradores?ativo=eq.true&select=id,nome,email,senha_hash,telefone,whatsapp_jid,propriedade_id,propriedades(id,nome,ativo)'\n);\n\nlet filtro = 'checklist_items?status=eq.pendente';\nif (modo === 'novos') filtro += '&or=(whatsapp_enviado.is.null,whatsapp_enviado.is.false)';\nconst pendentes = await get(\n  filtro + '&select=id,descricao,ordem,colaborador_id,created_at,whatsapp_enviado,' +\n  'tarefas(id,descricao,frequencia,origem,data_limite)&order=ordem.asc'\n);\n\nconst porColab = {};\nfor (const item of pendentes) {\n  if (!item.colaborador_id) continue;\n  (porColab[item.colaborador_id] = porColab[item.colaborador_id] || []).push(item);\n}\n\nconst LABEL = { diaria: 'Hoje', diario: 'Hoje', semanal: 'Da semana', quinzenal: 'Da quinzena', mensal: 'Do mes' };\nconst EMOJI = {\n  diaria: '\\u{2600}\\u{fe0f}', diario: '\\u{2600}\\u{fe0f}', semanal: '\\u{1f5d3}\\u{fe0f}',\n  quinzenal: '\\u{1f504}', mensal: '\\u{1f4c5}', avulsa: '\\u{1f4cc}',\n};\nconst ORDEM = ['diaria', 'diario', 'semanal', 'quinzenal', 'mensal', 'avulsa'];\n\nconst enviados = [];\nconst falhas = [];\nconst idsParaMarcar = [];\n\nfor (const colab of colaboradores) {\n  const prop = colab.propriedades || {};\n  if (prop.ativo === false) continue;\n\n  const itens = porColab[colab.id] || [];\n  if (itens.length === 0) continue;\n\n  let telefone = String(colab.whatsapp_jid || colab.telefone || '').replace(/\\D/g, '');\n  if (!telefone || telefone.includes('00000000')) {\n    falhas.push({ colaborador: colab.nome, motivo: 'sem telefone valido' });\n    continue;\n  }\n  if (!telefone.startsWith('55')) telefone = '55' + telefone;\n\n  const grupos = {};\n  let atrasados = 0;\n  for (const it of itens) {\n    const t = it.tarefas || {};\n    const freq = String(t.frequencia || '').toLowerCase();\n    const chave = LABEL[freq] ? freq : 'avulsa';\n    (grupos[chave] = grupos[chave] || []).push(it);\n    const criadoEm = it.created_at ? diaFmt.format(new Date(it.created_at)) : hojeStr;\n    if (criadoEm < hojeStr) atrasados++;\n  }\n\n  const novos = modo === 'novos';\n  const cobranca = !novos && ehSexta;\n  const partes = [];\n  if (novos) {\n    partes.push('\\u{1f514} ' + colab.nome + ', chegou tarefa nova pra voce!');\n  } else if (cobranca) {\n    partes.push('\\u{23f0} ' + saudacao + ', ' + colab.nome + '!');\n    partes.push('');\n    partes.push('Hoje e sexta — dia de fechar a semana.');\n    partes.push(\n      'Falta marcar ' + itens.length + (itens.length === 1 ? ' item' : ' itens') + ':'\n    );\n  } else {\n    partes.push('\\u{1f305} ' + saudacao + ', ' + colab.nome + '!');\n    partes.push('');\n    partes.push('Voce tem ' + itens.length + (itens.length === 1 ? ' item pendente' : ' itens pendentes') + ' no painel:');\n  }\n\n  for (const chave of ORDEM) {\n    const g = grupos[chave];\n    if (!g || g.length === 0) continue;\n    partes.push('');\n    partes.push(EMOJI[chave] + ' *' + (LABEL[chave] || 'Avulsas') + '* (' + g.length + ')');\n    g.slice(0, 12).forEach((it) => partes.push('  \\u{2022} ' + it.descricao));\n    if (g.length > 12) partes.push('  ... e mais ' + (g.length - 12) + ' no painel');\n  }\n\n  if (!novos && atrasados > 0) {\n    partes.push('');\n    partes.push('\\u{26a0}\\u{fe0f} ' + atrasados + (atrasados === 1 ? ' item vem de dias anteriores' : ' itens vem de dias anteriores'));\n  }\n\n  partes.push('');\n  partes.push('\\u{1f449} Marque como feito no seu painel:');\n  partes.push(PAINEL_URL);\n  if (colab.email) partes.push('\\u{1f464} Usuario: ' + colab.email);\n  // a senha vai so na sexta, junto da cobranca de prazo\n  if (cobranca && colab.senha_hash) partes.push('\\u{1f511} Senha: ' + colab.senha_hash);\n  if (!novos) {\n    partes.push('');\n    partes.push(cobranca ? '\\u{23f0} Prazo: hoje ate 16:30!' : '\\u{23f0} Preencher ate sexta-feira 16:30!');\n  }\n\n  const mensagem = partes.join('\\n');\n\n  try {\n    await enviarWhats(telefone, mensagem);\n    enviados.push({ colaborador: colab.nome, telefone: telefone, itens: itens.length, atrasados: atrasados });\n    itens.forEach((it) => idsParaMarcar.push(it.id));\n  } catch (e) {\n    falhas.push({ colaborador: colab.nome, motivo: String(e.message || e) });\n  }\n\n  // respiro entre envios, para nao estourar limite da Evolution\n  await new Promise((ok) => setTimeout(ok, 1200));\n}\n\n/* ================================================================\n   3) MARCAR como avisado\n   ================================================================ */\nif (idsParaMarcar.length > 0) {\n  const agora = new Date().toISOString();\n  for (let i = 0; i < idsParaMarcar.length; i += 50) {\n    const lote = idsParaMarcar.slice(i, i + 50);\n    await patch('checklist_items?id=in.(' + lote.join(',') + ')', {\n      whatsapp_enviado: true,\n      whatsapp_enviado_at: agora,\n    });\n  }\n}\n\nreturn [{\n  json: {\n    modo: modo,\n    data: hojeStr,\n    tarefas_sincronizadas: sincronizadas.length,\n    mensagens_enviadas: enviados.length,\n    itens_marcados: idsParaMarcar.length,\n    enviados: enviados,\n    falhas: falhas,\n  },\n}];\n"
+      },
+      "id": "code-avisos",
+      "name": "Sincronizar, Avisar e Marcar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        60,
+        40
+      ]
+    }
+  ],
+  "connections": {
+    "Resumo do dia 07h15": {
+      "main": [
+        [
+          {
+            "node": "Modo: resumo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vigia tarefas novas (10 em 10 min)": {
+      "main": [
+        [
+          {
+            "node": "Modo: novos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disparo Manual": {
+      "main": [
+        [
+          {
+            "node": "Modo: manual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modo: resumo": {
+      "main": [
+        [
+          {
+            "node": "Sincronizar, Avisar e Marcar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modo: novos": {
+      "main": [
+        [
+          {
+            "node": "Sincronizar, Avisar e Marcar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modo: manual": {
+      "main": [
+        [
+          {
+            "node": "Sincronizar, Avisar e Marcar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Bahia",
+    "binaryMode": "separate",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": false,
+    "saveManualExecutions": true
+  },
+  "active": true,
+  "meta": {
+    "n8nWorkflowId": "of44M2VH8X2jmr1F",
+    "exportadoEm": "2026-09-02"
+  }
+}

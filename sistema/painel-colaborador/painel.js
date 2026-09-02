@@ -211,14 +211,14 @@ async function carregarTarefas() {
     // 2. Os CONCLUIDOS de hoje (para mostrar progresso do dia)
     var qsPendentes = 'checklist_items?colaborador_id=eq.' + colaboradorLogado.id +
              '&status=eq.pendente' +
-             '&select=id,descricao,ordem,status,observacao,foto_url,concluido_at,tarefa_id,created_at,tarefas(id,descricao,comando_original,prioridade,data_limite)' +
+             '&select=id,descricao,ordem,status,observacao,foto_url,concluido_at,tarefa_id,created_at,tarefas(id,descricao,comando_original,prioridade,data_limite,frequencia)' +
              '&order=created_at.desc,ordem.asc';
 
     var qsConcluidos = 'checklist_items?colaborador_id=eq.' + colaboradorLogado.id +
              '&status=eq.concluido' +
-             '&created_at=gte.' + hoje + 'T00:00:00' +
-             '&created_at=lt.' + hoje + 'T23:59:59' +
-             '&select=id,descricao,ordem,status,observacao,foto_url,concluido_at,tarefa_id,created_at,tarefas(id,descricao,comando_original,prioridade,data_limite)' +
+             '&concluido_at=gte.' + hoje + 'T00:00:00-03:00' +
+             '&concluido_at=lt.' + hoje + 'T23:59:59-03:00' +
+             '&select=id,descricao,ordem,status,observacao,foto_url,concluido_at,tarefa_id,created_at,tarefas(id,descricao,comando_original,prioridade,data_limite,frequencia)' +
              '&order=ordem.asc';
 
     var pendentes = await supaFetch(qsPendentes);
@@ -290,8 +290,17 @@ function renderizarTarefas() {
     } else {
       grupoNome = 'Outras Tarefas';
     }
+    // periodo do checklist: diaria / semanal / quinzenal / mensal.
+    // tarefa criada na mao (Hermes, Telegram, dashboard) vem sem
+    // frequencia e entra como 'avulsa'.
+    var periodo = tarefaPai && tarefaPai.frequencia
+      ? String(tarefaPai.frequencia).toLowerCase()
+      : 'avulsa';
+    if (periodo === 'diario') periodo = 'diaria';
+    if (['diaria','semanal','quinzenal','mensal'].indexOf(periodo) === -1) periodo = 'avulsa';
+
     if (!grupos[grupoId]) {
-      grupos[grupoId] = { nome: grupoNome, items: [] };
+      grupos[grupoId] = { nome: grupoNome, items: [], periodo: periodo };
       grupoOrdem.push(grupoId);
     }
     grupos[grupoId].items.push(item);
@@ -313,10 +322,11 @@ function renderizarTarefas() {
   html += '  <div class="progresso-geral__texto">' + pct + '% concluido</div>';
   html += '</div>';
 
-  // Separar em 3 grupos: atrasadas, pendentes hoje, concluidas
+  // Separar por periodo: atrasadas primeiro, depois hoje / semana /
+  // quinzena / mes, e por fim as concluidas.
   var atrasadas = [];
-  var pendenteHoje = [];
   var concluidos = [];
+  var porPeriodo = { diaria: [], semanal: [], quinzenal: [], mensal: [], avulsa: [] };
 
   for (var g = 0; g < grupoOrdem.length; g++) {
     var gid = grupoOrdem[g];
@@ -327,12 +337,14 @@ function renderizarTarefas() {
       if (grupo.items[k].status === 'concluido') grupoFeitas++;
       if (grupo.items[k]._atrasado) temAtrasado = true;
     }
+    var entrada = { id: gid, grupo: grupo, feitas: grupoFeitas };
+
     if (grupoFeitas === grupo.items.length) {
-      concluidos.push({ id: gid, grupo: grupo, feitas: grupoFeitas });
+      concluidos.push(entrada);
     } else if (temAtrasado) {
-      atrasadas.push({ id: gid, grupo: grupo, feitas: grupoFeitas });
+      atrasadas.push(entrada);
     } else {
-      pendenteHoje.push({ id: gid, grupo: grupo, feitas: grupoFeitas });
+      porPeriodo[grupo.periodo].push(entrada);
     }
   }
 
@@ -344,11 +356,25 @@ function renderizarTarefas() {
     }
   }
 
-  // Pendentes de hoje
-  if (pendenteHoje.length > 0) {
-    html += '<div class="secao-titulo">&#128221; Tarefas de hoje</div>';
-    for (var p = 0; p < pendenteHoje.length; p++) {
-      html += renderizarGrupo(pendenteHoje[p].grupo, pendenteHoje[p].feitas, false);
+  // Hoje / semana / quinzena / mes — nesta ordem
+  var SECOES = [
+    { chave: 'diaria',    titulo: '&#9728;&#65039; Tarefas de hoje' },
+    { chave: 'avulsa',    titulo: '&#128221; Tarefas de hoje' },
+    { chave: 'semanal',   titulo: '&#128197; Checklist da semana' },
+    { chave: 'quinzenal', titulo: '&#128260; Checklist da quinzena' },
+    { chave: 'mensal',    titulo: '&#128198; Checklist do mes' },
+  ];
+  var tituloAnterior = '';
+  for (var s = 0; s < SECOES.length; s++) {
+    var lista = porPeriodo[SECOES[s].chave];
+    if (!lista || lista.length === 0) continue;
+    // 'diaria' e 'avulsa' compartilham o mesmo titulo: nao repetir
+    if (SECOES[s].titulo !== tituloAnterior) {
+      html += '<div class="secao-titulo">' + SECOES[s].titulo + '</div>';
+      tituloAnterior = SECOES[s].titulo;
+    }
+    for (var p = 0; p < lista.length; p++) {
+      html += renderizarGrupo(lista[p].grupo, lista[p].feitas, false);
     }
   }
 
@@ -379,9 +405,21 @@ function renderizarGrupo(grupo, feitas, atrasado) {
   var todoConcluido = feitas === totalGrupo;
   var classe = todoConcluido ? ' grupo-tarefa--done' : (atrasado ? ' grupo-tarefa--atrasado' : '');
 
+  var SELO = {
+    diaria:    { texto: 'hoje',     cor: '#B8964E' },
+    semanal:   { texto: 'semana',   cor: '#3D6B4F' },
+    quinzenal: { texto: 'quinzena', cor: '#4A6FA5' },
+    mensal:    { texto: 'mes',      cor: '#7A4E8C' },
+  };
+  var selo = SELO[grupo.periodo];
+
   var html = '<div class="grupo-tarefa' + classe + '">';
   html += '  <div class="grupo-tarefa__header">';
-  html += '    <div class="grupo-tarefa__nome">' + escapeHtml(grupo.nome) + '</div>';
+  html += '    <div class="grupo-tarefa__nome">' + escapeHtml(grupo.nome);
+  if (selo) {
+    html += ' <span class="grupo-tarefa__selo" style="background:' + selo.cor + '">' + selo.texto + '</span>';
+  }
+  html += '</div>';
   html += '    <div class="grupo-tarefa__progresso">' + feitas + '/' + totalGrupo + '</div>';
   html += '  </div>';
 

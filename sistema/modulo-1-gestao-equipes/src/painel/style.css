@@ -557,6 +557,37 @@ body {
   color: var(--cor-cinza);
 }
 
+.secao-header__contagem {
+  margin-left: auto;
+  background: var(--cor-areia);
+  padding: 2px 9px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cor-preto);
+}
+
+/* etiqueta do periodo no cabecalho do grupo */
+.grupo-tarefa__selo {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* seções seguintes respiram um pouco mais */
+.secao-header + .grupo-tarefa {
+  margin-top: 4px;
+}
+.grupo-tarefa + .secao-header {
+  margin-top: 28px;
+}
+
 .secao-header__badge {
   background: var(--cor-areia);
   padding: 2px 8px;
