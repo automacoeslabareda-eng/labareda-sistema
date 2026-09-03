@@ -1858,6 +1858,7 @@ address {
   max-width: 720px;
   width: 92%;
   max-height: 90vh;
+  max-height: 90dvh; /* iOS Safari: 90vh conta a barra de endereco recolhida e corta o topo do conteudo */
   overflow-y: auto;
   border-radius: 16px;
   position: relative;
@@ -1960,7 +1961,7 @@ address {
 @media (max-width: 600px) {
   .journal-modal__body { padding: 20px; }
   .journal-modal__title { font-size: 1.5rem; }
-  .journal-modal { width: 96%; max-height: 95vh; }
+  .journal-modal { width: 96%; max-height: 95vh; max-height: 95dvh; }
 }
 
 /* ==========================================================================
@@ -2286,6 +2287,7 @@ details[open] .faq-question::after {
   max-width: 520px;
   width: 92%;
   max-height: 90vh;
+  max-height: 90dvh; /* iOS Safari: 90vh conta a barra de endereco recolhida e corta o topo do conteudo */
   overflow-y: auto;
   border-radius: 16px;
   padding: 32px;
@@ -2398,6 +2400,7 @@ details[open] .faq-question::after {
     padding: 24px 20px;
     width: 96%;
     max-height: 95vh;
+    max-height: 95dvh;
   }
 
   .booking-row {
@@ -2685,6 +2688,7 @@ details[open] .faq-question::after {
   max-width: 800px;
   width: 92%;
   max-height: 90vh;
+  max-height: 90dvh; /* iOS Safari: 90vh conta a barra de endereco recolhida e corta o topo do conteudo (nome/tamanho) */
   overflow-y: auto;
   border-radius: 16px;
   display: grid;
@@ -2992,6 +2996,7 @@ details[open] .faq-question::after {
   max-width: 560px;
   width: 92%;
   max-height: 90vh;
+  max-height: 90dvh; /* iOS Safari: 90vh conta a barra de endereco recolhida e corta o topo do conteudo */
   overflow-y: auto;
   border-radius: 16px;
   padding: 32px;
@@ -3285,6 +3290,7 @@ details[open] .faq-question::after {
     padding: 24px 20px;
     width: 96%;
     max-height: 95vh;
+    max-height: 95dvh;
   }
 
   .checkout-row {
