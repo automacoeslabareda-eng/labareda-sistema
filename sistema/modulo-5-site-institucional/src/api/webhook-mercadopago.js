@@ -49,8 +49,9 @@ async function enviarEmailConfirmacao(cliente, pedido, itens) {
   var from = process.env.EMAIL_FROM || 'Sitio Labareda <noreply@sitiolabareda.com>';
 
   var itensHtml = (itens || []).map(function (it) {
+    var nomeComTamanho = (it.nome_produto || '') + (it.tamanho ? ' (' + it.tamanho + ')' : '');
     return '<tr>'
-      + '<td style="padding:8px 12px;border-bottom:1px solid #e0d5c5;">' + (it.nome_produto || '') + '</td>'
+      + '<td style="padding:8px 12px;border-bottom:1px solid #e0d5c5;">' + nomeComTamanho + '</td>'
       + '<td style="padding:8px 12px;border-bottom:1px solid #e0d5c5;text-align:center;">' + it.quantidade + '</td>'
       + '<td style="padding:8px 12px;border-bottom:1px solid #e0d5c5;text-align:right;">R$ ' + Number(it.preco_unitario).toFixed(2).replace('.', ',') + '</td>'
       + '</tr>';
@@ -188,22 +189,36 @@ const handler = async (event) => {
     if (novoStatus === 'pago') {
       const { data: itens } = await supabase
         .from('pedido_itens')
-        .select('produto_id, nome_produto, quantidade, preco_unitario')
+        .select('produto_id, nome_produto, tamanho, quantidade, preco_unitario')
         .eq('pedido_id', pedidoId);
 
-      // Baixa de estoque item a item (com alerta de estoque baixo)
+      // Baixa de estoque item a item (com alerta de estoque baixo).
+      // Produto com tamanho: baixa so daquele tamanho e recalcula o total
+      // (soma de todos os tamanhos) pra manter a coluna `estoque` sincronizada.
       const alertasEstoqueBaixo = [];
       for (const it of itens || []) {
         if (!it.produto_id) continue;
         const { data: prod } = await supabase
           .from('produtos')
-          .select('nome_pt, estoque, estoque_minimo')
+          .select('nome_pt, estoque, estoque_minimo, variantes_estoque')
           .eq('id', it.produto_id)
           .single();
-        if (prod && prod.estoque != null) {
+        if (!prod) continue;
+
+        const minimo = prod.estoque_minimo != null ? prod.estoque_minimo : 5;
+
+        if (it.tamanho && prod.variantes_estoque && typeof prod.variantes_estoque === 'object' && prod.variantes_estoque[it.tamanho] != null) {
+          const novasVariantes = { ...prod.variantes_estoque };
+          const novoEstoqueTamanho = Math.max(0, novasVariantes[it.tamanho] - it.quantidade);
+          novasVariantes[it.tamanho] = novoEstoqueTamanho;
+          const novoEstoqueTotal = Object.values(novasVariantes).reduce((soma, v) => soma + (Number(v) || 0), 0);
+          await supabase.from('produtos').update({ variantes_estoque: novasVariantes, estoque: novoEstoqueTotal }).eq('id', it.produto_id);
+          if (novoEstoqueTamanho < minimo) {
+            alertasEstoqueBaixo.push({ nome: prod.nome_pt + ' (' + it.tamanho + ')', estoque: novoEstoqueTamanho });
+          }
+        } else if (prod.estoque != null) {
           const novoEstoque = Math.max(0, prod.estoque - it.quantidade);
           await supabase.from('produtos').update({ estoque: novoEstoque }).eq('id', it.produto_id);
-          const minimo = prod.estoque_minimo != null ? prod.estoque_minimo : 5;
           if (novoEstoque < minimo) alertasEstoqueBaixo.push({ nome: prod.nome_pt, estoque: novoEstoque });
         }
       }
@@ -235,7 +250,7 @@ const handler = async (event) => {
               valor_total: pedido.total,
               pagamento_id: String(paymentId),
               endereco: pedido.endereco_entrega || null,
-              itens: (itens || []).map((i) => ({ nome: i.nome_produto, quantidade: i.quantidade, preco: i.preco_unitario })),
+              itens: (itens || []).map((i) => ({ nome: i.nome_produto, tamanho: i.tamanho || null, quantidade: i.quantidade, preco: i.preco_unitario })),
               alertas_estoque_baixo: alertasEstoqueBaixo,
             }),
           });

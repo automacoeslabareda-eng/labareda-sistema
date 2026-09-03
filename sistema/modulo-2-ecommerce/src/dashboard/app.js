@@ -413,6 +413,13 @@ async function carregarProdutos() {
       var categoria = (p.categorias && p.categorias.nome_pt) || '--';
       var ativo = p.ativo !== false;
       var destaqueHtml = p.destaque ? '<span class="badge badge--warning" style="margin-bottom:4px;display:inline-block">Destaque</span> ' : '';
+      var porTamanhoHtml = '';
+      if (p.variantes_estoque && typeof p.variantes_estoque === 'object') {
+        porTamanhoHtml = '<p style="font-size:11px;color:var(--text-muted);margin-top:2px">' +
+          ['P', 'M', 'G', 'GG'].filter(function(t) { return p.variantes_estoque[t] != null; })
+            .map(function(t) { return t + ':' + p.variantes_estoque[t]; }).join(' &middot; ') +
+          '</p>';
+      }
 
       return '<div class="card-produto">' +
         imgHtml +
@@ -428,6 +435,7 @@ async function carregarProdutos() {
                 : 'Estoque: ' + estoque) +
             '</span>' +
           '</div>' +
+          porTamanhoHtml +
           '<span class="badge badge--' + (ativo ? 'ativo' : 'inativo') + '" style="margin-bottom:8px;display:inline-block">' + (ativo ? 'Ativo' : 'Inativo') + '</span>' +
           '<div class="card-produto__acoes">' +
             '<button class="btn btn--small btn--secondary" onclick="abrirModalProduto(\'' + p.id + '\')">Editar</button>' +
@@ -460,6 +468,17 @@ function abrirModalProduto(id) {
     '<div class="form-group"><label>Preco (R$)</label><input type="number" id="campo-prod-preco" step="0.01" min="0" placeholder="0.00"></div>' +
     '<div class="form-group"><label>Preco Promocional (R$)</label><input type="number" id="campo-prod-preco-promo" step="0.01" min="0" placeholder="0.00"></div>' +
     '<div class="form-group"><label>Estoque</label><input type="number" id="campo-prod-estoque" min="0" placeholder="0"></div>' +
+    '<div class="form-group"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="campo-prod-tem-tamanho"> Produto tem tamanhos (P/M/G/GG)</label></div>' +
+    '<div id="campo-prod-tamanhos-wrap" class="form-group" style="display:none">' +
+      '<label>Estoque por tamanho</label>' +
+      '<p style="font-size:11px;color:var(--text-muted);margin:-2px 0 8px">Deixe em branco o tamanho que o produto nao tem. O campo "Estoque" acima passa a ser somado automaticamente.</p>' +
+      '<div style="display:flex;gap:8px">' +
+        '<div style="flex:1"><label style="font-size:11px">P</label><input type="number" id="campo-prod-tam-P" min="0" placeholder="--" style="width:100%"></div>' +
+        '<div style="flex:1"><label style="font-size:11px">M</label><input type="number" id="campo-prod-tam-M" min="0" placeholder="--" style="width:100%"></div>' +
+        '<div style="flex:1"><label style="font-size:11px">G</label><input type="number" id="campo-prod-tam-G" min="0" placeholder="--" style="width:100%"></div>' +
+        '<div style="flex:1"><label style="font-size:11px">GG</label><input type="number" id="campo-prod-tam-GG" min="0" placeholder="--" style="width:100%"></div>' +
+      '</div>' +
+    '</div>' +
     '<div class="form-group"><label>SKU</label><input type="text" id="campo-prod-sku" placeholder="SKU do produto"></div>' +
     '<div class="form-group"><label>Peso (gramas)</label><input type="number" id="campo-prod-peso" min="0" placeholder="0"></div>' +
     '<p style="font-size:12px;font-weight:600;margin:12px 0 6px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">Dimensoes para frete (cm)</p>' +
@@ -476,6 +495,29 @@ function abrirModalProduto(id) {
     '<div class="form-group"><label>Descricao (EN)</label><textarea id="campo-prod-descricao-en" rows="3" placeholder="Description in english"></textarea></div>' +
     '<div class="form-group"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="campo-prod-destaque"> Produto Destaque</label></div>' +
     '<div class="form-group"><label>Slug</label><input type="text" id="campo-prod-slug" placeholder="gerado-automaticamente" style="color:var(--text-muted)"></div>';
+
+  // Toggle do bloco de estoque por tamanho (P/M/G/GG)
+  var temTamanhoCheck = $('#campo-prod-tem-tamanho');
+  var tamanhosWrap = $('#campo-prod-tamanhos-wrap');
+  var estoqueInput = $('#campo-prod-estoque');
+  temTamanhoCheck.addEventListener('change', function() {
+    tamanhosWrap.style.display = temTamanhoCheck.checked ? '' : 'none';
+    estoqueInput.readOnly = temTamanhoCheck.checked;
+    estoqueInput.title = temTamanhoCheck.checked ? 'Somado automaticamente dos tamanhos' : '';
+    if (temTamanhoCheck.checked) recalcularEstoqueTamanhos();
+  });
+  ['P', 'M', 'G', 'GG'].forEach(function(tam) {
+    $('#campo-prod-tam-' + tam).addEventListener('input', recalcularEstoqueTamanhos);
+  });
+  function recalcularEstoqueTamanhos() {
+    if (!temTamanhoCheck.checked) return;
+    var soma = 0;
+    ['P', 'M', 'G', 'GG'].forEach(function(tam) {
+      var v = $('#campo-prod-tam-' + tam).value;
+      if (v !== '') soma += parseInt(v, 10) || 0;
+    });
+    estoqueInput.value = soma;
+  }
 
   // Auto-gerar slug ao digitar nome PT
   var nomePtInput = $('#campo-prod-nome-pt');
@@ -525,6 +567,19 @@ async function carregarDadosProdutoModal(id) {
       if (el('#campo-prod-descricao-en')) el('#campo-prod-descricao-en').value = p.descricao_en || '';
       if (el('#campo-prod-destaque')) el('#campo-prod-destaque').checked = !!p.destaque;
       if (el('#campo-prod-slug')) el('#campo-prod-slug').value = p.slug || '';
+
+      // Estoque por tamanho (P/M/G/GG) — preenche os tamanhos ANTES de disparar o
+      // "change" do checkbox, senao o recalculo automatico zera o campo Estoque.
+      if (p.variantes_estoque && typeof p.variantes_estoque === 'object') {
+        ['P', 'M', 'G', 'GG'].forEach(function(tam) {
+          var input = el('#campo-prod-tam-' + tam);
+          if (input && p.variantes_estoque[tam] != null) input.value = p.variantes_estoque[tam];
+        });
+        if (el('#campo-prod-tem-tamanho')) {
+          el('#campo-prod-tem-tamanho').checked = true;
+          el('#campo-prod-tem-tamanho').dispatchEvent(new Event('change'));
+        }
+      }
 
       // Mostrar imagem existente
       var imagens = p.imagens;
@@ -614,13 +669,14 @@ async function expandirPedido(pedidoId) {
     if (!items || items.length === 0) {
       container.innerHTML = '<p class="placeholder">Nenhum item no pedido</p>';
     } else {
-      var html = '<table class="tabela"><thead><tr><th>Produto</th><th>Qtd</th><th>Preco Unit.</th><th>Subtotal</th></tr></thead><tbody>';
+      var html = '<table class="tabela"><thead><tr><th>Produto</th><th>Tam.</th><th>Qtd</th><th>Preco Unit.</th><th>Subtotal</th></tr></thead><tbody>';
       items.forEach(function(item) {
         var nome = (item.produtos && item.produtos.nome_pt) || item.produto_nome || '--';
         var qtd = item.quantidade || 1;
         var preco = item.preco_unitario || item.preco || 0;
         html += '<tr>' +
           '<td>' + escapeHtml(nome) + '</td>' +
+          '<td>' + (item.tamanho ? escapeHtml(item.tamanho) : '--') + '</td>' +
           '<td>' + qtd + '</td>' +
           '<td>' + formatarMoeda(preco) + '</td>' +
           '<td>' + formatarMoeda(preco * qtd) + '</td>' +
@@ -2283,13 +2339,33 @@ async function salvarModal() {
         return;
       }
 
+      // Estoque por tamanho (P/M/G/GG): so entra no body se o checkbox estiver marcado.
+      // Tamanho com input vazio = produto nao vem nesse tamanho (fica de fora do objeto).
+      var variantesEstoque = null;
+      var estoqueFinal = parseInt(($('#campo-prod-estoque') || {}).value) || 0;
+      if (($('#campo-prod-tem-tamanho') || {}).checked) {
+        variantesEstoque = {};
+        var somaVariantes = 0;
+        ['P', 'M', 'G', 'GG'].forEach(function(tam) {
+          var v = ($('#campo-prod-tam-' + tam) || {}).value;
+          if (v !== '' && v != null) {
+            var qtd = parseInt(v, 10) || 0;
+            variantesEstoque[tam] = qtd;
+            somaVariantes += qtd;
+          }
+        });
+        if (Object.keys(variantesEstoque).length === 0) variantesEstoque = null;
+        else estoqueFinal = somaVariantes;
+      }
+
       var body = {
         nome_pt: nomePt,
         nome_en: ($('#campo-prod-nome-en') || {}).value || '',
         categoria_id: ($('#campo-prod-categoria') || {}).value || null,
         preco: parseFloat(($('#campo-prod-preco') || {}).value) || 0,
         preco_promocional: parseFloat(($('#campo-prod-preco-promo') || {}).value) || null,
-        estoque: parseInt(($('#campo-prod-estoque') || {}).value) || 0,
+        estoque: estoqueFinal,
+        variantes_estoque: variantesEstoque,
         sku: ($('#campo-prod-sku') || {}).value || null,
         peso_gramas: parseInt(($('#campo-prod-peso') || {}).value) || null,
         frete_comprimento: parseFloat(($('#campo-prod-frete-comprimento') || {}).value) || null,

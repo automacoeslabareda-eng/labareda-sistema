@@ -102,7 +102,7 @@ const handler = async (event) => {
     if (ids.length === 0) return resposta(400, { erro: 'Itens sem produto_id.' });
     const { data: produtos, error: errProd } = await supabase
       .from('produtos')
-      .select('id, nome_pt, preco, preco_promocional, estoque, ativo')
+      .select('id, nome_pt, preco, preco_promocional, estoque, variantes_estoque, ativo')
       .in('id', ids);
     if (errProd) throw errProd;
 
@@ -114,13 +114,25 @@ const handler = async (event) => {
       if (!prod) return resposta(400, { erro: `Produto nao encontrado: ${item.produto_id}` });
       if (prod.ativo === false) return resposta(400, { erro: `Produto indisponivel: ${prod.nome_pt}` });
       const qtd = Math.max(1, parseInt(item.quantidade, 10) || 1);
-      if (prod.estoque != null && prod.estoque < qtd) {
+      const tamanho = item.tamanho || null;
+
+      // Produto com variantes (tamanho): valida o estoque DAQUELE tamanho, nao o total.
+      if (prod.variantes_estoque && typeof prod.variantes_estoque === 'object') {
+        if (!tamanho || prod.variantes_estoque[tamanho] == null) {
+          return resposta(400, { erro: `Escolha um tamanho valido para ${prod.nome_pt}.` });
+        }
+        const estoqueTamanho = prod.variantes_estoque[tamanho];
+        if (estoqueTamanho < qtd) {
+          return resposta(409, { erro: `Estoque insuficiente para ${prod.nome_pt} tamanho ${tamanho} (restam ${estoqueTamanho}).` });
+        }
+      } else if (prod.estoque != null && prod.estoque < qtd) {
         return resposta(409, { erro: `Estoque insuficiente para ${prod.nome_pt} (restam ${prod.estoque}).` });
       }
+
       const preco = Number(prod.preco_promocional) > 0 ? Number(prod.preco_promocional) : Number(prod.preco);
       subtotal += preco * qtd;
-      itensPedido.push({ produto_id: prod.id, nome_produto: prod.nome_pt, quantidade: qtd, preco_unitario: preco, subtotal: preco * qtd });
-      itensMP.push({ title: prod.nome_pt, quantity: qtd, unit_price: preco, currency_id: 'BRL' });
+      itensPedido.push({ produto_id: prod.id, nome_produto: prod.nome_pt, tamanho, quantidade: qtd, preco_unitario: preco, subtotal: preco * qtd });
+      itensMP.push({ title: prod.nome_pt + (tamanho ? ` (${tamanho})` : ''), quantity: qtd, unit_price: preco, currency_id: 'BRL' });
     }
 
     // --- 3. Frete: valida contra a tabela ---

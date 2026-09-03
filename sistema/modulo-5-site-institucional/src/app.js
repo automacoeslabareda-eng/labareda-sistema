@@ -213,6 +213,9 @@
       product_out_of_stock: 'Produto esgotado',
       product_in_stock: 'Em estoque',
       product_low_stock: 'Restam poucas unidades',
+      product_size: 'Tamanho',
+      product_size_choose: 'Escolha um tamanho',
+      product_size_out: 'Esgotado neste tamanho',
       checkout_step1_title: 'Dados Pessoais',
       checkout_step2_title: 'Endere\u00e7o de Entrega',
       checkout_step3_title: 'Resumo do Pedido',
@@ -365,6 +368,9 @@
       product_out_of_stock: 'Out of stock',
       product_in_stock: 'In stock',
       product_low_stock: 'Few units left',
+      product_size: 'Size',
+      product_size_choose: 'Choose a size',
+      product_size_out: 'Out of stock in this size',
       checkout_step1_title: 'Personal Info',
       checkout_step2_title: 'Shipping Address',
       checkout_step3_title: 'Order Summary',
@@ -1451,11 +1457,18 @@
     }
   }
 
-  function addToCart(product, qty) {
+  /* Chave que identifica uma linha do carrinho: mesmo produto em tamanhos
+     diferentes = linhas diferentes, pra nao misturar estoque de P com M etc. */
+  function cartItemKey(produtoId, tamanho) {
+    return produtoId + (tamanho ? '|' + tamanho : '');
+  }
+
+  function addToCart(product, qty, tamanho) {
+    tamanho = tamanho || null;
     var cart = getCart();
     var existing = null;
     for (var i = 0; i < cart.length; i++) {
-      if (cart[i].produto_id === product.id) {
+      if (cart[i].produto_id === product.id && (cart[i].tamanho || null) === tamanho) {
         existing = cart[i];
         break;
       }
@@ -1472,9 +1485,10 @@
     var preco = product.preco_promocional && parseFloat(product.preco_promocional) > 0 && parseFloat(product.preco_promocional) < parseFloat(product.preco)
       ? parseFloat(product.preco_promocional)
       : parseFloat(product.preco);
+    var estoqueMax = getEstoqueDisponivel(product, tamanho);
 
     if (existing) {
-      existing.quantidade = Math.min(existing.quantidade + qty, product.estoque || 99);
+      existing.quantidade = Math.min(existing.quantidade + qty, estoqueMax || 99);
       existing.nome = nome;
       existing.peso_gramas = product.peso_gramas || null;
       existing.frete_comprimento = product.frete_comprimento || null;
@@ -1483,9 +1497,10 @@
     } else {
       cart.push({
         produto_id: product.id,
+        tamanho: tamanho,
         nome: nome,
         preco: preco,
-        quantidade: qty,
+        quantidade: Math.min(qty, estoqueMax || 99),
         imagem_url: imgUrl,
         peso_gramas: product.peso_gramas || null,
         frete_comprimento: product.frete_comprimento || null,
@@ -1498,17 +1513,20 @@
     showToast(translations[currentLang].product_added, false);
   }
 
-  function removeFromCart(produtoId) {
-    var cart = getCart().filter(function (item) { return item.produto_id !== produtoId; });
+  function removeFromCart(cartKey) {
+    var cart = getCart().filter(function (item) { return cartItemKey(item.produto_id, item.tamanho) !== cartKey; });
     saveCart(cart);
     renderCartDrawer();
   }
 
-  function updateCartItemQty(produtoId, delta) {
+  function updateCartItemQty(cartKey, delta) {
     var cart = getCart();
     for (var i = 0; i < cart.length; i++) {
-      if (cart[i].produto_id === produtoId) {
-        cart[i].quantidade = Math.max(1, Math.min(cart[i].quantidade + delta, 99));
+      if (cartItemKey(cart[i].produto_id, cart[i].tamanho) === cartKey) {
+        /* Limita pelo estoque real do produto/tamanho, nao so um teto fixo */
+        var produtoAtual = loadedProducts.filter(function (p) { return p.id === cart[i].produto_id; })[0];
+        var estoqueMax = produtoAtual ? getEstoqueDisponivel(produtoAtual, cart[i].tamanho) : 99;
+        cart[i].quantidade = Math.max(1, Math.min(cart[i].quantidade + delta, estoqueMax || 99));
         break;
       }
     }
@@ -1559,17 +1577,19 @@
       var imgHTML = item.imagem_url
         ? '<img src="' + item.imagem_url + '" alt="' + item.nome + '" loading="lazy">'
         : '<div class="cart-item__image-placeholder"></div>';
+      var key = cartItemKey(item.produto_id, item.tamanho);
+      var nomeComTamanho = item.nome + (item.tamanho ? ' <span class="cart-item__size">(' + item.tamanho + ')</span>' : '');
 
-      html += '<div class="cart-item" data-cart-id="' + item.produto_id + '">'
+      html += '<div class="cart-item" data-cart-id="' + key + '">'
         + '<div class="cart-item__image">' + imgHTML + '</div>'
         + '<div class="cart-item__details">'
-        + '<span class="cart-item__name">' + item.nome + '</span>'
+        + '<span class="cart-item__name">' + nomeComTamanho + '</span>'
         + '<span class="cart-item__price">' + formatPrice(item.preco) + '</span>'
         + '<div class="cart-item__controls">'
-        + '<button class="cart-item__qty-btn" data-action="minus" data-id="' + item.produto_id + '" type="button" aria-label="Diminuir">-</button>'
+        + '<button class="cart-item__qty-btn" data-action="minus" data-id="' + key + '" type="button" aria-label="Diminuir">-</button>'
         + '<span class="cart-item__qty">' + item.quantidade + '</span>'
-        + '<button class="cart-item__qty-btn" data-action="plus" data-id="' + item.produto_id + '" type="button" aria-label="Aumentar">+</button>'
-        + '<button class="cart-item__remove" data-action="remove" data-id="' + item.produto_id + '" type="button">' + removeLabel + '</button>'
+        + '<button class="cart-item__qty-btn" data-action="plus" data-id="' + key + '" type="button" aria-label="Aumentar">+</button>'
+        + '<button class="cart-item__remove" data-action="remove" data-id="' + key + '" type="button">' + removeLabel + '</button>'
         + '</div>'
         + '</div>'
         + '</div>';
@@ -1610,6 +1630,95 @@
      15. PRODUCT DETAIL MODAL
      ========================================================================== */
   var currentProductForModal = null;
+  var currentSelectedTamanho = null;
+  var SIZE_ORDER = ['P', 'M', 'G', 'GG'];
+
+  /* Estoque disponivel pro tamanho selecionado (ou o estoque total, se o produto nao tem tamanho) */
+  function getEstoqueDisponivel(product, tamanho) {
+    if (product.variantes_estoque && tamanho && product.variantes_estoque[tamanho] != null) {
+      return product.variantes_estoque[tamanho];
+    }
+    return product.estoque != null ? product.estoque : 99;
+  }
+
+  /* Monta os botoes de tamanho (P/M/G/GG) quando o produto tem variantes_estoque.
+     Tamanho ausente no objeto = produto nao vem nesse tamanho (nao aparece).
+     Tamanho com 0 = esgotado nesse tamanho (aparece riscado, desabilitado). */
+  function renderSizeSelector(product) {
+    var wrap = document.getElementById('product-modal-sizes');
+    var list = document.getElementById('product-modal-sizes-list');
+    if (!product.variantes_estoque || typeof product.variantes_estoque !== 'object') {
+      wrap.hidden = true;
+      list.innerHTML = '';
+      currentSelectedTamanho = null;
+      return;
+    }
+
+    wrap.hidden = false;
+    var variantes = product.variantes_estoque;
+    var primeiroDisponivel = null;
+    var html = '';
+    SIZE_ORDER.filter(function (t) { return variantes[t] != null; }).forEach(function (t) {
+      var esgotado = variantes[t] <= 0;
+      if (!esgotado && primeiroDisponivel === null) primeiroDisponivel = t;
+      html += '<button type="button" class="size-btn' + (esgotado ? ' size-btn--out' : '') + '" data-tamanho="' + t + '"' + (esgotado ? ' disabled' : '') + '>' + t + '</button>';
+    });
+    list.innerHTML = html;
+    currentSelectedTamanho = primeiroDisponivel;
+
+    list.querySelectorAll('.size-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (this.disabled) return;
+        currentSelectedTamanho = this.dataset.tamanho;
+        list.querySelectorAll('.size-btn').forEach(function (b) { b.classList.remove('active'); });
+        this.classList.add('active');
+        atualizarEstoqueQtyUI(product);
+      });
+    });
+    var activeBtn = currentSelectedTamanho && list.querySelector('.size-btn[data-tamanho="' + currentSelectedTamanho + '"]');
+    if (activeBtn) activeBtn.classList.add('active');
+  }
+
+  /* Atualiza o texto de estoque, o estado do botao "adicionar" e o max da quantidade,
+     considerando o tamanho selecionado (quando o produto tem variantes). */
+  function atualizarEstoqueQtyUI(product) {
+    var stockEl = document.getElementById('product-modal-stock');
+    var qtyInput = document.getElementById('product-modal-qty-input');
+    var addBtn = document.getElementById('product-modal-add');
+    var temTamanho = !!(product.variantes_estoque && typeof product.variantes_estoque === 'object');
+
+    if (temTamanho && !currentSelectedTamanho) {
+      stockEl.textContent = translations[currentLang].product_size_choose;
+      stockEl.className = 'product-modal__stock';
+      addBtn.disabled = true;
+      addBtn.style.opacity = '0.5';
+      qtyInput.value = 1;
+      qtyInput.max = 1;
+      return;
+    }
+
+    var estoque = getEstoqueDisponivel(product, currentSelectedTamanho);
+    if (estoque <= 0) {
+      stockEl.textContent = temTamanho ? translations[currentLang].product_size_out : translations[currentLang].product_out_of_stock;
+      stockEl.className = 'product-modal__stock product-modal__stock--out';
+      addBtn.disabled = true;
+      addBtn.style.opacity = '0.5';
+    } else if (estoque <= (product.estoque_minimo || 5)) {
+      stockEl.textContent = translations[currentLang].product_low_stock + ' (' + estoque + ')';
+      stockEl.className = 'product-modal__stock product-modal__stock--low';
+      addBtn.disabled = false;
+      addBtn.style.opacity = '';
+    } else {
+      stockEl.textContent = translations[currentLang].product_in_stock;
+      stockEl.className = 'product-modal__stock';
+      addBtn.disabled = false;
+      addBtn.style.opacity = '';
+    }
+
+    var maxQty = Math.max(1, Math.min(estoque, 10));
+    qtyInput.value = 1;
+    qtyInput.max = maxQty;
+  }
 
   function openProductModal(product) {
     if (!product) return;
@@ -1621,9 +1730,6 @@
     var nameEl = document.getElementById('product-modal-name');
     var descEl = document.getElementById('product-modal-description');
     var pricingEl = document.getElementById('product-modal-pricing');
-    var stockEl = document.getElementById('product-modal-stock');
-    var qtyInput = document.getElementById('product-modal-qty-input');
-    var addBtn = document.getElementById('product-modal-add');
 
     var nome = currentLang === 'pt' ? (product.nome_pt || product.nome) : (product.nome_en || product.nome_pt || product.nome);
     var desc = currentLang === 'pt' ? (product.descricao_pt || '') : (product.descricao_en || product.descricao_pt || '');
@@ -1682,29 +1788,9 @@
       pricingEl.innerHTML = '<span class="product-modal__price">' + formatPrice(preco) + '</span>';
     }
 
-    /* Stock */
-    var estoque = product.estoque != null ? product.estoque : 99;
-    if (estoque <= 0) {
-      stockEl.textContent = translations[currentLang].product_out_of_stock;
-      stockEl.className = 'product-modal__stock product-modal__stock--out';
-      addBtn.disabled = true;
-      addBtn.style.opacity = '0.5';
-    } else if (estoque <= (product.estoque_minimo || 5)) {
-      stockEl.textContent = translations[currentLang].product_low_stock + ' (' + estoque + ')';
-      stockEl.className = 'product-modal__stock product-modal__stock--low';
-      addBtn.disabled = false;
-      addBtn.style.opacity = '';
-    } else {
-      stockEl.textContent = translations[currentLang].product_in_stock;
-      stockEl.className = 'product-modal__stock';
-      addBtn.disabled = false;
-      addBtn.style.opacity = '';
-    }
-
-    /* Quantity */
-    var maxQty = Math.min(estoque, 10);
-    qtyInput.value = 1;
-    qtyInput.max = maxQty;
+    /* Tamanho (se o produto tiver variantes_estoque) + Estoque/Quantidade */
+    renderSizeSelector(product);
+    atualizarEstoqueQtyUI(product);
 
     modal.classList.add('aberto');
     document.body.style.overflow = 'hidden';
@@ -1714,6 +1800,7 @@
     document.getElementById('product-modal').classList.remove('aberto');
     document.body.style.overflow = '';
     currentProductForModal = null;
+    currentSelectedTamanho = null;
   }
 
   /* Product modal event bindings */
@@ -1738,8 +1825,9 @@
 
   document.getElementById('product-modal-add').addEventListener('click', function () {
     if (!currentProductForModal) return;
+    if (currentProductForModal.variantes_estoque && !currentSelectedTamanho) return;
     var qty = parseInt(document.getElementById('product-modal-qty-input').value, 10) || 1;
-    addToCart(currentProductForModal, qty);
+    addToCart(currentProductForModal, qty, currentSelectedTamanho);
     closeProductModal();
   });
 
@@ -2100,7 +2188,7 @@
        cliente para a funcao SEGURA no servidor, que cria o pedido (com a
        chave secreta, validando precos) e devolve o link do Mercado Pago. */
     var itensCarrinho = cart.map(function (item) {
-      return { produto_id: item.produto_id, quantidade: item.quantidade };
+      return { produto_id: item.produto_id, quantidade: item.quantidade, tamanho: item.tamanho || null };
     });
 
     fetch('/api/criar-pagamento', {

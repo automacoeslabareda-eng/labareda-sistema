@@ -2571,6 +2571,13 @@ details[open] .faq-question::after {
   line-height: 1.3;
 }
 
+.cart-item__size {
+  font-family: var(--font-body, sans-serif);
+  font-size: 0.8rem;
+  color: var(--cinza, #666);
+  font-weight: 400;
+}
+
 .cart-item__price {
   font-size: 0.85rem;
   color: var(--terracota);
@@ -2814,6 +2821,57 @@ details[open] .faq-question::after {
   color: var(--cinza-claro);
   text-decoration: line-through;
   margin-left: 10px;
+}
+
+.product-modal__sizes {
+  margin-bottom: 16px;
+}
+
+.product-modal__sizes label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cinza);
+  margin-bottom: 8px;
+}
+
+.size-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.size-btn {
+  min-width: 44px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--areia);
+  border-radius: 2px;
+  background: var(--branco);
+  color: var(--preto);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.size-btn:hover:not(:disabled) {
+  border-color: var(--terracota);
+}
+
+.size-btn.active {
+  border-color: var(--terracota);
+  background: var(--terracota);
+  color: #fff;
+}
+
+.size-btn--out {
+  color: var(--cinza-claro);
+  text-decoration: line-through;
+  cursor: not-allowed;
+  background: var(--creme);
 }
 
 .product-modal__stock {

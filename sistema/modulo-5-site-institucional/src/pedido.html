@@ -271,8 +271,9 @@
         // Itens
         var itensHtml = '';
         (p.itens || []).forEach(function(item) {
+          var nomeComTamanho = item.nome_produto + (item.tamanho ? ' (' + item.tamanho + ')' : '');
           itensHtml += '<div class="item-row">'
-            + '<span class="item-nome">' + item.nome_produto + '</span>'
+            + '<span class="item-nome">' + nomeComTamanho + '</span>'
             + '<span class="item-qtd">x' + item.quantidade + '</span>'
             + '<span class="item-preco">' + formatarMoeda(item.subtotal) + '</span>'
             + '</div>';

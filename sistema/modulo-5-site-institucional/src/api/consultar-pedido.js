@@ -45,7 +45,7 @@ const handler = async (event) => {
     // Busca itens do pedido
     const { data: itens } = await db
       .from('pedido_itens')
-      .select('nome_produto,quantidade,preco_unitario,subtotal')
+      .select('nome_produto,tamanho,quantidade,preco_unitario,subtotal')
       .eq('pedido_id', pedido.id);
 
     // Traduz status para texto amigavel
