@@ -255,7 +255,63 @@ async function enviarEmailRastreamento(cliente, pedido, tracking, rastreioUrl) {
   }
 }
 
-/* ---- Handler principal ---- */
+/* ---- Logica reutilizavel: gera a etiqueta pra um pedido ----
+   Usada tanto pelo endpoint HTTP (admin manual) quanto pelo webhook do
+   Mercado Pago (automatico, assim que o pagamento e aprovado). */
+async function gerarEtiquetaParaPedido(db, pedidoId) {
+  var sf = getSuperfrete();
+  if (!sf) throw new Error('SUPERFRETE_TOKEN nao configurado.');
+
+  // 1. Busca pedido + cliente
+  var { data: pedido, error: errPed } = await db
+    .from('pedidos')
+    .select('*, clientes(nome, email, telefone, cpf, endereco_cep)')
+    .eq('id', pedidoId)
+    .single();
+  if (errPed || !pedido) throw new Error('Pedido nao encontrado.');
+  if (pedido.status !== 'pago' && pedido.status !== 'preparando') {
+    throw new Error('Pedido precisa estar com status "pago" ou "preparando" para gerar etiqueta.');
+  }
+
+  // 2. Busca itens com dimensões do produto
+  var { data: itens } = await db
+    .from('pedido_itens')
+    .select('nome_produto, quantidade, preco_unitario, produto_id, produtos(peso_gramas, frete_altura, frete_largura, frete_comprimento)')
+    .eq('pedido_id', pedidoId);
+
+  var cliente = pedido.clientes || {};
+
+  // 3. Gera etiqueta no SuperFrete
+  var etiqueta = await criarEnvioSuperFrete(sf, pedido, cliente, itens);
+
+  // 4. Atualiza pedido com tracking e etiqueta
+  var rastreioUrl = 'https://www.linkcorreios.com.br/?id=' + (etiqueta.tracking || '');
+  var updateData = {
+    status: 'enviado',
+    codigo_rastreio: etiqueta.tracking,
+    rastreio_url: rastreioUrl,
+    enviado_at: new Date().toISOString(),
+    superfrete_order_id: etiqueta.superfrete_order_id,
+    etiqueta_url: etiqueta.label_url,
+  };
+  await db.from('pedidos').update(updateData).eq('id', pedidoId);
+
+  // 5. Envia email de rastreamento
+  var emailEnviado = false;
+  if (cliente.email && etiqueta.tracking) {
+    emailEnviado = await enviarEmailRastreamento(cliente, pedido, etiqueta.tracking, rastreioUrl);
+  }
+
+  return {
+    tracking: etiqueta.tracking,
+    rastreio_url: rastreioUrl,
+    etiqueta_url: etiqueta.label_url,
+    superfrete_order_id: etiqueta.superfrete_order_id,
+    email_enviado: emailEnviado,
+  };
+}
+
+/* ---- Handler principal (chamado manualmente pelo admin, com token) ---- */
 const handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return resposta(200, { ok: true });
   if (event.httpMethod !== 'POST') return resposta(405, { erro: 'Metodo nao permitido' });
@@ -274,62 +330,11 @@ const handler = async (event) => {
   var pedidoId = body.pedido_id;
   if (!pedidoId) return resposta(400, { erro: 'pedido_id obrigatorio.' });
 
-  // SuperFrete config
-  var sf = getSuperfrete();
-  if (!sf) return resposta(500, { erro: 'SUPERFRETE_TOKEN nao configurado.' });
-
   var db = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
   try {
-    // 1. Busca pedido + cliente
-    var { data: pedido, error: errPed } = await db
-      .from('pedidos')
-      .select('*, clientes(nome, email, telefone, cpf, endereco_cep)')
-      .eq('id', pedidoId)
-      .single();
-    if (errPed || !pedido) return resposta(404, { erro: 'Pedido nao encontrado.' });
-    if (pedido.status !== 'pago' && pedido.status !== 'preparando') {
-      return resposta(400, { erro: 'Pedido precisa estar com status "pago" ou "preparando" para gerar etiqueta.' });
-    }
-
-    // 2. Busca itens com dimensões do produto
-    var { data: itens } = await db
-      .from('pedido_itens')
-      .select('nome_produto, quantidade, preco_unitario, produto_id, produtos(peso_gramas, frete_altura, frete_largura, frete_comprimento)')
-      .eq('pedido_id', pedidoId);
-
-    var cliente = pedido.clientes || {};
-
-    // 3. Gera etiqueta no SuperFrete
-    var etiqueta = await criarEnvioSuperFrete(sf, pedido, cliente, itens);
-
-    // 4. Atualiza pedido com tracking e etiqueta
-    var rastreioUrl = 'https://www.linkcorreios.com.br/?id=' + (etiqueta.tracking || '');
-    var updateData = {
-      status: 'enviado',
-      codigo_rastreio: etiqueta.tracking,
-      rastreio_url: rastreioUrl,
-      enviado_at: new Date().toISOString(),
-      superfrete_order_id: etiqueta.superfrete_order_id,
-      etiqueta_url: etiqueta.label_url,
-    };
-    await db.from('pedidos').update(updateData).eq('id', pedidoId);
-
-    // 5. Envia email de rastreamento
-    var emailEnviado = false;
-    if (cliente.email && etiqueta.tracking) {
-      emailEnviado = await enviarEmailRastreamento(cliente, pedido, etiqueta.tracking, rastreioUrl);
-    }
-
-    return resposta(200, {
-      ok: true,
-      tracking: etiqueta.tracking,
-      rastreio_url: rastreioUrl,
-      etiqueta_url: etiqueta.label_url,
-      superfrete_order_id: etiqueta.superfrete_order_id,
-      email_enviado: emailEnviado,
-    });
-
+    var resultado = await gerarEtiquetaParaPedido(db, pedidoId);
+    return resposta(200, { ok: true, ...resultado });
   } catch (err) {
     console.error('gerar-etiqueta erro:', err);
     return resposta(500, {
@@ -340,3 +345,4 @@ const handler = async (event) => {
 };
 
 module.exports = toVercel(handler);
+module.exports.gerarEtiquetaParaPedido = gerarEtiquetaParaPedido;

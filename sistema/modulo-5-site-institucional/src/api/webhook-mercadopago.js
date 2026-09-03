@@ -26,6 +26,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const { MercadoPagoConfig, Payment } = require('mercadopago');
 const { toVercel } = require('./_netlify-adapter');
+const { gerarEtiquetaParaPedido } = require('./gerar-etiqueta');
 
 // Propriedade Labareda (mesmo id usado no fluxo Telegram do modulo 1)
 const PROPRIEDADE_LABAREDA = '229e2813-6d46-4bdb-9aee-5d9a119733e6';
@@ -168,7 +169,11 @@ const handler = async (event) => {
       .eq('id', pedidoId)
       .single();
     if (!pedido) return ok200;
-    if (pedido.status === 'pago') return ok200; // ja processado
+    // So processa se o pedido ainda estiver pendente. Qualquer outro status
+    // (pago, preparando, enviado, entregue, cancelado) significa que uma
+    // notificacao anterior ja tratou esse pagamento — evita baixar estoque
+    // ou gerar etiqueta (que tem custo real no SuperFrete) duas vezes.
+    if (pedido.status !== 'pendente') return ok200;
 
     // 4. Atualiza status
     const mapaStatus = {
@@ -231,6 +236,28 @@ const handler = async (event) => {
         cliente = cli || null;
       }
 
+      // Email de confirmacao de compra ao cliente — dispara primeiro, antes
+      // da etiqueta/rastreio, pra chegar na caixa de entrada nessa ordem.
+      try {
+        await enviarEmailConfirmacao(cliente, pedido, itens);
+      } catch (e) {
+        console.error('webhook: falha ao enviar email confirmacao (nao critico):', e.message);
+      }
+
+      // Gera a etiqueta no SuperFrete automaticamente (compra o frete de
+      // verdade). Se falhar (endereco incompleto, sem saldo, SuperFrete
+      // fora do ar etc.), nao quebra o webhook — fica pra gerar manual
+      // depois pelo painel. O pedido so tem frete_service_id quando o
+      // cliente escolheu uma opcao de frete calculada no checkout.
+      let etiqueta = null;
+      if (pedido.frete_service_id) {
+        try {
+          etiqueta = await gerarEtiquetaParaPedido(supabase, pedidoId);
+        } catch (e) {
+          console.error('webhook: falha ao gerar etiqueta automatica (nao critico):', e.message);
+        }
+      }
+
       // Dispara o n8n (Telegram). Se falhar, nao quebra o webhook.
       if (N8N_WEBHOOK_URL) {
         try {
@@ -252,18 +279,14 @@ const handler = async (event) => {
               endereco: pedido.endereco_entrega || null,
               itens: (itens || []).map((i) => ({ nome: i.nome_produto, tamanho: i.tamanho || null, quantidade: i.quantidade, preco: i.preco_unitario })),
               alertas_estoque_baixo: alertasEstoqueBaixo,
+              etiqueta_gerada: !!etiqueta,
+              rastreio_codigo: etiqueta ? etiqueta.tracking : null,
+              etiqueta_url: etiqueta ? etiqueta.etiqueta_url : null,
             }),
           });
         } catch (e) {
           console.error('webhook: falha ao chamar n8n (nao critico):', e.message);
         }
-      }
-
-      // Email de confirmacao de compra ao cliente
-      try {
-        await enviarEmailConfirmacao(cliente, pedido, itens);
-      } catch (e) {
-        console.error('webhook: falha ao enviar email confirmacao (nao critico):', e.message);
       }
     }
 
