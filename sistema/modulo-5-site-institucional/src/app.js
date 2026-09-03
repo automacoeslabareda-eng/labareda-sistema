@@ -1709,7 +1709,7 @@
       addBtn.disabled = false;
       addBtn.style.opacity = '';
     } else {
-      stockEl.textContent = translations[currentLang].product_in_stock;
+      stockEl.textContent = translations[currentLang].product_in_stock + ' (' + estoque + ')';
       stockEl.className = 'product-modal__stock';
       addBtn.disabled = false;
       addBtn.style.opacity = '';
