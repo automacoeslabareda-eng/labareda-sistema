@@ -191,10 +191,18 @@ const handler = async (event) => {
 
     await supabase.from('pedidos').update({ mercadopago_id: pref.id }).eq('id', pedido.id);
 
-    // Public key para o SDK do Mercado Pago (modal no frontend)
+    // Public key para o SDK do Mercado Pago (modal no frontend).
+    // Prioriza a variavel do ambiente atual, mas cai pra qualquer uma
+    // configurada — assim nao depende de MP_ENV estar escrito exatamente
+    // igual em todo canto pra achar a chave certa (mesma logica tolerante
+    // ja usada em resolverAccessToken, que tem fallback pra MP_ACCESS_TOKEN).
     const mpEnv = (process.env.MP_ENV || 'teste').toLowerCase();
     const isProd = mpEnv === 'producao' || mpEnv === 'production' || mpEnv === 'prod';
-    const mpPublicKey = isProd ? (process.env.MP_PUBLIC_KEY_PROD || '') : (process.env.MP_PUBLIC_KEY_TESTE || '');
+    const mpPublicKey = (isProd ? process.env.MP_PUBLIC_KEY_PROD : process.env.MP_PUBLIC_KEY_TESTE)
+      || process.env.MP_PUBLIC_KEY_PROD
+      || process.env.MP_PUBLIC_KEY_TESTE
+      || process.env.MP_PUBLIC_KEY
+      || '';
 
     return resposta(200, {
       ok: true,
