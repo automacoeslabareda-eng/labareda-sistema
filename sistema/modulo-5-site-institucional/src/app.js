@@ -142,6 +142,19 @@
       book_description: 'Escolha quando quer viver a ro\u00e7a e a arte. Poucas unidades, aten\u00e7\u00e3o de verdade. Os melhores per\u00edodos costumam fechar cedo.',
       book_cta: 'Ver disponibilidade e reservar',
       book_cta_whatsapp: 'Prefere conversar? Chame no WhatsApp',
+      booking_modal_title: 'Reservar sua estada',
+      booking_modal_subtitle: 'Preencha os dados e entraremos em contato para confirmar.',
+      booking_checkin: 'Check-in',
+      booking_checkout: 'Check-out',
+      booking_guests: 'Hóspedes',
+      booking_guest_1: '1 hóspede',
+      booking_guest_2: '2 hóspedes',
+      booking_guest_3: '3 hóspedes',
+      booking_guest_4: '4 hóspedes',
+      booking_name: 'Nome',
+      booking_phone: 'Telefone / WhatsApp',
+      booking_message: 'Mensagem (opcional)',
+      booking_submit: 'Solicitar Reserva',
       radio_label: 'R\u00e1dio',
       radio_title: 'Radio Labareda',
       radio_subtitle: 'A trilha sonora da ro\u00e7a. Ou\u00e7a nossas playlists curadas.',
@@ -151,6 +164,10 @@
       shop_title: 'Leve um peda\u00e7o para casa',
       shop_subtitle: 'Produtos artesanais feitos com amor e mat\u00e9ria-prima da regi\u00e3o.',
       shop_cat_all: 'Todos',
+      shop_cat_clothing: 'Vestuário',
+      shop_cat_chocolates: 'Chocolates',
+      shop_cat_cosmetics: 'Cosméticos',
+      shop_cat_art: 'Art',
       shop_badge_new: 'Novo',
       shop_view: 'Ver produto',
       journal_label: 'Journal',
@@ -259,6 +276,31 @@
       checkout_mp_redirect_msg: 'Voc\u00ea ser\u00e1 direcionado ao ambiente seguro do Mercado Pago para concluir o pagamento.',
       checkout_mp_redirect_btn: 'Ir para o pagamento',
       checkout_mp_cancel: 'Cancelar',
+      /* Rotulos de acessibilidade (aria-label/title) — nao aparecem visualmente
+         pra maioria dos visitantes, mas precisam trocar de idioma tambem
+         (leitor de tela e tooltips nativos). */
+      aria_menu_principal: 'Menu principal',
+      aria_abrir_carrinho: 'Abrir carrinho',
+      aria_mudar_idioma: 'Mudar idioma',
+      aria_abrir_menu: 'Abrir menu',
+      title_ir_radio: 'Ir para Radio',
+      aria_fechar: 'Fechar',
+      aria_menu_navegacao: 'Menu de navegação',
+      aria_scroll_down: 'Rolar para baixo',
+      aria_sobre_sitio: 'Sobre o Sítio Labareda',
+      aria_escolher_foto: 'Escolher foto',
+      aria_categorias_produtos: 'Categorias de produtos',
+      aria_inicio: 'Sítio Labareda - Início',
+      aria_links_footer: 'Links do footer',
+      aria_aviso_cookies: 'Aviso de cookies',
+      aria_post_journal: 'Post do Journal',
+      aria_falar_whatsapp: 'Falar no WhatsApp',
+      aria_carrinho_compras: 'Carrinho de compras',
+      aria_fechar_carrinho: 'Fechar carrinho',
+      aria_detalhe_produto: 'Detalhe do produto',
+      aria_diminuir_qtd: 'Diminuir quantidade',
+      aria_aumentar_qtd: 'Aumentar quantidade',
+      aria_finalizar_compra: 'Finalizar compra',
     },
     en: {
       skip: 'Skip to content',
@@ -297,6 +339,19 @@
       book_description: 'Choose when you want to live the farm and the art. Few units, real attention. The best periods tend to close early.',
       book_cta: 'See availability and book',
       book_cta_whatsapp: 'Prefer to talk? Chat on WhatsApp',
+      booking_modal_title: 'Book your stay',
+      booking_modal_subtitle: 'Fill in your details and we’ll get in touch to confirm.',
+      booking_checkin: 'Check-in',
+      booking_checkout: 'Check-out',
+      booking_guests: 'Guests',
+      booking_guest_1: '1 guest',
+      booking_guest_2: '2 guests',
+      booking_guest_3: '3 guests',
+      booking_guest_4: '4 guests',
+      booking_name: 'Name',
+      booking_phone: 'Phone / WhatsApp',
+      booking_message: 'Message (optional)',
+      booking_submit: 'Request Booking',
       radio_label: 'Radio',
       radio_title: 'Radio Labareda',
       radio_subtitle: 'The soundtrack of the countryside. Listen to our curated playlists.',
@@ -306,6 +361,10 @@
       shop_title: 'Take a piece home',
       shop_subtitle: 'Handcrafted products made with love and local ingredients.',
       shop_cat_all: 'All',
+      shop_cat_clothing: 'Clothing',
+      shop_cat_chocolates: 'Chocolates',
+      shop_cat_cosmetics: 'Cosmetics',
+      shop_cat_art: 'Art',
       shop_badge_new: 'New',
       shop_view: 'View product',
       journal_label: 'Journal',
@@ -332,8 +391,8 @@
       faq_a3: 'We\u2019re in Serra Grande, minutes from wild beaches and crystal lagoons. Itacar\u00e9 and Mara\u00fa are also nearby for day trips.',
       faq_q4: 'Can I visit Ateli\u00ea Tartaruga?',
       faq_a4: 'Absolutely. The studio is the creative heart of the farm, with screen printing, analog photography and handmade art. Guests can visit and join activities when available.',
-      faq_q5: 'Do you sell products online?',
-      faq_a5: 'Yes! Clothing, Ateli\u00ea Tartaruga art, natural cosmetics and farm foods. Buy through the shop on the site or order via WhatsApp.',
+      faq_q5: 'Is there a kitchen for guests?',
+      faq_a5: 'We have the chalet with its own kitchen, plus a beautiful shared kitchen guests can use.',
       faq_q6: 'Is it good for children?',
       faq_a6: 'Children love it. Animals, trails, fruit from the tree, art workshops. An educational and sensory experience they never forget.',
       contact_label: 'Contact',
@@ -414,6 +473,28 @@
       checkout_mp_redirect_msg: 'You will be redirected to Mercado Pago\u2019s secure environment to complete the payment.',
       checkout_mp_redirect_btn: 'Go to payment',
       checkout_mp_cancel: 'Cancel',
+      aria_menu_principal: 'Main menu',
+      aria_abrir_carrinho: 'Open cart',
+      aria_mudar_idioma: 'Change language',
+      aria_abrir_menu: 'Open menu',
+      title_ir_radio: 'Go to Radio',
+      aria_fechar: 'Close',
+      aria_menu_navegacao: 'Navigation menu',
+      aria_scroll_down: 'Scroll down',
+      aria_sobre_sitio: 'About Sítio Labareda',
+      aria_escolher_foto: 'Choose photo',
+      aria_categorias_produtos: 'Product categories',
+      aria_inicio: 'Sítio Labareda - Home',
+      aria_links_footer: 'Footer links',
+      aria_aviso_cookies: 'Cookie notice',
+      aria_post_journal: 'Journal post',
+      aria_falar_whatsapp: 'Chat on WhatsApp',
+      aria_carrinho_compras: 'Shopping cart',
+      aria_fechar_carrinho: 'Close cart',
+      aria_detalhe_produto: 'Product detail',
+      aria_diminuir_qtd: 'Decrease quantity',
+      aria_aumentar_qtd: 'Increase quantity',
+      aria_finalizar_compra: 'Checkout',
     },
   };
 
@@ -423,11 +504,15 @@
       contact_name_placeholder: 'Seu nome',
       contact_email_placeholder: 'seu@email.com',
       contact_message_placeholder: 'Sua mensagem...',
+      booking_name_placeholder: 'Seu nome completo',
+      booking_message_placeholder: 'Algum pedido especial?',
     },
     en: {
       contact_name_placeholder: 'Your name',
       contact_email_placeholder: 'your@email.com',
       contact_message_placeholder: 'Your message...',
+      booking_name_placeholder: 'Your full name',
+      booking_message_placeholder: 'Any special requests?',
     },
   };
 
@@ -509,6 +594,21 @@
       var key = el.getAttribute('data-i18n-placeholder');
       if (ph[key] !== undefined) {
         el.placeholder = ph[key];
+      }
+    });
+
+    /* Translate accessibility labels (aria-label / title) — nao aparecem
+       visualmente pra maioria, mas leitor de tela e tooltip nativo usam */
+    document.querySelectorAll('[data-i18n-aria-label]').forEach(function (el) {
+      var key = el.getAttribute('data-i18n-aria-label');
+      if (dict[key] !== undefined) {
+        el.setAttribute('aria-label', dict[key]);
+      }
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(function (el) {
+      var key = el.getAttribute('data-i18n-title');
+      if (dict[key] !== undefined) {
+        el.setAttribute('title', dict[key]);
       }
     });
 

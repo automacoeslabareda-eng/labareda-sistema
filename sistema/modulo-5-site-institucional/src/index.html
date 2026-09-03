@@ -43,14 +43,14 @@
   <!-- ========== HEADER / NAV ========== -->
   <header class="site-header" id="site-header" role="banner">
     <div class="header-inner">
-      <a href="#hero" class="logo" aria-label="Sítio Labareda - Início">
+      <a href="#hero" class="logo" aria-label="Sítio Labareda - Início" data-i18n-aria-label="aria_inicio">
         <svg class="logo-star" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <polygon points="50,5 61,35 95,35 67,55 78,85 50,67 22,85 33,55 5,35 39,35" fill="currentColor"/>
         </svg>
         <span class="logo-text">LABAREDA</span>
       </a>
 
-      <nav class="main-nav" id="main-nav" role="navigation" aria-label="Menu principal">
+      <nav class="main-nav" id="main-nav" role="navigation" aria-label="Menu principal" data-i18n-aria-label="aria_menu_principal">
         <ul class="nav-list">
           <li><a href="#experience" class="nav-link" data-i18n="nav_about">ABOUT</a></li>
           <li><a href="#book" class="nav-link" data-i18n="nav_book">BOOK</a></li>
@@ -62,7 +62,7 @@
       </nav>
 
       <div class="header-actions">
-        <button class="cart-toggle" id="cart-toggle" aria-label="Abrir carrinho" type="button">
+        <button class="cart-toggle" id="cart-toggle" aria-label="Abrir carrinho" data-i18n-aria-label="aria_abrir_carrinho" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22" aria-hidden="true">
             <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
             <line x1="3" y1="6" x2="21" y2="6"/>
@@ -71,13 +71,13 @@
           <span class="cart-badge" id="cart-badge" style="display:none;">0</span>
         </button>
 
-        <button class="lang-toggle" id="lang-toggle" aria-label="Mudar idioma" type="button">
+        <button class="lang-toggle" id="lang-toggle" aria-label="Mudar idioma" data-i18n-aria-label="aria_mudar_idioma" type="button">
           <span class="lang-option active" data-lang="pt">PT</span>
           <span class="lang-divider">|</span>
           <span class="lang-option" data-lang="en">EN</span>
         </button>
 
-        <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu" aria-expanded="false" type="button">
+        <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu" data-i18n-aria-label="aria_abrir_menu" aria-expanded="false" type="button">
           <span class="hamburger">
             <span class="hamburger-line"></span>
             <span class="hamburger-line"></span>
@@ -95,13 +95,13 @@
         <span></span><span></span><span></span><span></span>
       </div>
       <p class="mini-player__texto" id="mini-player-texto">Tocando: --</p>
-      <button class="mini-player__btn" id="mini-player-ir" title="Ir para Radio">&#9835; RADIO</button>
-      <button class="mini-player__close" id="mini-player-close" title="Fechar">&times;</button>
+      <button class="mini-player__btn" id="mini-player-ir" title="Ir para Radio" data-i18n-title="title_ir_radio">&#9835; RADIO</button>
+      <button class="mini-player__close" id="mini-player-close" title="Fechar" data-i18n-title="aria_fechar">&times;</button>
     </div>
   </div>
 
   <!-- Mobile Menu Overlay -->
-  <div class="mobile-menu-overlay" id="mobile-menu" role="dialog" aria-modal="true" aria-label="Menu de navegação">
+  <div class="mobile-menu-overlay" id="mobile-menu" role="dialog" aria-modal="true" aria-label="Menu de navegação" data-i18n-aria-label="aria_menu_navegacao">
     <nav class="mobile-nav">
       <ul class="mobile-nav-list">
         <li><a href="#experience" class="mobile-nav-link" data-i18n="nav_about">ABOUT</a></li>
@@ -128,7 +128,7 @@
       <div class="hero-content">
         <img class="hero-logo" src="./img/logo-labareda.svg" alt="Labareda — Roça &amp; Arte" width="160" />
       </div>
-      <a href="#experience" class="hero-scroll-indicator" aria-label="Scroll down">
+      <a href="#experience" class="hero-scroll-indicator" aria-label="Rolar para baixo" data-i18n-aria-label="aria_scroll_down">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
           <path d="M12 5v14M5 12l7 7 7-7"/>
         </svg>
@@ -136,7 +136,7 @@
     </section>
 
     <!-- ===== EXPERIENCE PILLARS ===== -->
-    <section class="section section--experience" id="experience" aria-label="Sobre o Sítio Labareda">
+    <section class="section section--experience" id="experience" aria-label="Sobre o Sítio Labareda" data-i18n-aria-label="aria_sobre_sitio">
       <div class="container">
         <!-- Tagline -->
         <div class="p2-tagline">
@@ -166,7 +166,7 @@
               <img src="./img/galeria/g17.jpg" alt="Sítio Labareda" class="p2-img" loading="lazy">
             </div>
           </div>
-          <div class="p2-dots" id="p2-dots" role="tablist" aria-label="Escolher foto"></div>
+          <div class="p2-dots" id="p2-dots" role="tablist" aria-label="Escolher foto" data-i18n-aria-label="aria_escolher_foto"></div>
         </div>
 
         <!-- Manifesto -->
@@ -208,7 +208,7 @@
               <img src="./img/reserva/r13.jpg" alt="Hospedagem Sítio Labareda" class="p2-img" loading="lazy">
             </div>
           </div>
-          <div class="p2-dots" id="p3-dots" role="tablist" aria-label="Escolher foto"></div>
+          <div class="p2-dots" id="p3-dots" role="tablist" aria-label="Escolher foto" data-i18n-aria-label="aria_escolher_foto"></div>
         </div>
 
         <!-- Frase + botao Reservar -->
@@ -290,7 +290,7 @@
           <span class="section-label" data-i18n="shop_label">Loja</span>
         </div>
 
-        <div class="shop-categories" role="tablist" aria-label="Categorias de produtos">
+        <div class="shop-categories" role="tablist" aria-label="Categorias de produtos" data-i18n-aria-label="aria_categorias_produtos">
           <button class="shop-cat-btn active" role="tab" aria-selected="true" data-category="all" data-i18n="shop_cat_all">Todos</button>
           <button class="shop-cat-btn" role="tab" aria-selected="false" data-category="vestuario" data-i18n="shop_cat_clothing">Vestuário</button>
           <button class="shop-cat-btn" role="tab" aria-selected="false" data-category="chocolates" data-i18n="shop_cat_chocolates">Chocolates</button>
@@ -654,7 +654,7 @@
           <p class="footer-location" data-i18n="footer_location">Serra Grande, Costa do Cacau, Bahia, Brasil</p>
         </div>
 
-        <nav class="footer-nav" aria-label="Links do footer">
+        <nav class="footer-nav" aria-label="Links do footer" data-i18n-aria-label="aria_links_footer">
           <h3 class="footer-nav-title" data-i18n="footer_nav_title">Navegação</h3>
           <ul class="footer-nav-list">
             <li><a href="#experience" data-i18n="nav_about">ABOUT</a></li>
@@ -690,7 +690,7 @@
   </footer>
 
   <!-- ========== COOKIE BANNER ========== -->
-  <div class="cookie-banner" id="cookie-banner" role="dialog" aria-label="Aviso de cookies" aria-describedby="cookie-text">
+  <div class="cookie-banner" id="cookie-banner" role="dialog" aria-label="Aviso de cookies" data-i18n-aria-label="aria_aviso_cookies" aria-describedby="cookie-text">
     <div class="cookie-inner">
       <p class="cookie-text" id="cookie-text" data-i18n="cookie_text">
         Usamos cookies para melhorar sua experiência. Ao continuar navegando, você concorda com nossa política de privacidade.
@@ -702,9 +702,9 @@
   </div>
 
   <!-- Modal Journal Post -->
-  <div class="journal-modal-overlay" id="journal-modal" role="dialog" aria-modal="true" aria-label="Post do Journal">
+  <div class="journal-modal-overlay" id="journal-modal" role="dialog" aria-modal="true" aria-label="Post do Journal" data-i18n-aria-label="aria_post_journal">
     <div class="journal-modal">
-      <button class="journal-modal__close" id="journal-modal-close" type="button" aria-label="Fechar">&times;</button>
+      <button class="journal-modal__close" id="journal-modal-close" type="button" aria-label="Fechar" data-i18n-aria-label="aria_fechar">&times;</button>
       <div class="journal-modal__image" id="journal-modal-image"></div>
       <div class="journal-modal__body">
         <time class="journal-modal__date" id="journal-modal-date"></time>
@@ -715,63 +715,63 @@
   </div>
 
   <!-- WhatsApp Floating Button -->
-  <a href="https://wa.me/5573998150799" class="whatsapp-float" target="_blank" rel="noopener noreferrer" aria-label="Falar no WhatsApp">
+  <a href="https://wa.me/5573998150799" class="whatsapp-float" target="_blank" rel="noopener noreferrer" aria-label="Falar no WhatsApp" data-i18n-aria-label="aria_falar_whatsapp">
     <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.613.613l4.458-1.495A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.34 0-4.508-.766-6.258-2.063l-.438-.337-3.156 1.058 1.058-3.156-.337-.438A9.962 9.962 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
   </a>
 
   <!-- Booking Modal -->
   <div class="booking-modal-overlay" id="booking-modal">
     <div class="booking-modal">
-      <button class="booking-modal__close" id="booking-close">&times;</button>
-      <h2>Reservar sua estada</h2>
-      <p>Preencha os dados e entraremos em contato para confirmar.</p>
+      <button class="booking-modal__close" id="booking-close" type="button" aria-label="Fechar" data-i18n-aria-label="aria_fechar">&times;</button>
+      <h2 data-i18n="booking_modal_title">Reservar sua estada</h2>
+      <p data-i18n="booking_modal_subtitle">Preencha os dados e entraremos em contato para confirmar.</p>
       <form id="booking-form">
         <div class="booking-row">
           <div class="booking-field">
-            <label>Check-in</label>
+            <label data-i18n="booking_checkin">Check-in</label>
             <input type="date" id="booking-checkin" required>
           </div>
           <div class="booking-field">
-            <label>Check-out</label>
+            <label data-i18n="booking_checkout">Check-out</label>
             <input type="date" id="booking-checkout" required>
           </div>
         </div>
         <div class="booking-field">
-          <label>Hóspedes</label>
+          <label data-i18n="booking_guests">Hóspedes</label>
           <select id="booking-hospedes">
-            <option value="1">1 hóspede</option>
-            <option value="2" selected>2 hóspedes</option>
-            <option value="3">3 hóspedes</option>
-            <option value="4">4 hóspedes</option>
+            <option value="1" data-i18n="booking_guest_1">1 hóspede</option>
+            <option value="2" selected data-i18n="booking_guest_2">2 hóspedes</option>
+            <option value="3" data-i18n="booking_guest_3">3 hóspedes</option>
+            <option value="4" data-i18n="booking_guest_4">4 hóspedes</option>
           </select>
         </div>
         <div class="booking-field">
-          <label>Nome</label>
-          <input type="text" id="booking-nome" placeholder="Seu nome completo" required>
+          <label data-i18n="booking_name">Nome</label>
+          <input type="text" id="booking-nome" placeholder="Seu nome completo" data-i18n-placeholder="booking_name_placeholder" required>
         </div>
         <div class="booking-field">
-          <label>E-mail</label>
-          <input type="email" id="booking-email" placeholder="seu@email.com" required>
+          <label data-i18n="checkout_email">E-mail</label>
+          <input type="email" id="booking-email" placeholder="seu@email.com" data-i18n-placeholder="contact_email_placeholder" required>
         </div>
         <div class="booking-field">
-          <label>Telefone / WhatsApp</label>
+          <label data-i18n="booking_phone">Telefone / WhatsApp</label>
           <input type="tel" id="booking-telefone" placeholder="+55 11 99999-9999">
         </div>
         <div class="booking-field">
-          <label>Mensagem (opcional)</label>
-          <textarea id="booking-mensagem" rows="3" placeholder="Algum pedido especial?"></textarea>
+          <label data-i18n="booking_message">Mensagem (opcional)</label>
+          <textarea id="booking-mensagem" rows="3" placeholder="Algum pedido especial?" data-i18n-placeholder="booking_message_placeholder"></textarea>
         </div>
-        <button type="submit" class="btn btn--primary btn--large booking-submit">Solicitar Reserva</button>
+        <button type="submit" class="btn btn--primary btn--large booking-submit" data-i18n="booking_submit">Solicitar Reserva</button>
       </form>
     </div>
   </div>
 
   <!-- Cart Drawer -->
-  <div class="cart-overlay" id="cart-overlay" role="dialog" aria-modal="true" aria-label="Carrinho de compras">
+  <div class="cart-overlay" id="cart-overlay" role="dialog" aria-modal="true" aria-label="Carrinho de compras" data-i18n-aria-label="aria_carrinho_compras">
     <div class="cart-drawer" id="cart-drawer">
       <div class="cart-drawer__header">
         <h2 class="cart-drawer__title" data-i18n="cart_title">Carrinho</h2>
-        <button class="cart-drawer__close" id="cart-drawer-close" type="button" aria-label="Fechar carrinho">&times;</button>
+        <button class="cart-drawer__close" id="cart-drawer-close" type="button" aria-label="Fechar carrinho" data-i18n-aria-label="aria_fechar_carrinho">&times;</button>
       </div>
       <div class="cart-drawer__body" id="cart-drawer-body">
         <p class="cart-empty" id="cart-empty" data-i18n="cart_empty">Seu carrinho está vazio.</p>
@@ -789,9 +789,9 @@
   </div>
 
   <!-- Product Detail Modal -->
-  <div class="product-modal-overlay" id="product-modal" role="dialog" aria-modal="true" aria-label="Detalhe do produto">
+  <div class="product-modal-overlay" id="product-modal" role="dialog" aria-modal="true" aria-label="Detalhe do produto" data-i18n-aria-label="aria_detalhe_produto">
     <div class="product-modal">
-      <button class="product-modal__close" id="product-modal-close" type="button" aria-label="Fechar">&times;</button>
+      <button class="product-modal__close" id="product-modal-close" type="button" aria-label="Fechar" data-i18n-aria-label="aria_fechar">&times;</button>
       <div class="product-modal__gallery" id="product-modal-gallery"></div>
       <div class="product-modal__info">
         <span class="product-modal__category" id="product-modal-category"></span>
@@ -806,9 +806,9 @@
         <div class="product-modal__qty">
           <label for="product-modal-qty-input" data-i18n="product_qty">Quantidade</label>
           <div class="qty-selector">
-            <button class="qty-btn qty-btn--minus" id="qty-minus" type="button" aria-label="Diminuir quantidade">-</button>
+            <button class="qty-btn qty-btn--minus" id="qty-minus" type="button" aria-label="Diminuir quantidade" data-i18n-aria-label="aria_diminuir_qtd">-</button>
             <input type="number" id="product-modal-qty-input" class="qty-input" value="1" min="1" max="10" readonly>
-            <button class="qty-btn qty-btn--plus" id="qty-plus" type="button" aria-label="Aumentar quantidade">+</button>
+            <button class="qty-btn qty-btn--plus" id="qty-plus" type="button" aria-label="Aumentar quantidade" data-i18n-aria-label="aria_aumentar_qtd">+</button>
           </div>
         </div>
         <button class="btn btn--primary btn--full product-modal__add" id="product-modal-add" type="button" data-i18n="product_add_cart">Adicionar ao Carrinho</button>
@@ -817,9 +817,9 @@
   </div>
 
   <!-- Checkout Modal -->
-  <div class="checkout-overlay" id="checkout-modal" role="dialog" aria-modal="true" aria-label="Finalizar compra">
+  <div class="checkout-overlay" id="checkout-modal" role="dialog" aria-modal="true" aria-label="Finalizar compra" data-i18n-aria-label="aria_finalizar_compra">
     <div class="checkout-modal">
-      <button class="checkout-modal__close" id="checkout-close" type="button" aria-label="Fechar">&times;</button>
+      <button class="checkout-modal__close" id="checkout-close" type="button" aria-label="Fechar" data-i18n-aria-label="aria_fechar">&times;</button>
       <div class="checkout-steps" id="checkout-steps">
         <div class="checkout-step-indicators">
           <span class="checkout-step-dot active" data-step="1">1</span>
