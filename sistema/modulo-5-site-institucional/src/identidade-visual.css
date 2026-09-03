@@ -283,9 +283,12 @@ header.site-header.sticky {
 /* Alinha o wordmark LABAREDA sem o espaco da estrela */
 .site-header .logo { gap: 0; }
 
-/* Player de radio e botao do WhatsApp sempre por cima ao rolar */
-.mini-player { z-index: 9998 !important; }
-.whatsapp-float { z-index: 9997 !important; position: fixed !important; }
+/* Player de radio e botao do WhatsApp sempre por cima ao rolar,
+   mas SEMPRE abaixo dos modais (product/cart/checkout/booking/journal usam
+   z-index 2000-2100) para nao sobrepor botoes como "ADICIONAR AO CARRINHO"
+   dentro do modal de produto em telas pequenas (iPhone 11/13/17). */
+.mini-player { z-index: 1500 !important; }
+.whatsapp-float { z-index: 1490 !important; position: fixed !important; }
 
 /* ==========================================================================
    ITERAÇÃO 5 — PARTE 2 (tagline + galeria emoldurada + manifesto), do PSD
