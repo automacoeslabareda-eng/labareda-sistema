@@ -1837,6 +1837,22 @@
   var checkoutStep = 1;
   var selectedFrete = null;
   var freteOpcoes = []; // opções retornadas pelo SuperFrete
+  var mpWalletController = null; // instancia do Wallet Brick (Mercado Pago) ativa, se houver
+
+  /* Volta o passo 3 do checkout pro estado inicial (botao "Confirmar Pedido"
+     visivel, sem o botao de pagamento do Mercado Pago). Usa antes de abrir o
+     checkout de novo, senao um Wallet Brick de um pedido anterior fica preso
+     no container. */
+  function resetMpWallet() {
+    if (mpWalletController && typeof mpWalletController.unmount === 'function') {
+      try { mpWalletController.unmount(); } catch (e) { /* ignora */ }
+    }
+    mpWalletController = null;
+    var container = document.getElementById('mp-wallet-container');
+    var navRow = document.getElementById('checkout-nav-row-3');
+    if (container) { container.style.display = 'none'; container.innerHTML = ''; }
+    if (navRow) navRow.style.display = '';
+  }
 
   function openCheckout() {
     var cart = getCart();
@@ -1845,6 +1861,7 @@
     checkoutStep = 1;
     selectedFrete = null;
     freteOpcoes = [];
+    resetMpWallet();
     showCheckoutStep(1);
 
     document.getElementById('checkout-modal').classList.add('aberto');
@@ -2212,23 +2229,42 @@
           saveCart([]);
           updateCartBadge();
 
-          /* Tenta abrir modal do Mercado Pago */
-          var modalAberto = false;
+          /* Tenta mostrar o botao de pagamento do Mercado Pago (Wallet Brick)
+             no lugar do "Confirmar Pedido". mp.checkout() (modal antigo) foi
+             descontinuado pelo Mercado Pago — o metodo atual e Bricks. */
+          var walletMostrado = false;
           if (data.preference_id && data.mp_public_key && typeof MercadoPago !== 'undefined') {
             try {
               var mp = new MercadoPago(data.mp_public_key, { locale: 'pt-BR' });
-              mp.checkout({
-                preference: { id: data.preference_id },
-                autoOpen: true,
+              var container = document.getElementById('mp-wallet-container');
+              var navRow = document.getElementById('checkout-nav-row-3');
+              navRow.style.display = 'none';
+              container.style.display = '';
+              mp.bricks().create('wallet', 'mp-wallet-container', {
+                initialization: { preferenceId: data.preference_id, redirectMode: 'self' },
+                callbacks: {
+                  onReady: function () {},
+                  onError: function (walletErr) {
+                    console.warn('Wallet Brick falhou, usando redirect:', walletErr);
+                    resetMpWallet();
+                    if (link) mostrarAvisoRedirect(translations[currentLang].checkout_mp_redirect_msg, link);
+                  },
+                },
+              }).then(function (controller) {
+                mpWalletController = controller;
+              }).catch(function (walletErr) {
+                console.warn('Wallet Brick falhou ao criar, usando redirect:', walletErr);
+                resetMpWallet();
+                if (link) mostrarAvisoRedirect(translations[currentLang].checkout_mp_redirect_msg, link);
               });
-              modalAberto = true;
+              walletMostrado = true;
             } catch (mpErr) {
-              console.warn('MP modal nao disponivel, usando redirect:', mpErr);
+              console.warn('Wallet Brick nao disponivel, usando redirect:', mpErr);
             }
           }
 
           /* Fallback: mostra aviso e redireciona */
-          if (!modalAberto && link) {
+          if (!walletMostrado && link) {
             var t = translations[currentLang];
             mostrarAvisoRedirect(t.checkout_mp_redirect_msg, link);
           }

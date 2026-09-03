@@ -917,10 +917,13 @@
         <h2 data-i18n="checkout_step3_title">Resumo do Pedido</h2>
         <div class="checkout-summary" id="checkout-summary"></div>
         <div class="checkout-totals" id="checkout-totals"></div>
-        <div class="checkout-nav-row">
+        <div class="checkout-nav-row" id="checkout-nav-row-3">
           <button class="btn btn--outline" id="checkout-back-3" type="button" data-i18n="checkout_back">Voltar</button>
           <button class="btn btn--primary btn--large" id="checkout-confirm" type="button" data-i18n="checkout_confirm">Confirmar Pedido</button>
         </div>
+        <!-- Botao de pagamento do Mercado Pago (Wallet Brick) -- aparece depois
+             que o pedido e criado, no lugar do botao "Confirmar Pedido". -->
+        <div id="mp-wallet-container" style="display:none;margin-top:8px;"></div>
       </div>
 
       <!-- Success -->
