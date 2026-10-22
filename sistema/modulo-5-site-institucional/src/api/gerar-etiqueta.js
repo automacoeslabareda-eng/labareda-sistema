@@ -31,6 +31,7 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { toVercel } = require('./_netlify-adapter');
+const { linkAcompanhar } = require('./_pedido-token');
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -209,7 +210,7 @@ async function enviarEmailRastreamento(cliente, pedido, tracking, rastreioUrl) {
   var siteUrl = (process.env.SITE_URL || 'https://sitiolabareda.com').replace(/\/+$/, '');
   var whatsapp = process.env.WHATSAPP_PEDIDOS || '5573998150799';
   var whatsappLink = 'https://wa.me/' + whatsapp + '?text=' + encodeURIComponent('Oi! Tenho uma duvida sobre o pedido #' + pedido.numero);
-  var acompanharUrl = siteUrl + '/pedido.html?numero=' + pedido.numero;
+  var acompanharUrl = linkAcompanhar(siteUrl, pedido.numero);
   var from = process.env.EMAIL_FROM || 'Sitio Labareda <noreply@sitiolabareda.com>';
 
   var html = [
@@ -257,8 +258,10 @@ async function enviarEmailRastreamento(cliente, pedido, tracking, rastreioUrl) {
 
 /* ---- Logica reutilizavel: gera a etiqueta pra um pedido ----
    Usada tanto pelo endpoint HTTP (admin manual) quanto pelo webhook do
-   Mercado Pago (automatico, assim que o pagamento e aprovado). */
-async function gerarEtiquetaParaPedido(db, pedidoId) {
+   Mercado Pago (automatico, assim que o pagamento e aprovado).
+   opcoes.enviarEmail === false: nao manda o email de rastreamento (o webhook
+   ja manda o rastreio dentro do email de confirmacao de pagamento). */
+async function gerarEtiquetaParaPedido(db, pedidoId, opcoes) {
   var sf = getSuperfrete();
   if (!sf) throw new Error('SUPERFRETE_TOKEN nao configurado.');
 
@@ -298,7 +301,7 @@ async function gerarEtiquetaParaPedido(db, pedidoId) {
 
   // 5. Envia email de rastreamento
   var emailEnviado = false;
-  if (cliente.email && etiqueta.tracking) {
+  if (cliente.email && etiqueta.tracking && !(opcoes && opcoes.enviarEmail === false)) {
     emailEnviado = await enviarEmailRastreamento(cliente, pedido, etiqueta.tracking, rastreioUrl);
   }
 

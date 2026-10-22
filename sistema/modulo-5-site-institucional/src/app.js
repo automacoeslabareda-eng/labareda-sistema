@@ -1937,17 +1937,10 @@
   var checkoutStep = 1;
   var selectedFrete = null;
   var freteOpcoes = []; // opções retornadas pelo SuperFrete
-  var mpWalletController = null; // instancia do Wallet Brick (Mercado Pago) ativa, se houver
 
   /* Volta o passo 3 do checkout pro estado inicial (botao "Confirmar Pedido"
-     visivel, sem o botao de pagamento do Mercado Pago). Usa antes de abrir o
-     checkout de novo, senao um Wallet Brick de um pedido anterior fica preso
-     no container. */
+     visivel, sem o botao de pagamento do Mercado Pago de um pedido anterior). */
   function resetMpWallet() {
-    if (mpWalletController && typeof mpWalletController.unmount === 'function') {
-      try { mpWalletController.unmount(); } catch (e) { /* ignora */ }
-    }
-    mpWalletController = null;
     var container = document.getElementById('mp-wallet-container');
     var navRow = document.getElementById('checkout-nav-row-3');
     if (container) { container.style.display = 'none'; container.innerHTML = ''; }
@@ -2162,27 +2155,6 @@
       + '</div>';
   }
 
-  /* --- Aviso de redirect para Mercado Pago (fallback do modal) --- */
-  function mostrarAvisoRedirect(mensagem, link) {
-    var t = translations[currentLang];
-    var overlay = document.createElement('div');
-    overlay.className = 'mp-redirect-overlay';
-    overlay.innerHTML = '<div class="mp-redirect-box">'
-      + '<p class="mp-redirect-msg">' + mensagem + '</p>'
-      + '<div class="mp-redirect-btns">'
-      + '<a href="' + link + '" class="btn btn--primary">' + (t.checkout_mp_redirect_btn || 'Ir para o pagamento') + '</a>'
-      + '<button class="btn btn--outline mp-redirect-cancel">' + (t.checkout_mp_cancel || 'Cancelar') + '</button>'
-      + '</div>'
-      + '</div>';
-    document.body.appendChild(overlay);
-    overlay.querySelector('.mp-redirect-cancel').addEventListener('click', function () {
-      overlay.remove();
-    });
-    overlay.addEventListener('click', function (e) {
-      if (e.target === overlay) overlay.remove();
-    });
-  }
-
   /* Checkout event bindings */
   document.getElementById('checkout-close').addEventListener('click', closeCheckout);
 
@@ -2320,59 +2292,41 @@
       .then(function (r) {
         return r.json().then(function (data) {
           if (!r.ok || !data.ok) {
-            throw new Error((data && data.erro) || 'Falha ao iniciar o pagamento');
+            var errServidor = new Error((data && data.erro) || 'Falha ao iniciar o pagamento');
+            errServidor.doServidor = !!(data && data.erro);
+            throw errServidor;
           }
 
           var link = data.init_point || data.sandbox_init_point;
-          if (!link && !data.preference_id) throw new Error('Link de pagamento não recebido');
+          if (!link) throw new Error('Link de pagamento não recebido');
 
           saveCart([]);
           updateCartBadge();
 
-          /* Tenta mostrar o botao de pagamento do Mercado Pago (Wallet Brick)
-             no lugar do "Confirmar Pedido". mp.checkout() (modal antigo) foi
-             descontinuado pelo Mercado Pago — o metodo atual e Bricks. */
-          var walletMostrado = false;
-          if (data.preference_id && data.mp_public_key && typeof MercadoPago !== 'undefined') {
-            try {
-              var mp = new MercadoPago(data.mp_public_key, { locale: 'pt-BR' });
-              var container = document.getElementById('mp-wallet-container');
-              var navRow = document.getElementById('checkout-nav-row-3');
-              navRow.style.display = 'none';
-              container.style.display = '';
-              mp.bricks().create('wallet', 'mp-wallet-container', {
-                initialization: { preferenceId: data.preference_id, redirectMode: 'self' },
-                callbacks: {
-                  onReady: function () {},
-                  onError: function (walletErr) {
-                    console.warn('Wallet Brick falhou, usando redirect:', walletErr);
-                    resetMpWallet();
-                    if (link) mostrarAvisoRedirect(translations[currentLang].checkout_mp_redirect_msg, link);
-                  },
-                },
-              }).then(function (controller) {
-                mpWalletController = controller;
-              }).catch(function (walletErr) {
-                console.warn('Wallet Brick falhou ao criar, usando redirect:', walletErr);
-                resetMpWallet();
-                if (link) mostrarAvisoRedirect(translations[currentLang].checkout_mp_redirect_msg, link);
-              });
-              walletMostrado = true;
-            } catch (mpErr) {
-              console.warn('Wallet Brick nao disponivel, usando redirect:', mpErr);
-            }
+          /* Leva o cliente direto pro Checkout Pro do Mercado Pago (redirect).
+             O Wallet Brick falhava em silencio (chave publica de outro
+             ambiente, bloqueio no Safari etc.) e o cliente ficava preso no
+             passo 3 sem conseguir pagar. O redirect pelo init_point e o
+             fluxo oficial e nao depende do SDK JS. Deixa tambem um botao
+             visivel, caso o navegador nao siga o redirect automatico. */
+          var t = translations[currentLang];
+          var container = document.getElementById('mp-wallet-container');
+          var navRow = document.getElementById('checkout-nav-row-3');
+          if (navRow) navRow.style.display = 'none';
+          if (container) {
+            container.innerHTML = '<p class="mp-redirect-msg">' + t.checkout_mp_redirect_msg + '</p>'
+              + '<a href="' + link + '" class="btn btn--primary btn--large" style="width:100%;text-align:center;">'
+              + (t.checkout_mp_redirect_btn || 'Ir para o pagamento') + '</a>';
+            container.style.display = '';
           }
-
-          /* Fallback: mostra aviso e redireciona */
-          if (!walletMostrado && link) {
-            var t = translations[currentLang];
-            mostrarAvisoRedirect(t.checkout_mp_redirect_msg, link);
-          }
+          setTimeout(function () { window.location.assign(link); }, 600);
         });
       })
       .catch(function (err) {
         console.error('Checkout error:', err);
-        showToast(translations[currentLang].checkout_error, true);
+        /* Erros de validacao do servidor (estoque, frete mudou etc.) sao
+           mostrados como vieram; o resto vira a mensagem generica. */
+        showToast(err && err.doServidor ? err.message : translations[currentLang].checkout_error, true);
       })
       .finally(function () {
         btn.disabled = false;

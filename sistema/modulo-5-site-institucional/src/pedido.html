@@ -129,9 +129,12 @@
 
   <div class="container">
     <div class="search-box">
-      <label>Digite o número do seu pedido</label>
+      <label>Digite o número do pedido e o email usado na compra</label>
       <div class="search-row">
         <input type="text" class="search-input" id="input-numero" placeholder="Ex: 1001" inputmode="numeric" autofocus>
+      </div>
+      <div class="search-row" id="row-email" style="margin-top:10px;">
+        <input type="email" class="search-input" id="input-email" placeholder="seu@email.com" autocomplete="email">
         <button class="search-btn" id="btn-buscar" onclick="buscarPedido()">Buscar</button>
       </div>
     </div>
@@ -207,14 +210,25 @@
     // Auto-buscar se vier com ?numero=XXX na URL
     var params = new URLSearchParams(location.search);
     var autoNumero = params.get('numero');
-    if (autoNumero) {
-      document.getElementById('input-numero').value = autoNumero;
+    // Token do link enviado por email: abre o pedido sem pedir o email.
+    var linkToken = params.get('t') || '';
+    if (autoNumero) document.getElementById('input-numero').value = autoNumero;
+    if (autoNumero && linkToken) {
       window.addEventListener('DOMContentLoaded', function() { buscarPedido(); });
     }
 
     function buscarPedido() {
       var numero = document.getElementById('input-numero').value.trim();
+      var email = document.getElementById('input-email').value.trim();
       if (!numero) return;
+      // O token so vale para o numero que veio no link
+      var t = (numero === autoNumero) ? linkToken : '';
+      if (!email && !t) {
+        var erroEl = document.getElementById('erro');
+        erroEl.textContent = 'Informe também o email usado na compra.';
+        erroEl.style.display = 'block';
+        return;
+      }
 
       var btn = document.getElementById('btn-buscar');
       var erro = document.getElementById('erro');
@@ -226,7 +240,7 @@
       fetch('/api/consultar-pedido', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ numero: numero })
+        body: JSON.stringify({ numero: numero, email: email, t: t })
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {
@@ -296,6 +310,9 @@
 
     // Enter para buscar
     document.getElementById('input-numero').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') buscarPedido();
+    });
+    document.getElementById('input-email').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') buscarPedido();
     });
   </script>

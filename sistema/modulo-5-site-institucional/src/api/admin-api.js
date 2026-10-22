@@ -21,6 +21,7 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { toVercel } = require('./_netlify-adapter');
+const { linkAcompanhar } = require('./_pedido-token');
 
 // Projeto de GESTAO (onde vive usuarios_admin) — anon key e publica
 const GESTAO_URL = 'https://tidngxclgaspltzqoemi.supabase.co';
@@ -160,7 +161,7 @@ const handler = async (event) => {
             var sUrl = (process.env.SITE_URL || 'https://sitiolabareda.com').replace(/\/+$/, '');
             var wpp = process.env.WHATSAPP_PEDIDOS || '5573998150799';
             var wppLink = 'https://wa.me/' + wpp + '?text=' + encodeURIComponent('Oi! Tenho uma duvida sobre o pedido #' + pedidoData.numero);
-            var acompUrl = sUrl + '/pedido.html?numero=' + pedidoData.numero;
+            var acompUrl = linkAcompanhar(sUrl, pedidoData.numero);
             var emailHtml = '<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;color:#2E2624;">'
               + '<h2 style="color:#AA3424;text-align:center;margin-bottom:24px;">Sitio Labareda</h2>'
               + '<p>Ola, ' + (cli.nome || '').split(' ')[0] + '!</p>'

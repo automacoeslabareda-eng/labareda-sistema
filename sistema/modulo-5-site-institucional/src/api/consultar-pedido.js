@@ -1,11 +1,13 @@
 /**
  * consultar-pedido (Vercel Serverless Function)
  * Endpoint PUBLICO — nao requer login.
- * Recebe { numero: "XXX" } e retorna status, rastreio e itens do pedido.
+ * Recebe { numero, email } ou { numero, t } (token do link dos emails —
+ * ver _pedido-token.js) e retorna status, rastreio e itens do pedido.
  */
 
 const { createClient } = require('@supabase/supabase-js');
 const { toVercel } = require('./_netlify-adapter');
+const { tokenValido } = require('./_pedido-token');
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -29,6 +31,9 @@ const handler = async (event) => {
 
   const numero = (body.numero || '').toString().trim();
   if (!numero) return resposta(400, { erro: 'Informe o numero do pedido.' });
+  const email = (body.email || '').toString().trim().toLowerCase();
+  const token = (body.t || '').toString().trim();
+  if (!email && !token) return resposta(400, { erro: 'Informe o numero do pedido e o email usado na compra.' });
 
   const db = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
@@ -36,11 +41,17 @@ const handler = async (event) => {
     // Busca por numero do pedido
     const { data: pedido, error } = await db
       .from('pedidos')
-      .select('id,numero,status,subtotal,frete,total,metodo_pagamento,codigo_rastreio,rastreio_url,enviado_at,created_at,endereco_entrega')
+      .select('id,numero,status,subtotal,frete,total,metodo_pagamento,codigo_rastreio,rastreio_url,enviado_at,created_at,clientes(email)')
       .eq('numero', parseInt(numero, 10))
       .single();
 
-    if (error || !pedido) return resposta(404, { erro: 'Pedido nao encontrado. Verifique o numero.' });
+    // Mesma resposta para "nao existe" e "email nao confere": nao revela
+    // quais numeros de pedido existem.
+    const naoEncontrado = resposta(404, { erro: 'Pedido nao encontrado. Confira o numero e o email usado na compra.' });
+    if (error || !pedido) return naoEncontrado;
+    const emailPedido = ((pedido.clientes && pedido.clientes.email) || '').toLowerCase();
+    const autorizado = tokenValido(pedido.numero, token) || (email && emailPedido && email === emailPedido);
+    if (!autorizado) return naoEncontrado;
 
     // Busca itens do pedido
     const { data: itens } = await db

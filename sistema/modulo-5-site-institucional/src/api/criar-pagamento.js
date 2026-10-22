@@ -9,7 +9,8 @@
  *  Recebe: { cliente:{nome,email,telefone,cpf,endereco}, itens:[{produto_id,quantidade}], frete:{regiao,valor} }
  *  1. Upsert do cliente (por email).
  *  2. Le os produtos no banco e usa o PRECO DO BANCO (anti-fraude).
- *  3. Valida o frete contra a tabela de frete.
+ *  3. Frete: recota no SuperFrete o servico escolhido (preco do servidor);
+ *     sem servico SuperFrete, valida contra a tabela de frete.
  *  4. Cria pedido "pendente" + itens.
  *  5. Cria a preferencia no Mercado Pago (Checkout Pro) e devolve o link.
  *
@@ -23,6 +24,8 @@
 const { createClient } = require('@supabase/supabase-js');
 const { MercadoPagoConfig, Preference } = require('mercadopago');
 const { toVercel } = require('./_netlify-adapter');
+const { emailPedidoCriado } = require('./_emails');
+const { cotarFrete, montarPacote } = require('./cotacao-frete');
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -102,12 +105,13 @@ const handler = async (event) => {
     if (ids.length === 0) return resposta(400, { erro: 'Itens sem produto_id.' });
     const { data: produtos, error: errProd } = await supabase
       .from('produtos')
-      .select('id, nome_pt, preco, preco_promocional, estoque, variantes_estoque, ativo')
+      .select('id, nome_pt, preco, preco_promocional, estoque, variantes_estoque, ativo, peso_gramas, frete_altura, frete_largura, frete_comprimento')
       .in('id', ids);
     if (errProd) throw errProd;
 
     const itensPedido = [];
     const itensMP = [];
+    const itensPacote = [];
     let subtotal = 0;
     for (const item of itens) {
       const prod = (produtos || []).find((p) => p.id === item.produto_id);
@@ -132,19 +136,44 @@ const handler = async (event) => {
       const preco = Number(prod.preco_promocional) > 0 ? Number(prod.preco_promocional) : Number(prod.preco);
       subtotal += preco * qtd;
       itensPedido.push({ produto_id: prod.id, nome_produto: prod.nome_pt, tamanho, quantidade: qtd, preco_unitario: preco, subtotal: preco * qtd });
+      itensPacote.push({ quantidade: qtd, peso_gramas: prod.peso_gramas, frete_altura: prod.frete_altura, frete_largura: prod.frete_largura, frete_comprimento: prod.frete_comprimento });
       itensMP.push({ title: prod.nome_pt + (tamanho ? ` (${tamanho})` : ''), quantity: qtd, unit_price: preco, currency_id: 'BRL' });
     }
 
-    // --- 3. Frete: valida contra a tabela ---
-    const { data: fretes } = await supabase.from('frete_tabela').select('regiao, valor').eq('ativo', true);
+    // --- 3. Frete ---
+    // Com servico SuperFrete escolhido: recota aqui no servidor com os
+    // pesos/medidas do banco e cobra o preco DA COTACAO (o valor que vem do
+    // navegador e so referencia). Antes o valor era limitado ao maior da
+    // frete_tabela (R$ 45), entao um SEDEX de R$ 80 era cobrado a menos.
     let frete = Number(freteReq.valor) || 0;
-    const maxFrete = (fretes || []).reduce((m, f) => Math.max(m, Number(f.valor) || 0), 0);
-    if (freteReq.regiao) {
-      const match = (fretes || []).find((f) => (f.regiao || '').toUpperCase() === String(freteReq.regiao).toUpperCase());
-      if (match) frete = Number(match.valor) || 0;
+    let freteServiceName = freteReq.service_name || null;
+    if (freteReq.service_id) {
+      let opcoes = null;
+      try {
+        opcoes = await cotarFrete(end.cep, montarPacote(itensPacote));
+      } catch (e) {
+        console.error('criar-pagamento: falha ao recotar frete:', e.message);
+      }
+      if (!opcoes) {
+        return resposta(503, { erro: 'Não foi possível confirmar o frete agora. Tente novamente em instantes.' });
+      }
+      const opcao = opcoes.find((o) => String(o.id) === String(freteReq.service_id));
+      if (!opcao) {
+        return resposta(409, { erro: 'A opção de frete escolhida não está mais disponível para este CEP. Volte e recalcule o frete.' });
+      }
+      frete = Number(opcao.preco) || 0;
+      freteServiceName = opcao.nome || freteServiceName;
+    } else {
+      // Fluxo antigo (tabela por regiao)
+      const { data: fretes } = await supabase.from('frete_tabela').select('regiao, valor').eq('ativo', true);
+      const maxFrete = (fretes || []).reduce((m, f) => Math.max(m, Number(f.valor) || 0), 0);
+      if (freteReq.regiao) {
+        const match = (fretes || []).find((f) => (f.regiao || '').toUpperCase() === String(freteReq.regiao).toUpperCase());
+        if (match) frete = Number(match.valor) || 0;
+      }
+      if (maxFrete > 0 && frete > maxFrete) frete = maxFrete; // anti-manipulacao
     }
     if (frete < 0) frete = 0;
-    if (maxFrete > 0 && frete > maxFrete) frete = maxFrete; // anti-manipulacao
     const total = subtotal + frete;
 
     // --- 4. Cria pedido + itens ---
@@ -159,7 +188,7 @@ const handler = async (event) => {
     };
     // Salva dados do frete para emissão da etiqueta
     if (freteReq.service_id) pedidoInsert.frete_service_id = freteReq.service_id;
-    if (freteReq.service_name) pedidoInsert.frete_service_name = freteReq.service_name;
+    if (freteServiceName) pedidoInsert.frete_service_name = freteServiceName;
     const { data: pedido, error: errPed } = await supabase
       .from('pedidos')
       .insert(pedidoInsert)
@@ -190,6 +219,21 @@ const handler = async (event) => {
     });
 
     await supabase.from('pedidos').update({ mercadopago_id: pref.id }).eq('id', pedido.id);
+
+    // Email "pedido recebido" com o link de pagamento (cliente + copia pra
+    // loja). Se o cliente fechar a aba ou o Mercado Pago nao abrir, ele
+    // ainda tem o link no email. Falha de email nao impede a compra.
+    const linkPagamento = pref.init_point || pref.sandbox_init_point || '';
+    try {
+      await emailPedidoCriado(
+        { nome: cliente.nome, email: cliente.email, telefone: cliente.telefone },
+        { numero: pedido.numero, subtotal, frete, total, endereco_entrega: end, frete_service_name: freteServiceName },
+        itensPedido,
+        linkPagamento
+      );
+    } catch (e) {
+      console.error('criar-pagamento: falha ao enviar email do pedido (nao critico):', e.message);
+    }
 
     // Public key para o SDK do Mercado Pago (modal no frontend).
     // Prioriza a variavel do ambiente atual, mas cai pra qualquer uma
