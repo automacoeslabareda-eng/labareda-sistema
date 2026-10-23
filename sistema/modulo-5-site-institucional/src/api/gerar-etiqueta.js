@@ -12,7 +12,7 @@
  *   1. Valida token admin
  *   2. Busca pedido + cliente + itens no Supabase
  *   3. Cria envio no SuperFrete (POST /api/v0/cart)
- *   4. Gera etiqueta (POST /api/v0/order/checkout ou /api/v0/order)
+ *   4. Paga a etiqueta (POST /api/v0/checkout) e pega o PDF (POST /api/v0/tag/print)
  *   5. Salva tracking + etiqueta_url no pedido
  *   6. Envia email ao cliente com rastreamento
  *   7. Retorna dados da etiqueta
@@ -167,36 +167,64 @@ async function criarEnvioSuperFrete(sf, pedido, cliente, itens) {
 
   var cartData = await cartRes.json();
 
-  // 2. Gera a etiqueta (checkout do carrinho)
-  var checkoutPayload = { orders: [cartData.id] };
-  var orderRes = await fetch(sf.baseUrl + '/api/v0/order', {
+  // 2. Paga o frete e gera a etiqueta (POST /api/v0/checkout — usa o saldo
+  //    da conta SuperFrete). Resposta: { success, purchase: { orders: [{ id,
+  //    tracking, print: { url } }] } }. Doc: superfrete.readme.io/reference/apiintegrationv1checkout
+  var headers = {
+    'Authorization': 'Bearer ' + sf.token,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'User-Agent': 'SitioLabareda/1.0 (sitiolabareda@gmail.com)',
+  };
+  var orderRes = await fetch(sf.baseUrl + '/api/v0/checkout', {
     method: 'POST',
-    headers: {
-      'Authorization': 'Bearer ' + sf.token,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'User-Agent': 'SitioLabareda/1.0 (sitiolabareda@gmail.com)',
-    },
-    body: JSON.stringify(checkoutPayload),
+    headers: headers,
+    body: JSON.stringify({ orders: [cartData.id] }),
   });
 
   if (!orderRes.ok) {
     var errText2 = await orderRes.text();
-    console.error('SuperFrete order error:', orderRes.status, errText2);
-    throw new Error('Erro ao gerar etiqueta no SuperFrete: ' + orderRes.status + '. Verifique o saldo/credito.');
+    console.error('SuperFrete checkout error:', orderRes.status, errText2);
+    throw new Error('Erro ao pagar a etiqueta no SuperFrete: ' + orderRes.status + '. Verifique o saldo/credito.');
   }
 
   var orderData = await orderRes.json();
+  if (orderData && orderData.success === false) {
+    console.error('SuperFrete checkout recusado:', JSON.stringify(orderData));
+    throw new Error('SuperFrete recusou a etiqueta: ' + (orderData.message || orderData.error || 'verifique o saldo/credito'));
+  }
+  var compra = (orderData && orderData.purchase) || {};
+  var order = (Array.isArray(compra.orders) && compra.orders[0]) || {};
+  var orderId = order.id || cartData.id;
+  var labelUrl = order.print && order.print.url ? order.print.url : null;
 
-  // Extrai dados da etiqueta
-  var order = Array.isArray(orderData) ? orderData[0] : orderData;
+  // 3. O checkout pode voltar com print.url vazio: pede o link do PDF em
+  //    POST /api/v0/tag/print. Doc: superfrete.readme.io/reference/tag-link
+  if (!labelUrl) {
+    try {
+      var printRes = await fetch(sf.baseUrl + '/api/v0/tag/print', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({ orders: [orderId] }),
+      });
+      if (printRes.ok) {
+        var printData = await printRes.json();
+        labelUrl = printData && printData.url ? printData.url : null;
+      } else {
+        console.error('SuperFrete tag/print error:', printRes.status, await printRes.text().catch(function () { return ''; }));
+      }
+    } catch (e) {
+      console.error('SuperFrete tag/print falhou:', e.message);
+    }
+  }
+
   return {
-    superfrete_order_id: order.id || cartData.id,
+    superfrete_order_id: orderId,
     tracking: order.tracking || cartData.tracking || null,
-    label_url: order.print && order.print.url ? order.print.url : null,
-    status: order.status || 'generated',
-    service_name: order.service_name || '',
-    protocol: order.protocol || '',
+    label_url: labelUrl,
+    status: compra.status || 'generated',
+    service_name: cartData.service_name || '',
+    protocol: cartData.protocol || '',
   };
 }
 
