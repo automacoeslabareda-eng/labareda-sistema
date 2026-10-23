@@ -153,7 +153,7 @@ const handler = async (event) => {
       let cliente = null;
       if (pedido.cliente_id) {
         const { data: cli } = await supabase
-          .from('clientes').select('nome, email, telefone').eq('id', pedido.cliente_id).single();
+          .from('clientes').select('nome, email, telefone, cpf').eq('id', pedido.cliente_id).single();
         cliente = cli || null;
       }
 
@@ -212,6 +212,10 @@ const handler = async (event) => {
               etiqueta_gerada: !!etiqueta,
               rastreio_codigo: etiqueta ? etiqueta.tracking : null,
               etiqueta_url: etiqueta ? etiqueta.etiqueta_url : null,
+              rastreio_url: etiqueta ? etiqueta.rastreio_url : null,
+              etiqueta_erro: etiqueta ? null : erroEtiqueta,
+              frete_servico: pedido.frete_service_name || null,
+              cliente_cpf: cliente ? cliente.cpf || null : null,
             }),
           });
         } catch (e) {

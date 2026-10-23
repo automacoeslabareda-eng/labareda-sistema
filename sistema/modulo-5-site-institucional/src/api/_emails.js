@@ -124,7 +124,8 @@ function moldura(conteudo) {
 function dadosClienteHtml(cliente) {
   cliente = cliente || {};
   return '<div style="margin:20px 0;font-size:.9rem;"><p style="font-size:.85rem;color:#6b5f56;margin-bottom:4px;">Cliente:</p>'
-    + esc(cliente.nome) + '<br>' + esc(cliente.email) + (cliente.telefone ? '<br>' + esc(cliente.telefone) : '') + '</div>';
+    + esc(cliente.nome) + '<br>' + esc(cliente.email) + (cliente.telefone ? '<br>' + esc(cliente.telefone) : '')
+    + (cliente.cpf ? '<br>CPF: ' + esc(cliente.cpf) : '') + '</div>';
 }
 
 /* 1. Pedido criado: cliente recebe o link pra pagar; loja recebe aviso. */
@@ -193,17 +194,34 @@ async function emailPagamentoAprovado(cliente, pedido, itens, etiqueta) {
       + (etiqueta && etiqueta.erro ? '<br>Motivo: ' + esc(etiqueta.erro) : '') + '</p>';
   }
 
+  // Checklist do que a equipe precisa fazer pra despachar a venda
+  var tel = ((cliente && cliente.telefone) || '').replace(/\D/g, '');
+  var waCliente = tel ? 'https://wa.me/' + (tel.length <= 11 ? '55' + tel : tel) : '';
+  var item = function (feito, html) {
+    return '<li style="margin:8px 0;list-style:none;">' + (feito ? '✅ ' : '⬜ ') + html + '</li>';
+  };
+  var checklist = '<div style="background:#fff4e5;border:1px solid #f0d9b5;border-radius:8px;padding:12px 16px;margin:20px 0;">'
+    + '<p style="margin:0 0 6px;font-weight:bold;">Checklist do pedido</p><ul style="padding:0;margin:0;font-size:.9rem;">'
+    + item(etiqueta && etiqueta.etiqueta_url, 'Etiqueta de envio' + (etiqueta && etiqueta.etiqueta_url ? ' — <a href="' + esc(etiqueta.etiqueta_url) + '">imprimir</a>' : ' — gerar no painel da loja'))
+    + item(false, 'Emitir nota fiscal' + (cliente && cliente.cpf ? ' (CPF ' + esc(cliente.cpf) + ')' : ''))
+    + item(false, 'Falar com o cliente: ' + esc(cliente && cliente.nome)
+      + (tel ? ' — <a href="' + esc(waCliente) + '">WhatsApp ' + esc(cliente.telefone) + '</a>' : '')
+      + (cliente && cliente.email ? ' — <a href="mailto:' + esc(cliente.email) + '">' + esc(cliente.email) + '</a>' : ''))
+    + item(false, 'Separar, embalar e postar')
+    + '</ul></div>';
+
   var htmlLoja = moldura(
-    '<p>💰 Pagamento <strong>aprovado</strong> — pedido <strong>#' + esc(pedido.numero) + '</strong>.</p>'
+    '<p>💰 <strong>VENDEU!</strong> Pagamento aprovado — pedido <strong>#' + esc(pedido.numero) + '</strong>.</p>'
+    + checklist
+    + blocoEtiquetaLoja
     + dadosClienteHtml(cliente)
     + resumoHtml(pedido, itens)
     + enderecoHtml(pedido.endereco_entrega)
-    + blocoEtiquetaLoja
   );
 
   var r = await Promise.all([
     enviarEmail(cliente && cliente.email, 'Pedido #' + pedido.numero + ' confirmado! — Sítio Labareda', htmlCliente),
-    enviarEmail(process.env.EMAIL_LOJA || 'sitiolabareda@gmail.com', '[Loja] Pedido #' + pedido.numero + ' PAGO', htmlLoja),
+    enviarEmail(process.env.EMAIL_LOJA || 'sitiolabareda@gmail.com', '💰 VENDEU! Pedido #' + pedido.numero + ' pago — etiqueta, nota e contato', htmlLoja),
   ]);
   return { cliente: r[0], loja: r[1] };
 }
