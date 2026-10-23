@@ -38,6 +38,12 @@ function resolverAccessToken(env) {
   return (prod ? env.MP_ACCESS_TOKEN_PROD : env.MP_ACCESS_TOKEN_TESTE) || env.MP_ACCESS_TOKEN || '';
 }
 
+// Erro de pagamento da etiqueta por falta de credito na conta SuperFrete
+// (o /checkout devolve 409 / mensagem de saldo).
+function semSaldoSuperFrete(msg) {
+  return /saldo|insuficiente|cr[eé]dito|pagar a etiqueta no SuperFrete: 409/i.test(String(msg || ''));
+}
+
 const handler = async (event) => {
   const ok200 = { statusCode: 200, body: 'ok' };
   if (event.httpMethod !== 'POST') return ok200;
@@ -214,6 +220,7 @@ const handler = async (event) => {
               etiqueta_url: etiqueta ? etiqueta.etiqueta_url : null,
               rastreio_url: etiqueta ? etiqueta.rastreio_url : null,
               etiqueta_erro: etiqueta ? null : erroEtiqueta,
+              etiqueta_sem_saldo: !etiqueta && semSaldoSuperFrete(erroEtiqueta),
               frete_servico: pedido.frete_service_name || null,
               cliente_cpf: cliente ? cliente.cpf || null : null,
             }),

@@ -189,6 +189,12 @@ async function emailPagamentoAprovado(cliente, pedido, itens, etiqueta) {
       + (etiqueta.tracking ? 'Rastreio: ' + esc(etiqueta.tracking) + '<br>' : '')
       + (etiqueta.etiqueta_url ? '<a href="' + esc(etiqueta.etiqueta_url) + '">Imprimir etiqueta</a>' : '')
       + '</p>';
+  } else if (etiqueta && /saldo|insuficiente|cr[eé]dito|SuperFrete: 409/i.test(String(etiqueta.erro || ''))) {
+    blocoEtiquetaLoja = '<div style="background:#fdecea;border:2px solid #AA3424;border-radius:8px;padding:14px 16px;margin:16px 0;font-size:.95rem;">'
+      + '<strong>⚠️ SEM SALDO NO SUPERFRETE — a etiqueta não foi emitida.</strong><br>'
+      + '1. Coloque crédito na conta SuperFrete.<br>'
+      + '2. No painel da loja, abra o pedido #' + esc(pedido.numero) + ' e clique em <strong>Gerar etiqueta SuperFrete</strong>.'
+      + '</div>';
   } else {
     blocoEtiquetaLoja = '<p style="font-size:.9rem;color:#AA3424;"><strong>Etiqueta NÃO gerada automaticamente</strong> — gere pelo painel da loja.'
       + (etiqueta && etiqueta.erro ? '<br>Motivo: ' + esc(etiqueta.erro) : '') + '</p>';
@@ -202,7 +208,7 @@ async function emailPagamentoAprovado(cliente, pedido, itens, etiqueta) {
   };
   var checklist = '<div style="background:#fff4e5;border:1px solid #f0d9b5;border-radius:8px;padding:12px 16px;margin:20px 0;">'
     + '<p style="margin:0 0 6px;font-weight:bold;">Checklist do pedido</p><ul style="padding:0;margin:0;font-size:.9rem;">'
-    + item(etiqueta && etiqueta.etiqueta_url, 'Etiqueta de envio' + (etiqueta && etiqueta.etiqueta_url ? ' — <a href="' + esc(etiqueta.etiqueta_url) + '">imprimir</a>' : ' — gerar no painel da loja'))
+    + item(etiqueta && etiqueta.etiqueta_url, 'Etiqueta de envio' + (etiqueta && etiqueta.etiqueta_url ? ' — <a href="' + esc(etiqueta.etiqueta_url) + '">imprimir</a>' : ' — gerar no painel da loja (veja o aviso abaixo)'))
     + item(false, 'Emitir nota fiscal' + (cliente && cliente.cpf ? ' (CPF ' + esc(cliente.cpf) + ')' : ''))
     + item(false, 'Falar com o cliente: ' + esc(cliente && cliente.nome)
       + (tel ? ' — <a href="' + esc(waCliente) + '">WhatsApp ' + esc(cliente.telefone) + '</a>' : '')
