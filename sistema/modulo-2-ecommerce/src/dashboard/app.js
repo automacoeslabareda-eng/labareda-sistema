@@ -32,7 +32,9 @@ var GESTAO_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 /*  CAMADA SEGURA (admin-api) — dados sensiveis via chave secreta      */
 /* ================================================================== */
 var ADMIN_API_URL = 'https://sitiolabareda.com/api/admin-api';
+var GERAR_ETIQUETA_URL = 'https://sitiolabareda.com/api/gerar-etiqueta';
 var adminToken = null;
+var pedidosCache = {}; // id -> pedido (pra mostrar etiqueta/rastreio no detalhe)
 
 async function adminApi(action, params) {
   var headers = { 'Content-Type': 'application/json' };
@@ -619,6 +621,8 @@ async function carregarPedidos() {
     var resp = await adminApi('pedidos', statusFiltro ? { status: statusFiltro } : {});
     var data = resp.pedidos || [];
     var tbody = $('#tbody-pedidos');
+    pedidosCache = {};
+    data.forEach(function(p) { pedidosCache[p.id] = p; });
 
     if (!data || data.length === 0) {
       tbody.innerHTML = '<tr><td colspan="6" class="placeholder">Nenhum pedido encontrado</td></tr>';
@@ -696,11 +700,50 @@ async function expandirPedido(pedidoId) {
       + '</div>';
     container.innerHTML += rastreioHtml;
 
+    // Etiqueta SuperFrete: link pra imprimir, ou botao pra gerar
+    var ped = pedidosCache[pedidoId] || {};
+    var etiquetaHtml = '<div style="margin-top:12px;padding:14px;border:1px solid #ddd;border-radius:6px;background:#fafaf5">'
+      + '<label style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:8px">Etiqueta de envio (SuperFrete)</label>';
+    if (ped.etiqueta_url) {
+      etiquetaHtml += '<a class="btn btn--primary" href="' + escapeHtml(ped.etiqueta_url) + '" target="_blank" rel="noopener">Imprimir etiqueta</a>'
+        + (ped.codigo_rastreio ? ' <span style="font-family:monospace;margin-left:8px">' + escapeHtml(ped.codigo_rastreio) + '</span>' : '');
+    } else if (ped.status === 'pago' || ped.status === 'preparando') {
+      etiquetaHtml += '<button class="btn btn--primary" id="btn-etiqueta-' + pedidoId + '" onclick="gerarEtiqueta(\'' + pedidoId + '\')">Gerar etiqueta SuperFrete</button>'
+        + '<p style="font-size:12px;color:#777;margin:8px 0 0">Paga o frete com o saldo da conta SuperFrete e envia o rastreio por email ao cliente.</p>';
+    } else {
+      etiquetaHtml += '<p style="font-size:13px;color:#777;margin:0">Disponivel quando o pedido estiver pago.</p>';
+    }
+    etiquetaHtml += '</div>';
+    container.innerHTML += etiquetaHtml;
+
     detalhe.classList.remove('escondido');
     detalhe.scrollIntoView({ behavior: 'smooth' });
 
   } catch (err) {
     console.error('Erro ao expandir pedido:', err);
+  }
+}
+
+async function gerarEtiqueta(pedidoId) {
+  if (!confirm('Gerar a etiqueta no SuperFrete? O frete sera pago com o saldo da conta.')) return;
+  var btn = $('#btn-etiqueta-' + pedidoId);
+  if (btn) { btn.disabled = true; btn.textContent = 'Gerando...'; }
+  try {
+    var r = await fetch(GERAR_ETIQUETA_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + adminToken },
+      body: JSON.stringify({ pedido_id: pedidoId }),
+    });
+    var data = await r.json();
+    if (!r.ok || !data.ok) throw new Error((data && (data.detalhe || data.erro)) || ('Erro ' + r.status));
+    mostrarToast('Etiqueta gerada! Rastreio ' + (data.tracking || ''));
+    if (data.etiqueta_url) window.open(data.etiqueta_url, '_blank', 'noopener');
+    await carregarPedidos();
+    expandirPedido(pedidoId);
+  } catch (err) {
+    console.error('Erro ao gerar etiqueta:', err);
+    mostrarToast('Erro ao gerar etiqueta: ' + err.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Gerar etiqueta SuperFrete'; }
   }
 }
 
