@@ -692,7 +692,8 @@ async function expandirPedido(pedidoId) {
 
     // Adiciona campo de rastreio
     var rastreioHtml = '<div style="margin-top:16px;padding:14px;border:1px solid #ddd;border-radius:6px;background:#fafaf5">'
-      + '<label style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:8px">Codigo de Rastreio (Correios)</label>'
+      + '<label style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:8px">Codigo de rastreio manual (opcional)</label>'
+      + '<p style="font-size:12px;color:#777;margin:0 0 8px">Deixe em branco se for usar o botao Gerar etiqueta abaixo — o rastreio entra sozinho. Use so se postou por fora do SuperFrete.</p>'
       + '<div style="display:flex;gap:8px">'
       + '<input type="text" id="input-rastreio-' + pedidoId + '" placeholder="Ex: AB123456789BR" style="flex:1;padding:10px;border:1px solid #ccc;font-family:monospace;font-size:14px;letter-spacing:.1em">'
       + '<button class="btn btn--primary" onclick="salvarRastreio(\'' + pedidoId + '\')" style="white-space:nowrap">Salvar Rastreio</button>'
