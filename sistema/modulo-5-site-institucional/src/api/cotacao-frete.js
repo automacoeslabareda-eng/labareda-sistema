@@ -46,8 +46,11 @@ function montarPacote(itens) {
 async function cotarFrete(cepDestino, pacote, insuranceValue) {
   const token = process.env.SUPERFRETE_TOKEN;
   if (!token) return null;
-  const env = process.env.SUPERFRETE_ENV || 'sandbox';
-  const baseUrl = env === 'producao' ? 'https://api.superfrete.com' : 'https://sandbox.superfrete.com';
+  // Aceita 'producao', 'produção', 'production', 'prod' (com/sem maiusculas
+  // e espacos) — qualquer grafia diferente caia no sandbox sem avisar.
+  const env = (process.env.SUPERFRETE_ENV || 'sandbox').trim().toLowerCase();
+  const prod = ['producao', 'produção', 'production', 'prod'].includes(env);
+  const baseUrl = prod ? 'https://api.superfrete.com' : 'https://sandbox.superfrete.com';
   const cepOrigem = process.env.SUPERFRETE_CEP_ORIGEM || '45653000';
   // Peso e dimensões padrão para produtos da loja (cosméticos, camisetas, arte)
   const pkg = pacote || { height: 10, width: 20, length: 30, weight: 0.5 };

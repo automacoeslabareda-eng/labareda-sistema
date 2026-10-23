@@ -63,8 +63,9 @@ function verificarToken(token, secret) {
 function getSuperfrete() {
   var token = process.env.SUPERFRETE_TOKEN;
   if (!token) return null;
-  var env = process.env.SUPERFRETE_ENV || 'sandbox';
-  var baseUrl = env === 'producao'
+  // Mesma regra tolerante do cotacao-frete.js
+  var env = (process.env.SUPERFRETE_ENV || 'sandbox').trim().toLowerCase();
+  var baseUrl = ['producao', 'produção', 'production', 'prod'].indexOf(env) >= 0
     ? 'https://api.superfrete.com'
     : 'https://sandbox.superfrete.com';
   var cepOrigem = process.env.SUPERFRETE_CEP_ORIGEM || '45653000';
