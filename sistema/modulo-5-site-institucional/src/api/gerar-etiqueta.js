@@ -72,7 +72,15 @@ function getSuperfrete() {
   return { token: token, baseUrl: baseUrl, cepOrigem: cepOrigem };
 }
 
-async function criarEnvioSuperFrete(sf, pedido, cliente, itens) {
+function motivoSuperFrete(texto) {
+  try {
+    var j = JSON.parse(texto);
+    var m = j.message || j.error || (j.errors ? JSON.stringify(j.errors) : '');
+    return String(m || texto).slice(0, 200);
+  } catch (e) { return String(texto || '').slice(0, 200); }
+}
+
+async function criarEnvioSuperFrete(sf, pedido, cliente, itens, db) {
   var end = pedido.endereco_entrega || {};
 
   // Regras do POST /api/v0/cart (superfrete.readme.io/reference/adicionar-frete-carrinho):
@@ -157,51 +165,63 @@ async function criarEnvioSuperFrete(sf, pedido, cliente, itens) {
     },
   };
 
-  // 1. Adiciona ao carrinho SuperFrete
-  var cartRes = await fetch(sf.baseUrl + '/api/v0/cart', {
-    method: 'POST',
-    headers: {
-      'Authorization': 'Bearer ' + sf.token,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'User-Agent': 'SitioLabareda/1.0 (sitiolabareda@gmail.com)',
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!cartRes.ok) {
-    var errText = await cartRes.text();
-    console.error('SuperFrete cart error:', cartRes.status, errText, '| payload:', JSON.stringify(payload));
-    // Leva o motivo devolvido pela SuperFrete pro aviso de venda / painel
-    var motivo = '';
-    try {
-      var errJson = JSON.parse(errText);
-      motivo = errJson.message || errJson.error || (errJson.errors ? JSON.stringify(errJson.errors) : '');
-    } catch (e) { motivo = errText; }
-    throw new Error('Erro ao criar envio no SuperFrete: ' + cartRes.status + (motivo ? ' — ' + String(motivo).slice(0, 200) : ''));
-  }
-
-  var cartData = await cartRes.json();
-
-  // 2. Paga o frete e gera a etiqueta (POST /api/v0/checkout — usa o saldo
-  //    da conta SuperFrete). Resposta: { success, purchase: { orders: [{ id,
-  //    tracking, print: { url } }] } }. Doc: superfrete.readme.io/reference/apiintegrationv1checkout
   var headers = {
     'Authorization': 'Bearer ' + sf.token,
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'User-Agent': 'SitioLabareda/1.0 (sitiolabareda@gmail.com)',
   };
-  var orderRes = await fetch(sf.baseUrl + '/api/v0/checkout', {
-    method: 'POST',
-    headers: headers,
-    body: JSON.stringify({ orders: [cartData.id] }),
-  });
+
+  // 1. Cria o envio no carrinho SuperFrete (POST /api/v0/cart) e guarda o id
+  //    no pedido logo em seguida. Se o pagamento falhar (ex.: sem saldo), a
+  //    proxima tentativa reaproveita esse envio em vez de criar outro.
+  async function criarCarrinho() {
+    var cartRes = await fetch(sf.baseUrl + '/api/v0/cart', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(payload),
+    });
+    if (!cartRes.ok) {
+      var errText = await cartRes.text();
+      console.error('SuperFrete cart error:', cartRes.status, errText, '| payload:', JSON.stringify(payload));
+      var motivo = motivoSuperFrete(errText);
+      throw new Error('Erro ao criar envio no SuperFrete: ' + cartRes.status + (motivo ? ' — ' + motivo : ''));
+    }
+    var data = await cartRes.json();
+    if (db && data && data.id) {
+      await db.from('pedidos').update({ superfrete_order_id: data.id }).eq('id', pedido.id);
+    }
+    return data;
+  }
+
+  // 2. Paga o frete e gera a etiqueta (POST /api/v0/checkout — usa o saldo
+  //    da conta SuperFrete). Resposta: { success, purchase: { orders: [{ id,
+  //    tracking, print: { url } }] } }. Doc: superfrete.readme.io/reference/apiintegrationv1checkout
+  async function pagar(id) {
+    return fetch(sf.baseUrl + '/api/v0/checkout', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({ orders: [id] }),
+    });
+  }
+
+  var reaproveitado = !!(pedido.superfrete_order_id && !pedido.codigo_rastreio);
+  var cartData = reaproveitado ? { id: pedido.superfrete_order_id } : await criarCarrinho();
+  var orderRes = await pagar(cartData.id);
+
+  // Envio reaproveitado sumiu do carrinho (apagado no site da SuperFrete):
+  // cria um novo uma vez.
+  if (!orderRes.ok && reaproveitado && (orderRes.status === 404 || orderRes.status === 422)) {
+    cartData = await criarCarrinho();
+    orderRes = await pagar(cartData.id);
+  }
 
   if (!orderRes.ok) {
     var errText2 = await orderRes.text();
     console.error('SuperFrete checkout error:', orderRes.status, errText2);
-    throw new Error('Erro ao pagar a etiqueta no SuperFrete: ' + orderRes.status + '. Verifique o saldo/credito.');
+    var motivo2 = motivoSuperFrete(errText2);
+    throw new Error('Erro ao pagar a etiqueta no SuperFrete: ' + orderRes.status
+      + (motivo2 ? ' — ' + motivo2 : '. Verifique o saldo/credito.'));
   }
 
   var orderData = await orderRes.json();
@@ -330,7 +350,7 @@ async function gerarEtiquetaParaPedido(db, pedidoId, opcoes) {
   var cliente = pedido.clientes || {};
 
   // 3. Gera etiqueta no SuperFrete
-  var etiqueta = await criarEnvioSuperFrete(sf, pedido, cliente, itens);
+  var etiqueta = await criarEnvioSuperFrete(sf, pedido, cliente, itens, db);
 
   // 4. Atualiza pedido com tracking e etiqueta
   var rastreioUrl = 'https://www.linkcorreios.com.br/?id=' + (etiqueta.tracking || '');
