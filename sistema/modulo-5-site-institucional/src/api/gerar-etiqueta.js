@@ -75,39 +75,48 @@ function getSuperfrete() {
 async function criarEnvioSuperFrete(sf, pedido, cliente, itens) {
   var end = pedido.endereco_entrega || {};
 
+  // Regras do POST /api/v0/cart (superfrete.readme.io/reference/adicionar-frete-carrinho):
+  // CEP/CPF so digitos, UF 2 letras maiusculas, telefone com 11 digitos (sem
+  // DDI), limites de tamanho por campo, district "NA" se vazio.
+  function digitos(v) { return String(v == null ? '' : v).replace(/\D/g, ''); }
+  function corta(v, max) { return String(v == null ? '' : v).trim().slice(0, max); }
+  function telefone11(v) {
+    var d = digitos(v);
+    if (d.length > 11 && d.indexOf('55') === 0) d = d.slice(2);
+    return d.length === 11 ? d : '';
+  }
+
   // Monta dados do remetente
   var from = {
-    name: 'Sitio Labareda',
-    phone: process.env.WHATSAPP_PEDIDOS || '73998150799',
-    email: 'sitiolabareda@gmail.com',
-    document: process.env.SUPERFRETE_CNPJ || '',
-    company_document: process.env.SUPERFRETE_CNPJ || '',
-    state_register: '',
-    address: process.env.SUPERFRETE_RUA_ORIGEM || 'Rodovia BA-001, KM 39,5',
+    name: corta('Sitio Labareda', 50),
+    address: corta(process.env.SUPERFRETE_RUA_ORIGEM || 'Rodovia BA-001, KM 39,5', 50),
     complement: '',
-    number: process.env.SUPERFRETE_NUM_ORIGEM || 'SN',
-    district: process.env.SUPERFRETE_BAIRRO_ORIGEM || 'Serra Grande',
-    city: process.env.SUPERFRETE_CIDADE_ORIGEM || 'Urucuca',
-    state_abbr: process.env.SUPERFRETE_UF_ORIGEM || 'BA',
-    country_id: 'BR',
-    postal_code: sf.cepOrigem,
+    number: corta(process.env.SUPERFRETE_NUM_ORIGEM || 'SN', 10),
+    district: corta(process.env.SUPERFRETE_BAIRRO_ORIGEM || 'Serra Grande', 60) || 'NA',
+    city: corta(process.env.SUPERFRETE_CIDADE_ORIGEM || 'Urucuca', 50),
+    state_abbr: corta(process.env.SUPERFRETE_UF_ORIGEM || 'BA', 2).toUpperCase(),
+    postal_code: digitos(sf.cepOrigem),
   };
+  var telOrigem = telefone11(process.env.WHATSAPP_PEDIDOS || '73998150799');
+  if (telOrigem) from.phone = telOrigem;
+  // Sem documento: a SuperFrete usa o da conta (string vazia da erro)
+  if (process.env.SUPERFRETE_CNPJ) from.document = digitos(process.env.SUPERFRETE_CNPJ);
 
   // Monta dados do destinatario
   var to = {
-    name: cliente.nome || '',
-    phone: (cliente.telefone || '').replace(/\D/g, ''),
-    email: cliente.email || '',
-    document: cliente.cpf || '',
-    address: end.rua || '',
-    complement: end.complemento || '',
-    number: end.numero || '',
-    district: end.bairro || '',
-    city: end.cidade || '',
-    state_abbr: end.estado || '',
-    country_id: 'BR',
-    postal_code: (end.cep || '').replace(/\D/g, ''),
+    name: corta(cliente.nome, 50),
+    address: corta(end.rua, 50),
+    complement: corta(end.complemento, 20),
+    number: corta(end.numero, 10),
+    district: corta(end.bairro, 50) || 'NA',
+    city: corta(end.cidade, 50),
+    state_abbr: corta(end.estado, 2).toUpperCase(),
+    postal_code: digitos(end.cep),
+    document: digitos(cliente.cpf),
+    email: cliente.email || null,
   };
+  var telDestino = telefone11(cliente.telefone);
+  if (telDestino) to.phone = telDestino;
 
   // Calcula peso e dimensões reais a partir dos produtos
   var pesoTotal = 0;
@@ -122,18 +131,19 @@ async function criarEnvioSuperFrete(sf, pedido, cliente, itens) {
     pkgHeight += (prod.frete_altura || 5) * qty;
     if ((prod.frete_largura || 20) > pkgWidth) pkgWidth = prod.frete_largura || 20;
     if ((prod.frete_comprimento || 30) > pkgLength) pkgLength = prod.frete_comprimento || 30;
-    return { name: it.nome_produto, quantity: qty, unitary_value: Number(it.preco_unitario) || 0 };
+    return { name: it.nome_produto, quantity: String(qty), unitary_value: String(Number(it.preco_unitario) || 0) };
   });
 
   // Service ID: 1=PAC, 2=SEDEX, 17=Mini Envios
-  var serviceId = pedido.frete_service_id || 1;
+  var serviceId = parseInt(pedido.frete_service_id, 10) || 1;
 
   var payload = {
     from: from,
     to: to,
     service: serviceId,
     products: products,
-    package: {
+    platform: 'Sitio Labareda',
+    volumes: {
       height: Math.max(2, Math.ceil(pkgHeight)),
       width: Math.max(11, Math.ceil(pkgWidth)),
       length: Math.max(16, Math.ceil(pkgLength)),
@@ -161,8 +171,14 @@ async function criarEnvioSuperFrete(sf, pedido, cliente, itens) {
 
   if (!cartRes.ok) {
     var errText = await cartRes.text();
-    console.error('SuperFrete cart error:', cartRes.status, errText);
-    throw new Error('Erro ao criar envio no SuperFrete: ' + cartRes.status);
+    console.error('SuperFrete cart error:', cartRes.status, errText, '| payload:', JSON.stringify(payload));
+    // Leva o motivo devolvido pela SuperFrete pro aviso de venda / painel
+    var motivo = '';
+    try {
+      var errJson = JSON.parse(errText);
+      motivo = errJson.message || errJson.error || (errJson.errors ? JSON.stringify(errJson.errors) : '');
+    } catch (e) { motivo = errText; }
+    throw new Error('Erro ao criar envio no SuperFrete: ' + cartRes.status + (motivo ? ' — ' + String(motivo).slice(0, 200) : ''));
   }
 
   var cartData = await cartRes.json();
