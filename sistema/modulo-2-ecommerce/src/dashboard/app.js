@@ -363,9 +363,105 @@ async function carregarVisaoGeral() {
       alertaContainer.classList.add('escondido');
     }
 
+    if (vg.pendencias_abertas) carregarPendencias();
+    else $('#alerta-pendencias').classList.add('escondido');
+
   } catch (err) {
     console.error('Erro ao carregar visao geral:', err);
     mostrarToast('Erro ao carregar dados', 'error');
+  }
+}
+
+/* ---- Pendencias (falhas com "Tentar novamente") ---- */
+var NOMES_PENDENCIA = {
+  etiqueta: 'Etiqueta SuperFrete',
+  email_confirmacao: 'Email ao comprador',
+  aviso_equipe: 'Aviso da venda (Telegram/WhatsApp)',
+  estoque: 'Estoque',
+  pagamento: 'Pagamento',
+};
+var PENDENCIA_REPROCESSAVEL = { etiqueta: true, email_confirmacao: true, aviso_equipe: true };
+
+function formatarDataHora(iso) {
+  if (!iso) return '--';
+  return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+async function carregarPendencias() {
+  var box = $('#alerta-pendencias');
+  var lista = $('#lista-pendencias');
+  try {
+    var resp = await adminApi('pendencias');
+    var pend = resp.pendencias || [];
+    if (!pend.length) { box.classList.add('escondido'); return; }
+    box.classList.remove('escondido');
+    lista.innerHTML = pend.map(function(p) {
+      var ped = p.pedidos || {};
+      var cliente = (ped.clientes && ped.clientes.nome) || '';
+      var botoes = (PENDENCIA_REPROCESSAVEL[p.tipo]
+          ? '<button class="btn btn--small btn--primary" id="btn-pend-' + p.id + '" onclick="reprocessarPendencia(\'' + p.id + '\')">Tentar novamente</button> '
+          : '')
+        + '<button class="btn btn--small btn--secondary" onclick="resolverPendencia(\'' + p.id + '\')">Marcar resolvida</button>';
+      return '<div class="lista-simples__item" style="align-items:flex-start;gap:12px;flex-wrap:wrap">'
+        + '<div style="flex:1;min-width:220px">'
+        + '<span class="badge badge--cancelado">' + escapeHtml(NOMES_PENDENCIA[p.tipo] || p.tipo) + '</span> '
+        + '<strong>Pedido #' + escapeHtml(String(ped.numero || '?')) + '</strong>' + (cliente ? ' — ' + escapeHtml(cliente) : '')
+        + '<div style="font-size:13px;margin-top:6px">' + escapeHtml(p.erro || '') + '</div>'
+        + '<div style="font-size:12px;color:#777;margin-top:4px">' + (p.tentativas || 1) + ' tentativa(s) · última em ' + formatarDataHora(p.ultima_tentativa_at) + '</div>'
+        + '</div>'
+        + '<div style="white-space:nowrap">' + botoes + '</div>'
+        + '</div>';
+    }).join('');
+  } catch (err) {
+    console.error('Erro ao carregar pendencias:', err);
+  }
+}
+
+async function reprocessarPendencia(id) {
+  var btn = $('#btn-pend-' + id);
+  if (btn) { btn.disabled = true; btn.textContent = 'Tentando...'; }
+  try {
+    var r = await adminApi('reprocessar-pendencia', { id: id });
+    if (r.resolvida) mostrarToast('Deu certo! Pendência resolvida.');
+    else mostrarToast('Ainda falhou: ' + ((r.pendencia && r.pendencia.erro) || 'veja o motivo na lista'), 'error');
+  } catch (err) {
+    mostrarToast('Erro: ' + err.message, 'error');
+  }
+  carregarVisaoGeral();
+}
+
+async function resolverPendencia(id) {
+  if (!confirm('Marcar esta pendência como resolvida? Faça isso só se já tratou o problema.')) return;
+  try {
+    await adminApi('resolver-pendencia', { id: id });
+    mostrarToast('Pendência marcada como resolvida');
+  } catch (err) {
+    mostrarToast('Erro: ' + err.message, 'error');
+  }
+  carregarVisaoGeral();
+}
+
+/* ---- Historico do pedido ---- */
+var ORIGEM_EVENTO = { checkout: 'site', webhook: 'Mercado Pago', painel: 'painel', sistema: 'sistema' };
+
+async function carregarHistoricoPedido(pedidoId) {
+  var box = document.getElementById('historico-' + pedidoId);
+  if (!box) return;
+  try {
+    var resp = await adminApi('pedido-eventos', { pedido_id: pedidoId });
+    var ev = resp.eventos || [];
+    if (resp.migration_pendente) { box.innerHTML = '<p style="font-size:13px;color:#777;margin:0">Histórico disponível depois da atualização do banco (etapa 1).</p>'; return; }
+    if (!ev.length) { box.innerHTML = '<p style="font-size:13px;color:#777;margin:0">Sem registros ainda (pedidos anteriores à etapa 1 não têm histórico).</p>'; return; }
+    box.innerHTML = ev.map(function(e) {
+      var falhou = /falhou|cancelado|charged_back|refunded|rejected/.test(e.tipo);
+      return '<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid #eee;font-size:13px">'
+        + '<span style="color:#777;white-space:nowrap;min-width:92px">' + formatarDataHora(e.created_at) + '</span>'
+        + '<span style="flex:1;' + (falhou ? 'color:#AA3424;' : '') + '">' + escapeHtml(e.descricao || e.tipo) + '</span>'
+        + '<span style="color:#999;white-space:nowrap">' + escapeHtml(ORIGEM_EVENTO[e.origem] || e.origem || '') + '</span>'
+        + '</div>';
+    }).join('');
+  } catch (err) {
+    box.innerHTML = '<p style="font-size:13px;color:#AA3424;margin:0">Erro ao carregar histórico</p>';
   }
 }
 
@@ -717,6 +813,18 @@ async function expandirPedido(pedidoId) {
     etiquetaHtml += '</div>';
     container.innerHTML += etiquetaHtml;
 
+    // Reserva de estoque + historico do pedido
+    var reservaTxt = '';
+    if (ped.estoque_baixado) reservaTxt = 'Estoque baixado (pagamento confirmado).';
+    else if (ped.estoque_reservado) reservaTxt = 'Estoque separado aguardando pagamento até ' + formatarDataHora(ped.reserva_expira_em) + '.';
+    else if (ped.status === 'pendente' && ped.reserva_expira_em) reservaTxt = 'Reserva expirou — os itens voltaram para a loja. Se o pagamento cair, o estoque é baixado na hora.';
+    container.innerHTML += '<div style="margin-top:12px;padding:14px;border:1px solid #ddd;border-radius:6px;background:#fafaf5">'
+      + '<label style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:8px">Histórico do pedido</label>'
+      + (reservaTxt ? '<p style="font-size:13px;margin:0 0 8px">' + escapeHtml(reservaTxt) + '</p>' : '')
+      + '<div id="historico-' + pedidoId + '"><p style="font-size:13px;color:#777;margin:0">Carregando...</p></div>'
+      + '</div>';
+    carregarHistoricoPedido(pedidoId);
+
     detalhe.classList.remove('escondido');
     detalhe.scrollIntoView({ behavior: 'smooth' });
 
@@ -769,8 +877,9 @@ async function mudarStatusPedido(pedidoId, novoStatus) {
       var codigo = prompt('Codigo de rastreio dos Correios (opcional):');
       if (codigo && codigo.trim()) payload.codigo_rastreio = codigo.trim().toUpperCase();
     }
-    await adminApi('update-pedido-status', payload);
-    mostrarToast('Status atualizado para ' + novoStatus);
+    var r = await adminApi('update-pedido-status', payload);
+    mostrarToast('Status atualizado para ' + novoStatus
+      + (r.estoque === 'reserva_liberada' ? ' — estoque devolvido à loja' : r.estoque === 'baixado' ? ' — estoque baixado' : ''));
     carregarPedidos();
   } catch (err) {
     console.error(err);

@@ -11,13 +11,16 @@
  *  2. Le os produtos no banco e usa o PRECO DO BANCO (anti-fraude).
  *  3. Frete: recota no SuperFrete o servico escolhido (preco do servidor);
  *     sem servico SuperFrete, valida contra a tabela de frete.
- *  4. Cria pedido "pendente" + itens.
- *  5. Cria a preferencia no Mercado Pago (Checkout Pro) e devolve o link.
+ *  4. Cria pedido "pendente" + itens e RESERVA o estoque (atomico) ate
+ *     o prazo da reserva. Antes, devolve as reservas ja vencidas.
+ *  5. Cria a preferencia no Mercado Pago (Checkout Pro), com o link
+ *     valendo ate o fim da reserva, e devolve o link.
  *
  *  Variaveis de ambiente:
  *   - MP_ENV ('teste'|'producao'), MP_ACCESS_TOKEN_TESTE, MP_ACCESS_TOKEN_PROD
  *   - ECOMMERCE_SUPABASE_URL, ECOMMERCE_SUPABASE_SERVICE_ROLE_KEY
  *   - SITE_URL
+ *   - RESERVA_ESTOQUE_HORAS (opcional, padrao 24)
  * ============================================================
  */
 
@@ -26,6 +29,15 @@ const { MercadoPagoConfig, Preference } = require('mercadopago');
 const { toVercel } = require('./_netlify-adapter');
 const { emailPedidoCriado } = require('./_emails');
 const { cotarFrete, montarPacote } = require('./cotacao-frete');
+const { horasReserva, reservarEstoque, liberarReserva, liberarReservasExpiradas } = require('./_pedido-fluxo');
+const { registrarEvento } = require('./_pedido-registro');
+
+// Data no formato que o Mercado Pago aceita, no fuso de Brasilia
+// (ex: 2026-11-03T14:30:00.000-03:00).
+function isoBrasilia(data) {
+  const local = new Date(data.getTime() - 3 * 3600 * 1000);
+  return local.toISOString().replace('Z', '-03:00');
+}
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -75,6 +87,10 @@ const handler = async (event) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
   try {
+    // Devolve pra loja o estoque de pedidos que nao pagaram a tempo, antes
+    // de conferir o estoque deste pedido.
+    await liberarReservasExpiradas(supabase);
+
     // --- 1. Upsert do cliente (por email) ---
     const end = cliente.endereco || {};
     const { data: cli, error: errCli } = await supabase
@@ -147,6 +163,7 @@ const handler = async (event) => {
     // frete_tabela (R$ 45), entao um SEDEX de R$ 80 era cobrado a menos.
     let frete = Number(freteReq.valor) || 0;
     let freteServiceName = freteReq.service_name || null;
+    let fretePrazo = null; // { min, max } em dias uteis, da cotacao do servidor
     if (freteReq.service_id) {
       let opcoes = null;
       try {
@@ -163,6 +180,10 @@ const handler = async (event) => {
       }
       frete = Number(opcao.preco) || 0;
       freteServiceName = opcao.nome || freteServiceName;
+      const faixa = opcao.prazo_range || {};
+      const pMin = parseInt(faixa.min, 10) || parseInt(opcao.prazo_dias, 10) || null;
+      const pMax = parseInt(faixa.max, 10) || pMin;
+      if (pMin) fretePrazo = { min: pMin, max: Math.max(pMin, pMax) };
     } else {
       // Fluxo antigo (tabela por regiao)
       const { data: fretes } = await supabase.from('frete_tabela').select('regiao, valor').eq('ativo', true);
@@ -175,6 +196,9 @@ const handler = async (event) => {
     }
     if (frete < 0) frete = 0;
     const total = subtotal + frete;
+    // O prazo cotado vai junto do endereco (jsonb) pra aparecer no email de
+    // confirmacao — evita coluna nova so pra isso.
+    const enderecoEntrega = fretePrazo ? { ...end, frete_prazo: fretePrazo } : end;
 
     // --- 4. Cria pedido + itens ---
     const pedidoInsert = {
@@ -184,7 +208,7 @@ const handler = async (event) => {
       frete,
       total,
       metodo_pagamento: 'mercadopago',
-      endereco_entrega: end,
+      endereco_entrega: enderecoEntrega,
     };
     // Salva dados do frete para emissão da etiqueta
     if (freteReq.service_id) pedidoInsert.frete_service_id = freteReq.service_id;
@@ -199,24 +223,46 @@ const handler = async (event) => {
     const { error: errItens } = await supabase.from('pedido_itens').insert(itensPedido.map((i) => ({ ...i, pedido_id: pedido.id })));
     if (errItens) throw errItens;
 
+    // Reserva o estoque (tudo ou nada, travando os produtos). Se outra
+    // compra levou o ultimo item entre a conferencia acima e agora, o
+    // pedido e cancelado aqui mesmo.
+    const reservaAte = new Date(Date.now() + horasReserva() * 3600 * 1000);
+    const reserva = await reservarEstoque(supabase, pedido.id, reservaAte.toISOString());
+    if (!reserva.ok) {
+      await supabase.from('pedidos').update({ status: 'cancelado', observacoes: reserva.erro }).eq('id', pedido.id);
+      await registrarEvento(supabase, pedido.id, 'pedido_cancelado', 'Cancelado no checkout: ' + reserva.erro, null, 'checkout');
+      return resposta(409, { erro: reserva.erro });
+    }
+    await registrarEvento(supabase, pedido.id, 'pedido_criado',
+      'Pedido criado no site — aguardando pagamento', { total: total, frete_servico: freteServiceName, prazo: fretePrazo }, 'checkout');
+
     // --- 5. Preferencia Mercado Pago ---
     if (frete > 0) itensMP.push({ title: 'Frete', quantity: 1, unit_price: frete, currency_id: 'BRL' });
     const mp = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
-    const pref = await new Preference(mp).create({
-      body: {
-        items: itensMP,
-        external_reference: pedido.id,
-        payer: { name: cliente.nome || '', email: cliente.email },
-        back_urls: {
-          success: `${siteUrl}/?pagamento=sucesso&pedido=${pedido.numero}`,
-          failure: `${siteUrl}/?pagamento=falhou`,
-          pending: `${siteUrl}/?pagamento=pendente`,
+    let pref;
+    try {
+      pref = await new Preference(mp).create({
+        body: {
+          items: itensMP,
+          external_reference: pedido.id,
+          payer: { name: cliente.nome || '', email: cliente.email },
+          back_urls: {
+            success: `${siteUrl}/?pagamento=sucesso&pedido=${pedido.numero}`,
+            failure: `${siteUrl}/?pagamento=falhou`,
+            pending: `${siteUrl}/?pagamento=pendente`,
+          },
+          auto_return: 'approved',
+          notification_url: `${siteUrl}/api/webhook-mercadopago`,
+          statement_descriptor: 'LABAREDA',
+          // O link de pagamento vale enquanto o estoque estiver reservado
+          ...(reserva.suportado ? { expires: true, expiration_date_to: isoBrasilia(reservaAte) } : {}),
         },
-        auto_return: 'approved',
-        notification_url: `${siteUrl}/api/webhook-mercadopago`,
-        statement_descriptor: 'LABAREDA',
-      },
-    });
+      });
+    } catch (e) {
+      // Sem link de pagamento o pedido nao anda: devolve o estoque na hora.
+      await liberarReserva(supabase, pedido.id, 'Falha ao criar o pagamento no Mercado Pago');
+      throw e;
+    }
 
     await supabase.from('pedidos').update({ mercadopago_id: pref.id }).eq('id', pedido.id);
 
@@ -227,9 +273,10 @@ const handler = async (event) => {
     try {
       await emailPedidoCriado(
         { nome: cliente.nome, email: cliente.email, telefone: cliente.telefone },
-        { numero: pedido.numero, subtotal, frete, total, endereco_entrega: end, frete_service_name: freteServiceName },
+        { numero: pedido.numero, subtotal, frete, total, endereco_entrega: enderecoEntrega, frete_service_name: freteServiceName },
         itensPedido,
-        linkPagamento
+        linkPagamento,
+        reserva.suportado ? reservaAte : null
       );
     } catch (e) {
       console.error('criar-pagamento: falha ao enviar email do pedido (nao critico):', e.message);

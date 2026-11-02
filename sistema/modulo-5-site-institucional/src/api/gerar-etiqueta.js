@@ -32,6 +32,7 @@ const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { toVercel } = require('./_netlify-adapter');
 const { linkAcompanhar } = require('./_pedido-token');
+const { registrarEvento, abrirPendencia, resolverPendencia } = require('./_pedido-registro');
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -402,9 +403,16 @@ const handler = async (event) => {
 
   try {
     var resultado = await gerarEtiquetaParaPedido(db, pedidoId);
+    await registrarEvento(db, pedidoId, 'etiqueta_gerada',
+      'Etiqueta SuperFrete gerada pelo painel (' + sessao.email + ') — rastreio ' + (resultado.tracking || '?'),
+      { tracking: resultado.tracking, etiqueta_url: resultado.etiqueta_url, email_rastreio: resultado.email_enviado }, 'painel');
+    await resolverPendencia(db, pedidoId, 'etiqueta', sessao.email);
     return resposta(200, { ok: true, ...resultado });
   } catch (err) {
     console.error('gerar-etiqueta erro:', err);
+    var msgErro = String(err && err.message ? err.message : err);
+    await registrarEvento(db, pedidoId, 'etiqueta_falhou', 'Tentativa pelo painel falhou: ' + msgErro, null, 'painel');
+    await abrirPendencia(db, pedidoId, 'etiqueta', msgErro);
     return resposta(500, {
       erro: 'Falha ao gerar etiqueta.',
       detalhe: String(err && err.message ? err.message : err),

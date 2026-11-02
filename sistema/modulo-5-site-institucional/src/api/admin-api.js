@@ -22,6 +22,13 @@ const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { toVercel } = require('./_netlify-adapter');
 const { linkAcompanhar } = require('./_pedido-token');
+const { registrarEvento, resolverPendencia, faltaMigration } = require('./_pedido-registro');
+const {
+  liberarReserva, liberarReservasExpiradas, confirmarBaixaEstoque, carregarContexto, etiquetaDoPedido,
+  etapaEtiqueta, etapaEmailConfirmacao, etapaAvisoEquipe,
+} = require('./_pedido-fluxo');
+
+const STATUS_PAGO = ['pago', 'preparando', 'enviado', 'entregue'];
 
 // Projeto de GESTAO (onde vive usuarios_admin) — anon key e publica
 const GESTAO_URL = 'https://tidngxclgaspltzqoemi.supabase.co';
@@ -99,13 +106,15 @@ const handler = async (event) => {
   try {
     switch (action) {
       case 'visao-geral': {
-        const [prod, pend, msg, resv, pagos, baixo] = await Promise.all([
+        await liberarReservasExpiradas(db);
+        const [prod, pend, msg, resv, pagos, baixo, pendencias] = await Promise.all([
           db.from('produtos').select('id', { count: 'exact', head: true }).eq('ativo', true),
           db.from('pedidos').select('id', { count: 'exact', head: true }).eq('status', 'pendente'),
           db.from('mensagens_contato').select('id', { count: 'exact', head: true }).eq('lida', false),
           db.from('reservas').select('id', { count: 'exact', head: true }).eq('status', 'nova'),
           db.from('pedidos').select('total').in('status', ['pago', 'preparando', 'enviado', 'entregue']),
           db.from('produtos').select('id,nome_pt,estoque').eq('ativo', true).lte('estoque', 5).order('estoque', { ascending: true }),
+          db.from('pedido_pendencias').select('id', { count: 'exact', head: true }).eq('status', 'aberta'),
         ]);
         const receita = (pagos.data || []).reduce((s, p) => s + (Number(p.total) || 0), 0);
         return resposta(200, {
@@ -116,7 +125,58 @@ const handler = async (event) => {
           reservas_novas: resv.count || 0,
           receita: receita,
           estoque_baixo: baixo.data || [],
+          // null = migration da etapa 1 ainda nao rodada
+          pendencias_abertas: pendencias.error ? null : (pendencias.count || 0),
         });
+      }
+      case 'pendencias': {
+        const { data, error } = await db.from('pedido_pendencias')
+          .select('*, pedidos(numero, status, total, clientes(nome))')
+          .eq('status', body.status || 'aberta')
+          .order('created_at', { ascending: false }).limit(100);
+        if (error) {
+          if (faltaMigration(error)) return resposta(200, { ok: true, pendencias: [], migration_pendente: true });
+          throw error;
+        }
+        return resposta(200, { ok: true, pendencias: data || [] });
+      }
+      case 'pedido-eventos': {
+        const { data, error } = await db.from('pedido_eventos').select('*')
+          .eq('pedido_id', body.pedido_id).order('created_at', { ascending: true });
+        if (error) {
+          if (faltaMigration(error)) return resposta(200, { ok: true, eventos: [], migration_pendente: true });
+          throw error;
+        }
+        return resposta(200, { ok: true, eventos: data || [] });
+      }
+      case 'resolver-pendencia': {
+        const { data: pend, error } = await db.from('pedido_pendencias').select('pedido_id, tipo').eq('id', body.id).single();
+        if (error || !pend) return resposta(404, { erro: 'Pendencia nao encontrada' });
+        await resolverPendencia(db, pend.pedido_id, pend.tipo, sessao.email);
+        await registrarEvento(db, pend.pedido_id, 'pendencia_resolvida',
+          'Pendência "' + pend.tipo + '" marcada como resolvida por ' + sessao.email + (body.nota ? ': ' + body.nota : ''), null, 'painel');
+        return resposta(200, { ok: true });
+      }
+      case 'reprocessar-pendencia': {
+        const { data: pend, error } = await db.from('pedido_pendencias').select('*').eq('id', body.id).single();
+        if (error || !pend) return resposta(404, { erro: 'Pendencia nao encontrada' });
+        if (pend.status !== 'aberta') return resposta(200, { ok: true, resolvida: true });
+        const ctx = await carregarContexto(db, pend.pedido_id);
+        const opcoes = { origem: 'painel', por: sessao.email };
+        let sucesso = false;
+        if (pend.tipo === 'etiqueta') {
+          const r = await etapaEtiqueta(db, ctx, Object.assign({ enviarEmailRastreio: true }, opcoes));
+          sucesso = !!r.etiqueta;
+        } else if (pend.tipo === 'email_confirmacao') {
+          sucesso = await etapaEmailConfirmacao(db, ctx, etiquetaDoPedido(ctx.pedido) || {}, opcoes);
+        } else if (pend.tipo === 'aviso_equipe') {
+          sucesso = await etapaAvisoEquipe(db, ctx, etiquetaDoPedido(ctx.pedido) || {}, [], opcoes);
+        } else {
+          // estoque / pagamento: precisam de conferencia humana
+          return resposta(400, { erro: 'Esta pendência precisa ser conferida e marcada como resolvida manualmente.' });
+        }
+        const { data: depois } = await db.from('pedido_pendencias').select('status, erro, tentativas').eq('id', pend.id).single();
+        return resposta(200, { ok: true, resolvida: sucesso, pendencia: depois || null });
       }
       case 'pedidos': {
         let q = db.from('pedidos').select('*,clientes(nome,email,telefone)').order('created_at', { ascending: false });
@@ -131,15 +191,31 @@ const handler = async (event) => {
         return resposta(200, { ok: true, itens: data || [] });
       }
       case 'update-pedido-status': {
+        const { data: atual } = await db.from('pedidos').select('*').eq('id', body.pedido_id).single();
+        if (!atual) return resposta(404, { erro: 'Pedido nao encontrado' });
         const patch = { status: body.status };
         if (body.status === 'enviado' && body.codigo_rastreio) {
           patch.codigo_rastreio = body.codigo_rastreio;
           patch.rastreio_url = 'https://www.linkcorreios.com.br/?id=' + body.codigo_rastreio;
           patch.enviado_at = new Date().toISOString();
         }
+        if (body.status === 'entregue' && !atual.entregue_at) patch.entregue_at = new Date().toISOString();
         const { error } = await db.from('pedidos').update(patch).eq('id', body.pedido_id);
         if (error) throw error;
-        return resposta(200, { ok: true });
+        await registrarEvento(db, body.pedido_id, 'status_alterado',
+          'Status alterado de "' + atual.status + '" para "' + body.status + '" por ' + sessao.email, null, 'painel');
+
+        // Estoque acompanha o status: cancelado devolve a reserva; pago
+        // manualmente (ex: Pix direto) efetiva a baixa — uma unica vez.
+        let estoque = null;
+        if (body.status === 'cancelado') {
+          estoque = (await liberarReserva(db, body.pedido_id, 'Pedido cancelado pelo painel — estoque devolvido')) ? 'reserva_liberada' : null;
+        } else if (STATUS_PAGO.indexOf(body.status) >= 0 && STATUS_PAGO.indexOf(atual.status) < 0 && atual.estoque_baixado === false) {
+          const { data: itens } = await db.from('pedido_itens').select('produto_id, nome_produto, tamanho, quantidade').eq('pedido_id', body.pedido_id);
+          await confirmarBaixaEstoque(db, body.pedido_id, itens || []);
+          estoque = 'baixado';
+        }
+        return resposta(200, { ok: true, estoque: estoque });
       }
       case 'update-pedido-rastreio': {
         if (!body.pedido_id || !body.codigo_rastreio) return resposta(400, { erro: 'pedido_id e codigo_rastreio obrigatorios' });
@@ -151,6 +227,8 @@ const handler = async (event) => {
           enviado_at: new Date().toISOString(),
         }).eq('id', body.pedido_id);
         if (error) throw error;
+        await registrarEvento(db, body.pedido_id, 'rastreio_manual',
+          'Rastreio ' + body.codigo_rastreio + ' informado no painel por ' + sessao.email + ' — pedido marcado como enviado', null, 'painel');
         // Buscar dados do pedido + cliente para notificacao
         const { data: pedidoData } = await db.from('pedidos').select('*,clientes(nome,email,telefone)').eq('id', body.pedido_id).single();
         // Envia email de rastreamento ao cliente
@@ -194,6 +272,8 @@ const handler = async (event) => {
             console.error('admin-api: erro ao enviar email de rastreio:', emailErr.message);
           }
         }
+        await registrarEvento(db, body.pedido_id, emailEnviado ? 'email_rastreio_enviado' : 'email_rastreio_falhou',
+          emailEnviado ? 'Email de rastreio enviado ao comprador' : 'Email de rastreio NÃO foi enviado', null, 'painel');
         return resposta(200, { ok: true, pedido: pedidoData, rastreio_url: rastreioUrl, email_enviado: emailEnviado });
       }
       case 'mensagens': {

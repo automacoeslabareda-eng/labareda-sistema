@@ -106,12 +106,38 @@ function enderecoHtml(end) {
     + '<br>CEP: ' + esc(end.cep) + '</p></div>';
 }
 
+/* Contatos oficiais exibidos ao comprador. O numero mostrado sai do mesmo
+   WHATSAPP_PEDIDOS do link (antes o texto era fixo e podia divergir). */
+function contatos() {
+  var whatsapp = String(process.env.WHATSAPP_PEDIDOS || '5573998150799').replace(/\D/g, '');
+  var local = whatsapp.replace(/^55(?=\d{10,11}$)/, '');
+  var exibicao = local.length === 11
+    ? '(' + local.slice(0, 2) + ') ' + local.slice(2, 7) + '-' + local.slice(7)
+    : (local.length === 10 ? '(' + local.slice(0, 2) + ') ' + local.slice(2, 6) + '-' + local.slice(6) : whatsapp);
+  return {
+    whatsapp: whatsapp,
+    whatsappExibicao: exibicao,
+    email: process.env.EMAIL_CONTATO || process.env.EMAIL_LOJA || 'sitiolabareda@gmail.com',
+  };
+}
+
+/* Prazo cotado no checkout (criar-pagamento guarda em endereco_entrega.frete_prazo). */
+function prazoTexto(pedido) {
+  var p = pedido && pedido.endereco_entrega && pedido.endereco_entrega.frete_prazo;
+  if (!p || !p.min) return '';
+  var max = p.max || p.min;
+  var dias = max !== p.min ? p.min + ' a ' + max : String(p.min);
+  return dias + (max > 1 ? ' dias úteis' : ' dia útil') + ' após a postagem'
+    + (pedido.frete_service_name ? ' (' + pedido.frete_service_name + ')' : '');
+}
+
 function rodape(pedido) {
-  var whatsapp = process.env.WHATSAPP_PEDIDOS || '5573998150799';
-  var whatsappLink = 'https://wa.me/' + whatsapp + '?text=' + encodeURIComponent('Oi! Tenho uma dúvida sobre o pedido #' + pedido.numero);
+  var c = contatos();
+  var whatsappLink = 'https://wa.me/' + c.whatsapp + '?text=' + encodeURIComponent('Oi! Tenho uma dúvida sobre o pedido #' + pedido.numero);
   return '<hr style="border:none;border-top:1px solid #e0d5c5;margin:24px 0;">'
-    + '<p style="font-size:.85rem;color:#6b5f56;">Dúvidas sobre seu pedido?</p>'
-    + '<p style="font-size:.85rem;"><a href="' + esc(whatsappLink) + '" style="color:#AA3424;">Fale conosco pelo WhatsApp</a> — (73) 99815-0799</p>'
+    + '<p style="font-size:.85rem;color:#6b5f56;">Se precisar falar conosco:</p>'
+    + '<p style="font-size:.85rem;margin:4px 0;">E-mail: <a href="mailto:' + esc(c.email) + '" style="color:#AA3424;">' + esc(c.email) + '</a></p>'
+    + '<p style="font-size:.85rem;margin:4px 0;">WhatsApp: <a href="' + esc(whatsappLink) + '" style="color:#AA3424;">' + esc(c.whatsappExibicao) + '</a></p>'
     + '<p style="font-size:.75rem;color:#9a8b7d;margin-top:20px;text-align:center;">Sítio Labareda — Roça & Arte<br>Serra Grande, Costa do Cacau, Bahia</p>';
 }
 
@@ -129,14 +155,22 @@ function dadosClienteHtml(cliente) {
 }
 
 /* 1. Pedido criado: cliente recebe o link pra pagar; loja recebe aviso. */
-async function emailPedidoCriado(cliente, pedido, itens, linkPagamento) {
+async function emailPedidoCriado(cliente, pedido, itens, linkPagamento, reservaAte) {
   var acompanharUrl = linkAcompanhar(siteUrl(), pedido.numero);
   var primeiroNome = esc(((cliente && cliente.nome) || '').split(' ')[0]);
+  var validade = '';
+  if (reservaAte) {
+    var quando = new Date(reservaAte).toLocaleString('pt-BR', {
+      timeZone: 'America/Bahia', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+    });
+    validade = '<p style="font-size:.85rem;color:#6b5f56;text-align:center;">Seus itens ficam separados e o link vale até '
+      + esc(quando) + '. Depois disso eles voltam para a loja.</p>';
+  }
 
   var htmlCliente = moldura(
     '<p>Olá, ' + primeiroNome + '!</p>'
     + '<p>Recebemos seu pedido <strong>#' + esc(pedido.numero) + '</strong>. Para confirmá-lo, conclua o pagamento pelo Mercado Pago:</p>'
-    + (linkPagamento ? botao(linkPagamento, 'Pagar com Mercado Pago') : '')
+    + (linkPagamento ? botao(linkPagamento, 'Pagar com Mercado Pago') + validade : '')
     + resumoHtml(pedido, itens)
     + enderecoHtml(pedido.endereco_entrega)
     + '<p style="font-size:.9rem;">Assim que o pagamento for aprovado, você recebe outro email de confirmação e, quando o pedido for despachado, o código de rastreamento.</p>'
@@ -173,14 +207,26 @@ async function emailPagamentoAprovado(cliente, pedido, itens, etiqueta) {
       + (etiqueta.rastreio_url ? botao(etiqueta.rastreio_url, 'Rastrear meu pedido') : '');
   }
 
+  // Segue o modelo de confirmacao do briefing (squads/site.md, secao 4).
+  // Nota fiscal ainda e emitida fora do sistema: o email so avisa que ela
+  // sera enviada depois.
+  var prazo = prazoTexto(pedido);
   var htmlCliente = moldura(
     '<p>Olá, ' + primeiroNome + '!</p>'
-    + '<p>O pagamento do pedido <strong>#' + esc(pedido.numero) + '</strong> foi aprovado. Obrigado pela compra! 🌿</p>'
+    + '<p>Obrigado por comprar no Sítio Labareda. 🌿 Recebemos a confirmação do pagamento do seu pedido <strong>#'
+    + esc(pedido.numero) + '</strong> e vamos iniciar a preparação.</p>'
+    + '<p style="font-size:.85rem;color:#6b5f56;margin:20px 0 0;">Seu pedido:</p>'
     + resumoHtml(pedido, itens)
+    + '<p style="font-size:.9rem;margin:6px 0;"><strong>Valor total:</strong> ' + brl(pedido.total) + '</p>'
+    + (prazo ? '<p style="font-size:.9rem;margin:6px 0;"><strong>Previsão de entrega:</strong> ' + esc(prazo) + '</p>' : '')
     + enderecoHtml(pedido.endereco_entrega)
-    + (blocoRastreio || '<p style="font-size:.9rem;">Quando seu pedido for despachado, você receberá um email com o código de rastreamento.</p>')
+    + '<p style="font-size:.9rem;">Enviaremos sua nota fiscal assim que a emissão for concluída.</p>'
+    + (blocoRastreio
+      ? '<p style="font-size:.9rem;">Seu pedido já tem código de rastreamento:</p>' + blocoRastreio
+      : '<p style="font-size:.9rem;">Assim que o pedido for despachado, você receberá o código de rastreamento.</p>')
     + botao(acompanharUrl, 'Acompanhar pedido')
     + rodape(pedido)
+    + '<p style="font-size:.9rem;margin-top:20px;">Com carinho,<br>Equipe Sítio Labareda</p>'
   );
 
   var blocoEtiquetaLoja;
@@ -220,13 +266,14 @@ async function emailPagamentoAprovado(cliente, pedido, itens, etiqueta) {
     '<p>💰 <strong>VENDEU!</strong> Pagamento aprovado — pedido <strong>#' + esc(pedido.numero) + '</strong>.</p>'
     + checklist
     + blocoEtiquetaLoja
+    + (prazo ? '<p style="font-size:.9rem;">Prazo informado ao cliente: ' + esc(prazo) + '</p>' : '')
     + dadosClienteHtml(cliente)
     + resumoHtml(pedido, itens)
     + enderecoHtml(pedido.endereco_entrega)
   );
 
   var r = await Promise.all([
-    enviarEmail(cliente && cliente.email, 'Pedido #' + pedido.numero + ' confirmado! — Sítio Labareda', htmlCliente),
+    enviarEmail(cliente && cliente.email, 'Compra confirmada — Pedido #' + pedido.numero, htmlCliente),
     enviarEmail(process.env.EMAIL_LOJA || 'sitiolabareda@gmail.com', '💰 VENDEU! Pedido #' + pedido.numero + ' pago — etiqueta, nota e contato', htmlLoja),
   ]);
   return { cliente: r[0], loja: r[1] };

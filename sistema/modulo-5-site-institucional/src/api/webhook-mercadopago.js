@@ -4,32 +4,39 @@
  * ============================================================
  *  O Mercado Pago CHAMA esta funcao sozinho quando muda o status de
  *  um pagamento. Aqui a gente:
- *   1. Descobre qual pagamento mudou (data.id).
- *   2. Consulta o status REAL no Mercado Pago (nunca confia so na
- *      notificacao — seguranca).
+ *   1. Confere a assinatura (x-signature), se MP_WEBHOOK_SECRET existir.
+ *   2. Descobre qual pagamento mudou (data.id) e consulta o status REAL
+ *      no Mercado Pago (nunca confia so na notificacao).
  *   3. Acha o pedido pelo external_reference.
- *   4. Se APROVADO: marca "pago", baixa estoque e avisa o n8n
- *      (que dispara o Telegram da Labareda).
+ *   4. Se APROVADO (uma unica vez por pedido): marca "pago", efetiva a
+ *      baixa de estoque, gera a etiqueta, manda o email "Compra
+ *      confirmada" e avisa a equipe (n8n -> Telegram/WhatsApp).
+ *      Cada etapa grava historico; falhas viram pendencia no painel.
+ *   5. Recusado/em analise: so registra (o cliente pode tentar de novo
+ *      com outro cartao no mesmo link).
+ *   6. Estorno/chargeback de pedido ja pago: registra e alerta a equipe.
  *
  *  Variaveis de ambiente:
  *   - MP_ENV, MP_ACCESS_TOKEN_TESTE/PROD  (secreta)
+ *   - MP_WEBHOOK_SECRET                   (opcional) "assinatura secreta" do
+ *     painel de Webhooks do Mercado Pago. Com ela, notificacoes sem
+ *     assinatura valida sao recusadas.
  *   - ECOMMERCE_SUPABASE_URL
  *   - ECOMMERCE_SUPABASE_SERVICE_ROLE_KEY (secreta)
- *   - N8N_WEBHOOK_URL                     (opcional) fluxo n8n p/ Telegram
- *   - RESEND_API_KEY, EMAIL_FROM, EMAIL_LOJA (opcional) emails — ver _emails.js
- *   - SITE_URL                            (opcional) URL base do site
- *   - WHATSAPP_PEDIDOS                    (opcional) WhatsApp para duvidas
+ *   - N8N_WEBHOOK_URL                     fluxo n8n do aviso de venda
+ *   - RESEND_API_KEY, EMAIL_FROM, EMAIL_LOJA (emails — ver _emails.js)
+ *   - SITE_URL, WHATSAPP_PEDIDOS          (opcionais)
  * ============================================================
  */
 
+const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { MercadoPagoConfig, Payment } = require('mercadopago');
 const { toVercel } = require('./_netlify-adapter');
-const { gerarEtiquetaParaPedido } = require('./gerar-etiqueta');
-const { emailPagamentoAprovado } = require('./_emails');
-
-// Propriedade Labareda (mesmo id usado no fluxo Telegram do modulo 1)
-const PROPRIEDADE_LABAREDA = '229e2813-6d46-4bdb-9aee-5d9a119733e6';
+const { registrarEvento, abrirPendencia } = require('./_pedido-registro');
+const {
+  confirmarBaixaEstoque, carregarContexto, etapaEtiqueta, etapaEmailConfirmacao, etapaAvisoEquipe,
+} = require('./_pedido-fluxo');
 
 // Escolhe o Access Token conforme MP_ENV ('teste' ou 'producao').
 function resolverAccessToken(env) {
@@ -38,11 +45,36 @@ function resolverAccessToken(env) {
   return (prod ? env.MP_ACCESS_TOKEN_PROD : env.MP_ACCESS_TOKEN_TESTE) || env.MP_ACCESS_TOKEN || '';
 }
 
-// Erro de pagamento da etiqueta por falta de credito na conta SuperFrete
-// (o /checkout devolve 409 / mensagem de saldo).
-function semSaldoSuperFrete(msg) {
-  return /saldo|insuficiente|cr[eé]dito|pagar a etiqueta no SuperFrete: 409/i.test(String(msg || ''));
+/* Assinatura do Mercado Pago: header x-signature "ts=...,v1=..." e HMAC-SHA256
+   (hex) de "id:{data.id};request-id:{x-request-id};ts:{ts};". */
+function assinaturaValida(event, secret) {
+  const h = event.headers || {};
+  const sig = String(h['x-signature'] || h['X-Signature'] || '');
+  const requestId = String(h['x-request-id'] || h['X-Request-Id'] || '');
+  let ts = '', v1 = '';
+  sig.split(',').forEach(function (parte) {
+    const kv = parte.split('=');
+    const k = (kv[0] || '').trim(), v = (kv[1] || '').trim();
+    if (k === 'ts') ts = v;
+    if (k === 'v1') v1 = v;
+  });
+  if (!ts || !v1) return false;
+  let dataId = String((event.queryStringParameters || {})['data.id'] || '');
+  if (/^[a-z0-9]+$/i.test(dataId)) dataId = dataId.toLowerCase();
+  let manifest = '';
+  if (dataId) manifest += 'id:' + dataId + ';';
+  if (requestId) manifest += 'request-id:' + requestId + ';';
+  manifest += 'ts:' + ts + ';';
+  const esperado = crypto.createHmac('sha256', secret).update(manifest).digest('hex');
+  try {
+    return esperado.length === v1.length && crypto.timingSafeEqual(Buffer.from(esperado), Buffer.from(v1));
+  } catch (e) {
+    return false;
+  }
 }
+
+const STATUS_PAGO = ['pago', 'preparando', 'enviado', 'entregue'];
+const STATUS_ESTORNO = ['refunded', 'charged_back', 'cancelled'];
 
 const handler = async (event) => {
   const ok200 = { statusCode: 200, body: 'ok' };
@@ -52,11 +84,16 @@ const handler = async (event) => {
   // ja existente (que aponta para o projeto de GESTAO).
   const SUPABASE_URL = process.env.ECOMMERCE_SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY = process.env.ECOMMERCE_SUPABASE_SERVICE_ROLE_KEY;
-  const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL;
   const MP_ACCESS_TOKEN = resolverAccessToken(process.env);
   if (!MP_ACCESS_TOKEN || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     console.error('webhook: variaveis de ambiente ausentes');
     return ok200;
+  }
+
+  const secret = process.env.MP_WEBHOOK_SECRET;
+  if (secret && !assinaturaValida(event, secret)) {
+    console.warn('webhook: assinatura x-signature invalida ou ausente — notificacao recusada');
+    return { statusCode: 401, body: 'assinatura invalida' };
   }
 
   try {
@@ -83,158 +120,89 @@ const handler = async (event) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
-    // 3. Busca o pedido (idempotencia)
     const { data: pedido } = await supabase
-      .from('pedidos')
-      .select('id, numero, status, subtotal, frete, total, endereco_entrega, cliente_id, frete_service_id, frete_service_name')
-      .eq('id', pedidoId)
-      .single();
+      .from('pedidos').select('id, numero, status, pago_at, mercadopago_status').eq('id', pedidoId).single();
     if (!pedido) return ok200;
-    // So processa se o pedido ainda estiver pendente. Qualquer outro status
-    // (pago, preparando, enviado, entregue, cancelado) significa que uma
-    // notificacao anterior ja tratou esse pagamento — evita baixar estoque
-    // ou gerar etiqueta (que tem custo real no SuperFrete) duas vezes.
-    if (pedido.status !== 'pendente') return ok200;
 
-    // 4. Atualiza status
-    const mapaStatus = {
-      approved: 'pago', pending: 'pendente', in_process: 'pendente',
-      rejected: 'cancelado', cancelled: 'cancelado', refunded: 'cancelado',
-    };
-    const novoStatus = mapaStatus[status] || 'pendente';
-    const update = {
-      status: novoStatus,
-      mercadopago_status: status,
-      mercadopago_id: String(paymentId),
-      metodo_pagamento: info.payment_method_id || 'mercadopago',
-    };
-    if (novoStatus === 'pago') update.pago_at = new Date().toISOString();
-    // Update condicionado a status 'pendente': se o MP mandar duas
-    // notificacoes ao mesmo tempo, so uma "ganha" e processa estoque,
-    // etiqueta e emails.
+    // 3a. Estorno / chargeback de pedido ja pago: registra e alerta.
+    if (STATUS_PAGO.indexOf(pedido.status) >= 0) {
+      if (STATUS_ESTORNO.indexOf(status) >= 0 && pedido.mercadopago_status !== status) {
+        await supabase.from('pedidos').update({ mercadopago_status: status }).eq('id', pedidoId);
+        const desc = status === 'charged_back' ? 'Chargeback (contestação) no Mercado Pago' : 'Pagamento estornado/cancelado no Mercado Pago';
+        await registrarEvento(supabase, pedidoId, 'pagamento_' + status, desc, { pagamento_id: String(paymentId) }, 'webhook');
+        await abrirPendencia(supabase, pedidoId, 'pagamento', desc + ' — confira o pedido #' + pedido.numero + ' antes de enviar.');
+      }
+      return ok200;
+    }
+
+    // 3b. Ainda nao aprovado (recusado, em analise, pendente): so registra.
+    // NAO cancela o pedido — o cliente pode tentar de novo no mesmo link, e a
+    // reserva de estoque expira sozinha.
+    if (status !== 'approved') {
+      if (pedido.mercadopago_status !== status) {
+        await supabase.from('pedidos').update({
+          mercadopago_status: status,
+          metodo_pagamento: info.payment_method_id || 'mercadopago',
+        }).eq('id', pedidoId).is('pago_at', null);
+        await registrarEvento(supabase, pedidoId, 'pagamento_' + status,
+          'Mercado Pago: ' + status + (info.status_detail ? ' (' + info.status_detail + ')' : ''),
+          { pagamento_id: String(paymentId), metodo: info.payment_method_id || null }, 'webhook');
+      }
+      return ok200;
+    }
+
+    // 4. APROVADO. Update condicionado (pendente/cancelado e sem pago_at):
+    // se o MP mandar duas notificacoes ao mesmo tempo, so uma "ganha" e
+    // processa estoque, etiqueta e emails.
+    const statusAnterior = pedido.status;
     const { data: atualizados, error: errUpd } = await supabase
-      .from('pedidos').update(update).eq('id', pedidoId).eq('status', 'pendente').select('id');
+      .from('pedidos')
+      .update({
+        status: 'pago',
+        mercadopago_status: status,
+        mercadopago_id: String(paymentId),
+        metodo_pagamento: info.payment_method_id || 'mercadopago',
+        pago_at: new Date().toISOString(),
+      })
+      .eq('id', pedidoId).in('status', ['pendente', 'cancelado']).is('pago_at', null)
+      .select('id');
     if (errUpd) throw errUpd;
     if (!atualizados || atualizados.length === 0) return ok200;
 
-    // 5. Se aprovado: baixa estoque + avisa n8n/Telegram
-    if (novoStatus === 'pago') {
-      const { data: itens } = await supabase
-        .from('pedido_itens')
-        .select('produto_id, nome_produto, tamanho, quantidade, preco_unitario')
-        .eq('pedido_id', pedidoId);
-
-      // Baixa de estoque item a item (com alerta de estoque baixo).
-      // Produto com tamanho: baixa so daquele tamanho e recalcula o total
-      // (soma de todos os tamanhos) pra manter a coluna `estoque` sincronizada.
-      const alertasEstoqueBaixo = [];
-      for (const it of itens || []) {
-        if (!it.produto_id) continue;
-        const { data: prod } = await supabase
-          .from('produtos')
-          .select('nome_pt, estoque, estoque_minimo, variantes_estoque')
-          .eq('id', it.produto_id)
-          .single();
-        if (!prod) continue;
-
-        const minimo = prod.estoque_minimo != null ? prod.estoque_minimo : 5;
-
-        if (it.tamanho && prod.variantes_estoque && typeof prod.variantes_estoque === 'object' && prod.variantes_estoque[it.tamanho] != null) {
-          const novasVariantes = { ...prod.variantes_estoque };
-          const novoEstoqueTamanho = Math.max(0, novasVariantes[it.tamanho] - it.quantidade);
-          novasVariantes[it.tamanho] = novoEstoqueTamanho;
-          const novoEstoqueTotal = Object.values(novasVariantes).reduce((soma, v) => soma + (Number(v) || 0), 0);
-          await supabase.from('produtos').update({ variantes_estoque: novasVariantes, estoque: novoEstoqueTotal }).eq('id', it.produto_id);
-          if (novoEstoqueTamanho < minimo) {
-            alertasEstoqueBaixo.push({ nome: prod.nome_pt + ' (' + it.tamanho + ')', estoque: novoEstoqueTamanho });
-          }
-        } else if (prod.estoque != null) {
-          const novoEstoque = Math.max(0, prod.estoque - it.quantidade);
-          await supabase.from('produtos').update({ estoque: novoEstoque }).eq('id', it.produto_id);
-          if (novoEstoque < minimo) alertasEstoqueBaixo.push({ nome: prod.nome_pt, estoque: novoEstoque });
-        }
-      }
-
-      // Dados do cliente para a mensagem
-      let cliente = null;
-      if (pedido.cliente_id) {
-        const { data: cli } = await supabase
-          .from('clientes').select('nome, email, telefone, cpf').eq('id', pedido.cliente_id).single();
-        cliente = cli || null;
-      }
-
-      // Gera a etiqueta no SuperFrete automaticamente (compra o frete de
-      // verdade). Se falhar (endereco incompleto, sem saldo, SuperFrete
-      // fora do ar etc.), nao quebra o webhook — fica pra gerar manual
-      // depois pelo painel. O pedido so tem frete_service_id quando o
-      // cliente escolheu uma opcao de frete calculada no checkout.
-      let etiqueta = null;
-      let erroEtiqueta = null;
-      if (pedido.frete_service_id) {
-        try {
-          etiqueta = await gerarEtiquetaParaPedido(supabase, pedidoId, { enviarEmail: false });
-        } catch (e) {
-          erroEtiqueta = e.message;
-          console.error('webhook: falha ao gerar etiqueta automatica (nao critico):', e.message);
-        }
-      } else {
-        erroEtiqueta = 'pedido sem servico de frete SuperFrete escolhido no checkout';
-      }
-
-      // Email de confirmacao (cliente + loja), ja com rastreio/etiqueta
-      // quando a etiqueta foi gerada acima.
-      try {
-        await emailPagamentoAprovado(
-          cliente || { email: info.payer && info.payer.email },
-          pedido,
-          itens,
-          etiqueta || { erro: erroEtiqueta }
-        );
-      } catch (e) {
-        console.error('webhook: falha ao enviar email confirmacao (nao critico):', e.message);
-      }
-
-      // Dispara o n8n (Telegram). Se falhar, nao quebra o webhook.
-      if (N8N_WEBHOOK_URL) {
-        try {
-          await fetch(N8N_WEBHOOK_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              evento: 'compra_aprovada',
-              propriedade_id: PROPRIEDADE_LABAREDA,
-              pedido_numero: pedido.numero,
-              pedido_id: pedido.id,
-              cliente_nome: cliente ? cliente.nome : (info.payer && info.payer.first_name) || '',
-              cliente_email: cliente ? cliente.email : (info.payer && info.payer.email) || '',
-              cliente_telefone: cliente ? cliente.telefone : '',
-              valor_produtos: pedido.subtotal,
-              valor_frete: pedido.frete,
-              valor_total: pedido.total,
-              pagamento_id: String(paymentId),
-              endereco: pedido.endereco_entrega || null,
-              itens: (itens || []).map((i) => ({ nome: i.nome_produto, tamanho: i.tamanho || null, quantidade: i.quantidade, preco: i.preco_unitario })),
-              alertas_estoque_baixo: alertasEstoqueBaixo,
-              etiqueta_gerada: !!etiqueta,
-              rastreio_codigo: etiqueta ? etiqueta.tracking : null,
-              etiqueta_url: etiqueta ? etiqueta.etiqueta_url : null,
-              rastreio_url: etiqueta ? etiqueta.rastreio_url : null,
-              etiqueta_erro: etiqueta ? null : erroEtiqueta,
-              etiqueta_sem_saldo: !etiqueta && semSaldoSuperFrete(erroEtiqueta),
-              frete_servico: pedido.frete_service_name || null,
-              cliente_cpf: cliente ? cliente.cpf || null : null,
-            }),
-          });
-        } catch (e) {
-          console.error('webhook: falha ao chamar n8n (nao critico):', e.message);
-        }
-      }
+    await registrarEvento(supabase, pedidoId, 'pagamento_aprovado',
+      'Pagamento aprovado no Mercado Pago (' + (info.payment_method_id || 'mercadopago') + ')',
+      { pagamento_id: String(paymentId), valor: info.transaction_amount }, 'webhook');
+    if (statusAnterior === 'cancelado') {
+      await abrirPendencia(supabase, pedidoId, 'pagamento',
+        'Pagamento aprovado num pedido que estava CANCELADO — o pedido voltou para "pago". Confira estoque e envio.');
     }
+
+    const ctx = await carregarContexto(supabase, pedidoId);
+    ctx.emailPagador = info.payer && info.payer.email;
+    ctx.nomePagador = info.payer && info.payer.first_name;
+
+    // 5. Baixa de estoque (uma unica vez)
+    let alertas = [];
+    try {
+      alertas = (await confirmarBaixaEstoque(supabase, pedidoId, ctx.itens)).alertas;
+    } catch (e) {
+      console.error('webhook: falha na baixa de estoque:', e.message);
+      await abrirPendencia(supabase, pedidoId, 'estoque', 'Falha ao baixar o estoque: ' + e.message + ' — ajuste o estoque manualmente.');
+    }
+
+    // 6. Etiqueta, email ao comprador e aviso da equipe. Nenhuma falha aqui
+    // derruba o webhook: vira pendencia com "Tentar novamente" no painel.
+    const r = await etapaEtiqueta(supabase, ctx, { origem: 'webhook' });
+    const etiquetaOuErro = r.etiqueta || { erro: r.erro };
+    await etapaEmailConfirmacao(supabase, ctx, etiquetaOuErro, { origem: 'webhook' });
+    await etapaAvisoEquipe(supabase, ctx, etiquetaOuErro, alertas, { origem: 'webhook' });
 
     return ok200;
   } catch (err) {
+    // 500 => o Mercado Pago reenvia depois. Seguro: o pedido so e
+    // processado uma vez (update condicionado acima).
     console.error('Erro no webhook-mercadopago:', err);
-    return ok200; // 200 para o MP nao reenviar em loop
+    return { statusCode: 500, body: 'erro' };
   }
 };
 
