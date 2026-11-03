@@ -88,18 +88,6 @@
     </div>
   </header>
 
-  <!-- Mini Player fixo -->
-  <div class="mini-player" id="mini-player" style="display:none;">
-    <div class="mini-player__inner">
-      <div class="mini-player__eq" aria-hidden="true">
-        <span></span><span></span><span></span><span></span>
-      </div>
-      <p class="mini-player__texto" id="mini-player-texto">Tocando: --</p>
-      <button class="mini-player__btn" id="mini-player-ir" title="Ir para Radio" data-i18n-title="title_ir_radio">&#9835; RADIO</button>
-      <button class="mini-player__close" id="mini-player-close" title="Fechar" data-i18n-title="aria_fechar">&times;</button>
-    </div>
-  </div>
-
   <!-- Mobile Menu Overlay -->
   <div class="mobile-menu-overlay" id="mobile-menu" role="dialog" aria-modal="true" aria-label="Menu de navegação" data-i18n-aria-label="aria_menu_navegacao">
     <nav class="mobile-nav">
@@ -231,54 +219,10 @@
           <p class="section-subtitle" data-i18n="radio_subtitle">A trilha sonora da roça. Ouça nossas playlists curadas.</p>
         </div>
         <div class="radio-grid">
-          <div class="radio-card reveal reveal--delay-1">
-            <div class="radio-vinyl" aria-hidden="true">
-              <div class="vinyl-disc">
-                <div class="vinyl-label" style="--vinyl-color: var(--terracota);">
-                  <span>01</span>
-                </div>
-              </div>
-            </div>
-            <h3 class="radio-card-title" data-i18n="radio_pl1_title">Manhãs na Roça</h3>
-            <p class="radio-card-desc" data-i18n="radio_pl1_desc">MPB, bossa nova e sons da natureza para começar o dia.</p>
-            <div class="radio-embed" data-playlist-slot="0"></div>
-          </div>
-          <div class="radio-card reveal reveal--delay-2">
-            <div class="radio-vinyl" aria-hidden="true">
-              <div class="vinyl-disc">
-                <div class="vinyl-label" style="--vinyl-color: var(--verde);">
-                  <span>02</span>
-                </div>
-              </div>
-            </div>
-            <h3 class="radio-card-title" data-i18n="radio_pl2_title">Tropicália Eterna</h3>
-            <p class="radio-card-desc" data-i18n="radio_pl2_desc">Gil, Caetano, Tom Zé e a revolução sonora brasileira.</p>
-            <div class="radio-embed" data-playlist-slot="1"></div>
-          </div>
-          <div class="radio-card reveal reveal--delay-3">
-            <div class="radio-vinyl" aria-hidden="true">
-              <div class="vinyl-disc">
-                <div class="vinyl-label" style="--vinyl-color: var(--dourado);">
-                  <span>03</span>
-                </div>
-              </div>
-            </div>
-            <h3 class="radio-card-title" data-i18n="radio_pl3_title">Noites de Fogueira</h3>
-            <p class="radio-card-desc" data-i18n="radio_pl3_desc">Forró pé-de-serra, viola e cantigas para noites estreladas.</p>
-            <div class="radio-embed" data-playlist-slot="2"></div>
-          </div>
-          <div class="radio-card reveal reveal--delay-4">
-            <div class="radio-vinyl" aria-hidden="true">
-              <div class="vinyl-disc">
-                <div class="vinyl-label" style="--vinyl-color: var(--areia);">
-                  <span>04</span>
-                </div>
-              </div>
-            </div>
-            <h3 class="radio-card-title" data-i18n="radio_pl4_title">Cacau & Jazz</h3>
-            <p class="radio-card-desc" data-i18n="radio_pl4_desc">Jazz brasileiro, instrumental e o ritmo calmo do entardecer.</p>
-            <div class="radio-embed" data-playlist-slot="3"></div>
-          </div>
+          <div class="radio-embed" data-playlist-slot="0"></div>
+          <div class="radio-embed" data-playlist-slot="1"></div>
+          <div class="radio-embed" data-playlist-slot="2"></div>
+          <div class="radio-embed" data-playlist-slot="3"></div>
         </div>
       </div>
     </section>
@@ -947,19 +891,19 @@
   (function () {
     /* ====== PLAYLISTS — TROCAR IDs AQUI ====== */
     var PLAYLISTS = [
-      '37i9dQZF1DX0FOF1IUWK1W',  // Slot 1: Manhãs na Roça
-      '37i9dQZF1DX1MusMBbaPpF',  // Slot 2: Tropicália Eterna
-      '37i9dQZF1DWTwzVdyRpXm1',  // Slot 3: Noites de Fogueira
-      '37i9dQZF1DX4wta20PHgwo',  // Slot 4: Cacau & Jazz
+      '1QN3uU1739Kd9AVoPHfXLo',  // Slot 1
+      '2XIeuGqQ9tJSwh59hn1Kje',  // Slot 2
+      '78VEwSePmxbXADzpPOFtRA',  // Slot 3
+      '0SWQBXbDQrjmrOnoBrsSP3',  // Slot 4
     ];
     /* ========================================== */
     document.querySelectorAll('[data-playlist-slot]').forEach(function (el) {
       var i = parseInt(el.getAttribute('data-playlist-slot'), 10);
       if (PLAYLISTS[i]) {
-        el.innerHTML = '<iframe title="Radio Labareda" style="border-radius:12px" '
+        el.innerHTML = '<iframe title="Radio Labareda - playlist ' + (i + 1) + '" style="border-radius:12px" '
           + 'src="https://open.spotify.com/embed/playlist/' + PLAYLISTS[i] + '?utm_source=generator&theme=0" '
           + 'width="100%" height="352" frameBorder="0" '
-          + 'allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" '
+          + 'allow="clipboard-write; encrypted-media; fullscreen; picture-in-picture" '
           + 'loading="lazy"></iframe>';
       }
     });

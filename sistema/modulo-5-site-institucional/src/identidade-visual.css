@@ -159,7 +159,10 @@ h1, h2, h3,
 .radio-embed { overflow: visible; border-radius: 12px; }
 .radio-embed iframe { width: 100%; display: block; border-radius: 12px; }
 
-/* Mobile: disco + titulo + botão Spotify (sem iframe embed) */
+/* Radio: somente os 4 embeds Spotify (desktop e mobile) */
+.radio-grid > .radio-embed { min-width: 0; }
+
+/* Mobile (regras legadas de cartao; embeds continuam visiveis) */
 @media (max-width: 600px) {
   .vinyl-disc { width: 72px; height: 72px; }
   .vinyl-label { width: 26px; height: 26px; font-size: .55rem; }
@@ -167,7 +170,6 @@ h1, h2, h3,
   .radio-card { padding: 20px 16px; text-align: center; }
   .radio-card-title { font-size: 1rem; margin-bottom: 4px; }
   .radio-card-desc { font-size: .75rem; margin-bottom: 12px; }
-  .radio-embed { display: none; }
   .radio-grid { gap: 16px; }
   .radio-open-btn { margin-top: auto; }
 }
