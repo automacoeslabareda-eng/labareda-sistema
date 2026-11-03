@@ -125,6 +125,10 @@
       gap:40px 48px; max-width:820px; margin:0 auto;
     }
     @media (max-width:640px){ .jp-grid{ grid-template-columns:1fr; } }
+    /* layout intercalado: blocos de texto entre fotos, com respiro */
+    .jp-flow .jp-grid { margin:0 auto 56px; }
+    .jp-flow .jp-texto { margin-bottom:56px; }
+    @media (max-width:640px){ .jp-flow .jp-grid{ gap:32px; margin-bottom:44px; } .jp-flow .jp-texto{ margin-bottom:44px; } }
 
     /* ===== Vídeo (fundo escuro) ===== */
     .jp-video-wrap {
@@ -308,6 +312,25 @@
         /* ----- texto do conteúdo ----- */
         var conteudo = pick(post, 'conteudo');
         var textoEl = document.getElementById('jp-texto');
+        var paras = conteudo ? conteudo.split(/\n\s*\n/).map(function (p) { return p.trim(); }).filter(Boolean) : [];
+        /* intercala: hero, 1º parágrafo, par de fotos, próximo parágrafo... (só com 3+ fotos e 2+ parágrafos) */
+        if (itens.length >= 3 && paras.length >= 2) {
+          var fig = function (it) { return '<figure class="jp-figure"><div class="jp-frame"><img src="' + esc(it.url) + '" alt="' + esc(titulo) + '" loading="lazy"></div>'
+            + (it.descricao ? '<figcaption class="jp-cap">' + esc(it.descricao) + '</figcaption>' : '') + '</figure>'; };
+          var flow = imgWrap.innerHTML.split('<div class="jp-grid">')[0];
+          var rest = itens.slice(1), pi = 0;
+          while (rest.length || pi < paras.length) {
+            if (pi < paras.length) {
+              var take = (rest.length === 0) ? paras.slice(pi) : [paras[pi]];
+              flow += '<div class="jp-texto">' + take.map(function (p) { return '<p>' + esc(p) + '</p>'; }).join('') + '</div>';
+              pi += take.length;
+            }
+            if (rest.length) { var pair = (pi >= paras.length) ? rest.splice(0) : rest.splice(0, 2); flow += '<div class="jp-grid">' + pair.map(fig).join('') + '</div>'; }
+          }
+          imgWrap.innerHTML = flow; imgWrap.className = 'jp-flow';
+          textoEl.style.display = 'none';
+          conteudo = '';
+        }
         if (conteudo) {
           var paragrafos = conteudo.split(/\n\s*\n/);
           textoEl.innerHTML = paragrafos.map(function (p) {
