@@ -25,8 +25,24 @@ const { linkAcompanhar } = require('./_pedido-token');
 const { registrarEvento, resolverPendencia, faltaMigration } = require('./_pedido-registro');
 const {
   liberarReserva, liberarReservasExpiradas, confirmarBaixaEstoque, carregarContexto, etiquetaDoPedido,
-  etapaEtiqueta, etapaEmailConfirmacao, etapaAvisoEquipe,
+  etapaEtiqueta, etapaNotaFiscal, etapaEmailConfirmacao, etapaAvisoEquipe,
 } = require('./_pedido-fluxo');
+const { carregarConfigFiscal, linksDaNota, nfemais, cnpjValido } = require('./_nota-fiscal');
+
+// Campos de config_fiscal que o painel pode editar
+const CAMPOS_CONFIG_FISCAL = [
+  'modo', 'ambiente', 'cnpj', 'razao_social', 'nome_fantasia', 'inscricao_estadual', 'inscricao_municipal',
+  'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'cod_municipio', 'uf', 'cep', 'telefone',
+  'crt', 'serie', 'natureza_operacao', 'cfop_dentro_uf', 'cfop_fora_uf', 'csosn', 'cst_icms',
+  'aliquota_icms', 'aliquota_icms_fora_uf', 'aliquota_credito_sn', 'cst_pis', 'aliquota_pis',
+  'cst_cofins', 'aliquota_cofins', 'informacoes_complementares',
+];
+const CAMPOS_NUMERICOS_FISCAIS = ['ambiente', 'crt', 'serie', 'aliquota_icms', 'aliquota_icms_fora_uf',
+  'aliquota_credito_sn', 'aliquota_pis', 'aliquota_cofins'];
+
+// Situacao da nota que o painel mostra no pedido
+const CAMPOS_NOTA = 'id, numero, status, nfe_status, nfe_codigo, nfe_numero, nfe_serie, nfe_chave, nfe_ambiente, '
+  + 'nfe_xml_path, nfe_danfe_path, nfe_erro, nfe_autorizada_at, nfe_email_enviado_at';
 
 const STATUS_PAGO = ['pago', 'preparando', 'enviado', 'entregue'];
 
@@ -171,6 +187,10 @@ const handler = async (event) => {
           sucesso = await etapaEmailConfirmacao(db, ctx, etiquetaDoPedido(ctx.pedido) || {}, opcoes);
         } else if (pend.tipo === 'aviso_equipe') {
           sucesso = await etapaAvisoEquipe(db, ctx, etiquetaDoPedido(ctx.pedido) || {}, [], opcoes);
+        } else if (pend.tipo === 'nota_fiscal') {
+          const r = await etapaNotaFiscal(db, ctx, Object.assign({ manual: true }, opcoes));
+          if (r.pulado) return resposta(400, { erro: r.erro });
+          sucesso = r.status === 'autorizada';
         } else {
           // estoque / pagamento: precisam de conferencia humana
           return resposta(400, { erro: 'Esta pendência precisa ser conferida e marcada como resolvida manualmente.' });
@@ -275,6 +295,68 @@ const handler = async (event) => {
         await registrarEvento(db, body.pedido_id, emailEnviado ? 'email_rastreio_enviado' : 'email_rastreio_falhou',
           emailEnviado ? 'Email de rastreio enviado ao comprador' : 'Email de rastreio NÃO foi enviado', null, 'painel');
         return resposta(200, { ok: true, pedido: pedidoData, rastreio_url: rastreioUrl, email_enviado: emailEnviado });
+      }
+      /* ---- Nota fiscal (NF-e via NFe+) ---- */
+      case 'emitir-nota': {
+        if (!body.pedido_id) return resposta(400, { erro: 'pedido_id obrigatorio' });
+        const ctx = await carregarContexto(db, body.pedido_id);
+        if (STATUS_PAGO.indexOf(ctx.pedido.status) < 0) return resposta(400, { erro: 'A nota só pode ser emitida para pedido pago.' });
+        const r = await etapaNotaFiscal(db, ctx, { origem: 'painel', por: sessao.email, manual: true });
+        if (r.pulado) return resposta(400, { erro: r.erro });
+        const { data: depois } = await db.from('pedidos').select(CAMPOS_NOTA).eq('id', body.pedido_id).single();
+        return resposta(200, { ok: true, status: r.status, erro: r.erro || null, pedido: depois || null });
+      }
+      case 'nota-pedido': {
+        const { data: ped, error } = await db.from('pedidos').select(CAMPOS_NOTA).eq('id', body.pedido_id).single();
+        if (error) {
+          if (faltaMigration(error)) return resposta(200, { ok: true, migration_pendente: true });
+          throw error;
+        }
+        const links = await linksDaNota(db, ped, 3600);
+        return resposta(200, { ok: true, pedido: ped, danfe_url: links.danfe_url, xml_url: links.xml_url });
+      }
+      case 'config-fiscal': {
+        const config = await carregarConfigFiscal(db);
+        return resposta(200, {
+          ok: true,
+          migration_pendente: !config,
+          config: config,
+          token_configurado: !!(process.env.NFEMAIS_TOKEN || process.env.token_nfemais),
+        });
+      }
+      case 'salvar-config-fiscal': {
+        const entrada = body.config || {};
+        const patch = {};
+        CAMPOS_CONFIG_FISCAL.forEach(function (c) {
+          if (entrada[c] === undefined) return;
+          let v = entrada[c];
+          if (typeof v === 'string') v = v.trim();
+          if (CAMPOS_NUMERICOS_FISCAIS.indexOf(c) >= 0) v = v === '' || v == null ? 0 : Number(String(v).replace(',', '.'));
+          else if (v === '') v = null;
+          patch[c] = v;
+        });
+        if (patch.cnpj && !cnpjValido(patch.cnpj)) return resposta(400, { erro: 'CNPJ do emitente inválido.' });
+        if (patch.modo && ['desligado', 'manual', 'automatico'].indexOf(patch.modo) < 0) return resposta(400, { erro: 'Modo inválido.' });
+        CAMPOS_NUMERICOS_FISCAIS.forEach(function (c) {
+          if (patch[c] !== undefined && !isFinite(patch[c])) patch[c] = 0;
+        });
+        patch.updated_at = new Date().toISOString();
+        patch.updated_by = sessao.email;
+        const { data, error } = await db.from('config_fiscal').upsert(Object.assign({ id: 1 }, patch)).select('*').single();
+        if (error) {
+          if (faltaMigration(error)) return resposta(400, { erro: 'Rode antes a atualização do banco (atualizacoes/migration-etapa2-nota-fiscal.sql).' });
+          throw error;
+        }
+        return resposta(200, { ok: true, config: data });
+      }
+      case 'testar-nfemais': {
+        if (!(process.env.NFEMAIS_TOKEN || process.env.token_nfemais)) return resposta(200, { ok: false, mensagem: 'NFEMAIS_TOKEN não configurado no servidor (Vercel).' });
+        try {
+          const st = await nfemais.status();
+          return resposta(200, { ok: true, mensagem: 'Conectado ao NFe+. SEFAZ: ' + (st.msg || st.status_code) });
+        } catch (e) {
+          return resposta(200, { ok: false, mensagem: e.message });
+        }
       }
       case 'mensagens': {
         const { data, error } = await db.from('mensagens_contato').select('*').order('created_at', { ascending: false });

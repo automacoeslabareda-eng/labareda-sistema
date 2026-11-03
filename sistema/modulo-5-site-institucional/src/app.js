@@ -259,6 +259,8 @@
       checkout_total: 'Total',
       checkout_order_number: 'Pedido #',
       checkout_fill_fields: 'Preencha todos os campos obrigat\u00f3rios.',
+      checkout_cpf_hint: '(para a nota fiscal)',
+      checkout_cpf_invalid: 'Informe um CPF v\u00e1lido \u2014 ele \u00e9 necess\u00e1rio para emitir a nota fiscal.',
       checkout_select_shipping: 'Selecione uma op\u00e7\u00e3o de frete.',
       checkout_error: 'Erro ao processar pedido. Tente novamente.',
       checkout_sending: 'Processando...',
@@ -456,6 +458,8 @@
       checkout_total: 'Total',
       checkout_order_number: 'Order #',
       checkout_fill_fields: 'Please fill all required fields.',
+      checkout_cpf_hint: '(for the invoice)',
+      checkout_cpf_invalid: 'Please enter a valid CPF \u2014 it is required to issue the invoice (nota fiscal).',
       checkout_select_shipping: 'Please select a shipping option.',
       checkout_error: 'Error processing order. Please try again.',
       checkout_sending: 'Processing...',
@@ -2167,9 +2171,14 @@
     var nome = document.getElementById('checkout-nome').value.trim();
     var email = document.getElementById('checkout-email').value.trim();
     var telefone = document.getElementById('checkout-telefone').value.trim();
+    var cpf = document.getElementById('checkout-cpf').value.trim();
 
-    if (!nome || !email || !telefone) {
+    if (!nome || !email || !telefone || !cpf) {
       showToast(translations[currentLang].checkout_fill_fields, true);
+      return;
+    }
+    if (!documentoValido(cpf)) {
+      showToast(translations[currentLang].checkout_cpf_invalid, true);
       return;
     }
 
@@ -2247,6 +2256,31 @@
       if ((cepEl.value || '').replace(/\D/g, '').length === 8) buscarCep();
     });
   })();
+
+  /* CPF (ou CNPJ) com digito verificador — obrigatorio para a nota fiscal */
+  function documentoValido(valor) {
+    var d = String(valor || '').replace(/\D/g, '');
+    if (/^(\d)\1+$/.test(d)) return false;
+    if (d.length === 11) {
+      for (var t = 9; t < 11; t++) {
+        var s = 0;
+        for (var i = 0; i < t; i++) s += Number(d[i]) * (t + 1 - i);
+        if (((s * 10) % 11) % 10 !== Number(d[t])) return false;
+      }
+      return true;
+    }
+    if (d.length === 14) {
+      var dv = function (n) {
+        var pesos = n === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+        var s2 = 0;
+        for (var j = 0; j < n; j++) s2 += Number(d[j]) * pesos[j];
+        var r = s2 % 11;
+        return r < 2 ? 0 : 11 - r;
+      };
+      return dv(12) === Number(d[12]) && dv(13) === Number(d[13]);
+    }
+    return false;
+  }
 
   /* Confirm Order */
   document.getElementById('checkout-confirm').addEventListener('click', function () {

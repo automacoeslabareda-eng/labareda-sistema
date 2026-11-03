@@ -15,7 +15,7 @@
  * ============================================================
  */
 
-const TIPOS_PENDENCIA = ['etiqueta', 'email_confirmacao', 'aviso_equipe', 'estoque', 'pagamento'];
+const TIPOS_PENDENCIA = ['etiqueta', 'email_confirmacao', 'aviso_equipe', 'estoque', 'pagamento', 'nota_fiscal'];
 
 // Erros de "tabela/funcao nao existe" (migration nao rodada)
 function faltaMigration(error) {

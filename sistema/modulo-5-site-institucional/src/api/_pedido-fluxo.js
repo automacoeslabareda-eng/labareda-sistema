@@ -14,13 +14,15 @@
  *
  *  Etapas pos-pagamento — cada uma registra historico e, se falhar, abre
  *  uma pendencia que o painel reprocessa ("Tentar novamente"):
- *   - etapaEtiqueta, etapaEmailConfirmacao, etapaAvisoEquipe
+ *   - etapaEtiqueta, etapaNotaFiscal (_nota-fiscal.js), etapaEmailConfirmacao,
+ *     etapaAvisoEquipe
  * ============================================================
  */
 
 const { gerarEtiquetaParaPedido } = require('./gerar-etiqueta');
 const { emailPagamentoAprovado } = require('./_emails');
 const { registrarEvento, abrirPendencia, resolverPendencia, faltaMigration } = require('./_pedido-registro');
+const { etapaNotaFiscal, anexosDaNota, linksDaNota } = require('./_nota-fiscal');
 
 // Propriedade Labareda (mesmo id usado no fluxo Telegram do modulo 1)
 const PROPRIEDADE_LABAREDA = '229e2813-6d46-4bdb-9aee-5d9a119733e6';
@@ -187,20 +189,31 @@ async function etapaEtiqueta(db, ctx, opcoes) {
   }
 }
 
-/* Email "Compra confirmada" ao comprador (+ copia da loja). */
+/* Email "Compra confirmada" ao comprador (+ copia da loja). Se a nota fiscal
+   ja estiver autorizada e ainda nao foi enviada, vai anexada. */
 async function etapaEmailConfirmacao(db, ctx, etiquetaOuErro, opcoes) {
   const pedido = ctx.pedido;
   const cliente = ctx.cliente || { email: ctx.emailPagador };
   const origem = (opcoes && opcoes.origem) || 'webhook';
+  let nota = null;
+  if (pedido.nfe_status === 'autorizada' && !pedido.nfe_email_enviado_at) {
+    try { nota = await anexosDaNota(db, pedido); } catch (e) { console.error('[pedido-fluxo] anexos da nota:', e.message); }
+  }
   let r = { cliente: false, loja: false };
   try {
-    r = await emailPagamentoAprovado(cliente, pedido, ctx.itens, etiquetaOuErro);
+    r = await emailPagamentoAprovado(cliente, pedido, ctx.itens, etiquetaOuErro, nota);
   } catch (e) {
     console.error('[pedido-fluxo] email confirmacao:', e.message);
   }
   if (r.cliente) {
-    await registrarEvento(db, pedido.id, 'email_confirmacao_enviado', 'Email "Compra confirmada" enviado para ' + (cliente.email || '?'),
-      { copia_loja: !!r.loja }, origem);
+    await registrarEvento(db, pedido.id, 'email_confirmacao_enviado', 'Email "Compra confirmada" enviado para ' + (cliente.email || '?')
+      + (nota ? ' com a nota fiscal ' + (pedido.nfe_numero || '') + ' anexada' : ''),
+      { copia_loja: !!r.loja, nota_anexada: !!nota }, origem);
+    if (nota) {
+      const agora = new Date().toISOString();
+      await db.from('pedidos').update({ nfe_email_enviado_at: agora }).eq('id', pedido.id);
+      pedido.nfe_email_enviado_at = agora;
+    }
     await resolverPendencia(db, pedido.id, 'email_confirmacao', (opcoes && opcoes.por) || 'sistema');
     return true;
   }
@@ -221,6 +234,12 @@ async function etapaAvisoEquipe(db, ctx, etiquetaOuErro, alertas, opcoes) {
   const etiqueta = etiquetaOuErro && (etiquetaOuErro.tracking || etiquetaOuErro.etiqueta_url) ? etiquetaOuErro : null;
   const erroEtiqueta = etiqueta ? null : (etiquetaOuErro && etiquetaOuErro.erro) || null;
   let erro = null;
+  // Nota fiscal: link seguro (7 dias) do DANFE/XML se ja autorizada; senao
+  // vai a situacao e a nota segue depois num aviso "nota_fiscal_autorizada".
+  let linksNota = {};
+  if (pedido.nfe_status === 'autorizada') {
+    try { linksNota = await linksDaNota(db, pedido, 7 * 24 * 3600); } catch (e) { console.error('[pedido-fluxo] links da nota:', e.message); }
+  }
   if (!url) {
     erro = 'N8N_WEBHOOK_URL não configurada — aviso de venda não enviado.';
   } else {
@@ -251,6 +270,12 @@ async function etapaAvisoEquipe(db, ctx, etiquetaOuErro, alertas, opcoes) {
           etiqueta_sem_saldo: !etiqueta && semSaldoSuperFrete(erroEtiqueta),
           frete_servico: pedido.frete_service_name || null,
           cliente_cpf: cliente.cpf || null,
+          nfe_status: pedido.nfe_status || null,
+          nfe_numero: pedido.nfe_numero || null,
+          nfe_chave: pedido.nfe_chave || null,
+          nfe_danfe_url: linksNota.danfe_url || null,
+          nfe_xml_url: linksNota.xml_url || null,
+          nfe_erro: pedido.nfe_status === 'autorizada' ? null : (pedido.nfe_erro || null),
           reenvio: origem !== 'webhook',
         }),
       });
@@ -279,6 +304,7 @@ module.exports = {
   carregarContexto,
   etiquetaDoPedido,
   etapaEtiqueta,
+  etapaNotaFiscal,
   etapaEmailConfirmacao,
   etapaAvisoEquipe,
 };

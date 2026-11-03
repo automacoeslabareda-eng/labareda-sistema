@@ -9,8 +9,9 @@
  *      no Mercado Pago (nunca confia so na notificacao).
  *   3. Acha o pedido pelo external_reference.
  *   4. Se APROVADO (uma unica vez por pedido): marca "pago", efetiva a
- *      baixa de estoque, gera a etiqueta, manda o email "Compra
- *      confirmada" e avisa a equipe (n8n -> Telegram/WhatsApp).
+ *      baixa de estoque, gera a etiqueta, emite a nota fiscal (se o modo
+ *      automatico estiver ligado), manda o email "Compra confirmada" (com a
+ *      nota anexada, se ja autorizada) e avisa a equipe (n8n).
  *      Cada etapa grava historico; falhas viram pendencia no painel.
  *   5. Recusado/em analise: so registra (o cliente pode tentar de novo
  *      com outro cartao no mesmo link).
@@ -35,7 +36,7 @@ const { MercadoPagoConfig, Payment } = require('mercadopago');
 const { toVercel } = require('./_netlify-adapter');
 const { registrarEvento, abrirPendencia } = require('./_pedido-registro');
 const {
-  confirmarBaixaEstoque, carregarContexto, etapaEtiqueta, etapaEmailConfirmacao, etapaAvisoEquipe,
+  confirmarBaixaEstoque, carregarContexto, etapaEtiqueta, etapaNotaFiscal, etapaEmailConfirmacao, etapaAvisoEquipe,
 } = require('./_pedido-fluxo');
 
 // Escolhe o Access Token conforme MP_ENV ('teste' ou 'producao').
@@ -121,7 +122,7 @@ const handler = async (event) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
     const { data: pedido } = await supabase
-      .from('pedidos').select('id, numero, status, pago_at, mercadopago_status').eq('id', pedidoId).single();
+      .from('pedidos').select('*').eq('id', pedidoId).single();
     if (!pedido) return ok200;
 
     // 3a. Estorno / chargeback de pedido ja pago: registra e alerta.
@@ -130,7 +131,10 @@ const handler = async (event) => {
         await supabase.from('pedidos').update({ mercadopago_status: status }).eq('id', pedidoId);
         const desc = status === 'charged_back' ? 'Chargeback (contestação) no Mercado Pago' : 'Pagamento estornado/cancelado no Mercado Pago';
         await registrarEvento(supabase, pedidoId, 'pagamento_' + status, desc, { pagamento_id: String(paymentId) }, 'webhook');
-        await abrirPendencia(supabase, pedidoId, 'pagamento', desc + ' — confira o pedido #' + pedido.numero + ' antes de enviar.');
+        const notaAviso = pedido.nfe_status === 'autorizada'
+          ? ' A NF-e ' + (pedido.nfe_numero || '') + ' deste pedido está autorizada: cancele-a no painel do NFe+ (a SEFAZ aceita cancelamento em até 24h da autorização).'
+          : '';
+        await abrirPendencia(supabase, pedidoId, 'pagamento', desc + ' — confira o pedido #' + pedido.numero + ' antes de enviar.' + notaAviso);
       }
       return ok200;
     }
@@ -194,6 +198,9 @@ const handler = async (event) => {
     // derruba o webhook: vira pendencia com "Tentar novamente" no painel.
     const r = await etapaEtiqueta(supabase, ctx, { origem: 'webhook' });
     const etiquetaOuErro = r.etiqueta || { erro: r.erro };
+    // Nota fiscal (so no modo automatico). Se autorizar agora, vai anexada no
+    // email de confirmacao e o link entra no aviso da equipe.
+    await etapaNotaFiscal(supabase, ctx, { origem: 'webhook', enviarEmail: false, avisarEquipe: false });
     await etapaEmailConfirmacao(supabase, ctx, etiquetaOuErro, { origem: 'webhook' });
     await etapaAvisoEquipe(supabase, ctx, etiquetaOuErro, alertas, { origem: 'webhook' });
 

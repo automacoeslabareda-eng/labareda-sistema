@@ -31,6 +31,7 @@ const { emailPedidoCriado } = require('./_emails');
 const { cotarFrete, montarPacote } = require('./cotacao-frete');
 const { horasReserva, reservarEstoque, liberarReserva, liberarReservasExpiradas } = require('./_pedido-fluxo');
 const { registrarEvento } = require('./_pedido-registro');
+const { cpfValido, cnpjValido } = require('./_nota-fiscal');
 
 // Data no formato que o Mercado Pago aceita, no fuso de Brasilia
 // (ex: 2026-11-03T14:30:00.000-03:00).
@@ -82,6 +83,12 @@ const handler = async (event) => {
   const itens = Array.isArray(dados.itens) ? dados.itens : [];
   const freteReq = dados.frete || {};
   if (!cliente.email) return resposta(400, { erro: 'E-mail do cliente ausente.' });
+  // CPF (ou CNPJ) e obrigatorio na NF-e — guarda so os digitos.
+  const documento = String(cliente.cpf || '').replace(/\D/g, '');
+  if (!(documento.length === 11 ? cpfValido(documento) : cnpjValido(documento))) {
+    return resposta(400, { erro: 'Informe um CPF válido — ele é necessário para emitir a nota fiscal.' });
+  }
+  cliente.cpf = documento;
   if (itens.length === 0) return resposta(400, { erro: 'Carrinho vazio.' });
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });

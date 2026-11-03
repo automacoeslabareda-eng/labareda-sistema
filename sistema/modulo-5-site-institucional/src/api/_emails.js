@@ -32,7 +32,8 @@ function siteUrl() {
   return (process.env.SITE_URL || 'https://sitiolabareda.com').trim().replace(/\/+$/, '').replace(/^http:\/\//i, 'https://');
 }
 
-async function enviarEmail(to, subject, html) {
+/* anexos (opcional): [{ filename, content (base64) }] */
+async function enviarEmail(to, subject, html, anexos) {
   var resendKey = process.env.RESEND_API_KEY;
   if (!resendKey) {
     console.warn('[emails] RESEND_API_KEY nao configurada. Email nao enviado:', subject);
@@ -43,12 +44,12 @@ async function enviarEmail(to, subject, html) {
     var res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      body: JSON.stringify(Object.assign({
         from: process.env.EMAIL_FROM || 'Sitio Labareda <noreply@sitiolabareda.com>',
         to: [to],
         subject: subject,
         html: html,
-      }),
+      }, anexos && anexos.length ? { attachments: anexos } : {})),
     });
     if (!res.ok) {
       var errBody = await res.text().catch(function () { return ''; });
@@ -193,8 +194,10 @@ async function emailPedidoCriado(cliente, pedido, itens, linkPagamento, reservaA
   return { cliente: r[0], loja: r[1] };
 }
 
-/* 2. Pagamento aprovado: confirmacao + dados do frete/rastreio. */
-async function emailPagamentoAprovado(cliente, pedido, itens, etiqueta) {
+/* 2. Pagamento aprovado: confirmacao + dados do frete/rastreio.
+   nota (opcional): { numero, chave, anexos } quando a NF-e ja foi autorizada —
+   vai anexada ao email do comprador (DANFE + XML). */
+async function emailPagamentoAprovado(cliente, pedido, itens, etiqueta, nota) {
   var acompanharUrl = linkAcompanhar(siteUrl(), pedido.numero);
   var primeiroNome = esc(((cliente && cliente.nome) || '').split(' ')[0]);
 
@@ -207,9 +210,12 @@ async function emailPagamentoAprovado(cliente, pedido, itens, etiqueta) {
       + (etiqueta.rastreio_url ? botao(etiqueta.rastreio_url, 'Rastrear meu pedido') : '');
   }
 
-  // Segue o modelo de confirmacao do briefing (squads/site.md, secao 4).
-  // Nota fiscal ainda e emitida fora do sistema: o email so avisa que ela
-  // sera enviada depois.
+  // Segue o modelo de confirmacao do briefing (squads/site.md, secao 4):
+  // nota ja autorizada vai anexada; senao, avisa que chega em outro email.
+  var temNota = !!(nota && nota.anexos && nota.anexos.length);
+  var textoNota = temNota
+    ? 'Sua nota fiscal' + (nota.numero ? ' (NF-e ' + esc(nota.numero) + ')' : '') + ' está disponível neste e-mail, em anexo.'
+    : 'Enviaremos sua nota fiscal assim que a emissão for concluída.';
   var prazo = prazoTexto(pedido);
   var htmlCliente = moldura(
     '<p>Olá, ' + primeiroNome + '!</p>'
@@ -220,7 +226,7 @@ async function emailPagamentoAprovado(cliente, pedido, itens, etiqueta) {
     + '<p style="font-size:.9rem;margin:6px 0;"><strong>Valor total:</strong> ' + brl(pedido.total) + '</p>'
     + (prazo ? '<p style="font-size:.9rem;margin:6px 0;"><strong>Previsão de entrega:</strong> ' + esc(prazo) + '</p>' : '')
     + enderecoHtml(pedido.endereco_entrega)
-    + '<p style="font-size:.9rem;">Enviaremos sua nota fiscal assim que a emissão for concluída.</p>'
+    + '<p style="font-size:.9rem;">' + textoNota + '</p>'
     + (blocoRastreio
       ? '<p style="font-size:.9rem;">Seu pedido já tem código de rastreamento:</p>' + blocoRastreio
       : '<p style="font-size:.9rem;">Assim que o pedido for despachado, você receberá o código de rastreamento.</p>')
@@ -255,7 +261,10 @@ async function emailPagamentoAprovado(cliente, pedido, itens, etiqueta) {
   var checklist = '<div style="background:#fff4e5;border:1px solid #f0d9b5;border-radius:8px;padding:12px 16px;margin:20px 0;">'
     + '<p style="margin:0 0 6px;font-weight:bold;">Checklist do pedido</p><ul style="padding:0;margin:0;font-size:.9rem;">'
     + item(etiqueta && etiqueta.etiqueta_url, 'Etiqueta de envio' + (etiqueta && etiqueta.etiqueta_url ? ' — <a href="' + esc(etiqueta.etiqueta_url) + '">imprimir</a>' : ' — gerar no painel da loja (veja o aviso abaixo)'))
-    + item(false, 'Emitir nota fiscal' + (cliente && cliente.cpf ? ' (CPF ' + esc(cliente.cpf) + ')' : ''))
+    + (temNota
+      ? item(true, 'Nota fiscal NF-e ' + esc(nota.numero || '') + ' autorizada — DANFE e XML em anexo (imprima o DANFE e coloque na embalagem)')
+      : item(false, 'Nota fiscal' + (cliente && cliente.cpf ? ' (CPF ' + esc(cliente.cpf) + ')' : '')
+        + ' — emitir pelo painel da loja (botão Emitir nota fiscal no pedido) ou acompanhar a emissão automática'))
     + item(false, 'Falar com o cliente: ' + esc(cliente && cliente.nome)
       + (tel ? ' — <a href="' + esc(waCliente) + '">WhatsApp ' + esc(cliente.telefone) + '</a>' : '')
       + (cliente && cliente.email ? ' — <a href="mailto:' + esc(cliente.email) + '">' + esc(cliente.email) + '</a>' : ''))
@@ -272,11 +281,34 @@ async function emailPagamentoAprovado(cliente, pedido, itens, etiqueta) {
     + enderecoHtml(pedido.endereco_entrega)
   );
 
+  var anexos = temNota ? nota.anexos : null;
   var r = await Promise.all([
-    enviarEmail(cliente && cliente.email, 'Compra confirmada — Pedido #' + pedido.numero, htmlCliente),
-    enviarEmail(process.env.EMAIL_LOJA || 'sitiolabareda@gmail.com', '💰 VENDEU! Pedido #' + pedido.numero + ' pago — etiqueta, nota e contato', htmlLoja),
+    enviarEmail(cliente && cliente.email, 'Compra confirmada — Pedido #' + pedido.numero, htmlCliente, anexos),
+    enviarEmail(process.env.EMAIL_LOJA || 'sitiolabareda@gmail.com', '💰 VENDEU! Pedido #' + pedido.numero + ' pago — etiqueta, nota e contato', htmlLoja, anexos),
   ]);
   return { cliente: r[0], loja: r[1] };
 }
 
-module.exports = { enviarEmail, emailPedidoCriado, emailPagamentoAprovado };
+/* 3. Nota fiscal pronta depois da confirmacao: segundo email ao comprador
+   com DANFE + XML anexados (copia pra loja). Retorna true se o comprador
+   recebeu. */
+async function emailNotaFiscal(cliente, pedido, nota) {
+  var primeiroNome = esc(((cliente && cliente.nome) || '').split(' ')[0]);
+  var html = moldura(
+    '<p>Olá, ' + primeiroNome + '!</p>'
+    + '<p>A nota fiscal do seu pedido <strong>#' + esc(pedido.numero) + '</strong> foi emitida'
+    + (nota.numero ? ' (NF-e ' + esc(nota.numero) + ')' : '') + ' e segue em anexo: o DANFE em PDF e o arquivo XML.</p>'
+    + (nota.chave ? '<p style="font-size:.8rem;color:#6b5f56;word-break:break-all;">Chave de acesso: ' + esc(nota.chave) + '</p>' : '')
+    + '<p style="font-size:.85rem;color:#6b5f56;">Você também pode consultá-la no Portal da Nota Fiscal Eletrônica com a chave de acesso.</p>'
+    + botao(linkAcompanhar(siteUrl(), pedido.numero), 'Acompanhar pedido')
+    + rodape(pedido)
+    + '<p style="font-size:.9rem;margin-top:20px;">Com carinho,<br>Equipe Sítio Labareda</p>'
+  );
+  var r = await Promise.all([
+    enviarEmail(cliente && cliente.email, 'Nota fiscal do pedido #' + pedido.numero + ' — Sítio Labareda', html, nota.anexos),
+    enviarEmail(process.env.EMAIL_LOJA || 'sitiolabareda@gmail.com', '[Loja] Nota fiscal do pedido #' + pedido.numero + ' emitida', html, nota.anexos),
+  ]);
+  return r[0];
+}
+
+module.exports = { enviarEmail, emailPedidoCriado, emailPagamentoAprovado, emailNotaFiscal };
