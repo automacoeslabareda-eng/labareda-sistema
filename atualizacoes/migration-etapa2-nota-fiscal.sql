@@ -60,11 +60,22 @@ CREATE TABLE IF NOT EXISTS config_fiscal (
   cst_cofins TEXT NOT NULL DEFAULT '49',
   aliquota_cofins NUMERIC NOT NULL DEFAULT 0,
   informacoes_complementares TEXT,
+  aliquotas_internas_uf JSONB,                -- DIFAL: sobrescreve a aliquota interna de alguma UF, ex.: {"SP": 18}
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_by TEXT
 );
 COMMENT ON TABLE config_fiscal IS 'Dados do emitente e regras tributarias da NF-e (linha unica). Validar com o contador';
-INSERT INTO config_fiscal (id, razao_social, uf) VALUES (1, 'Sitio Labareda Pousada e Hospedagem LTDA', 'BA')
+ALTER TABLE config_fiscal ADD COLUMN IF NOT EXISTS aliquotas_internas_uf JSONB;
+-- autXML (exigido pela SEFAZ-BA): CNPJ do escritorio de contabilidade ou,
+-- sem ele, o da propria SEFAZ-BA (padrao, igual as notas do painel do NFe+).
+ALTER TABLE config_fiscal ADD COLUMN IF NOT EXISTS cnpj_autxml TEXT NOT NULL DEFAULT '13937073000156';
+-- Dados do emitente como cadastrados na conta NFe+ e tributacao igual a da
+-- nota de teste autorizada pelo contador em 03/11/2026 (CSOSN 102, PIS/COFINS 08).
+INSERT INTO config_fiscal (id, cnpj, razao_social, nome_fantasia, inscricao_estadual, logradouro, numero, complemento,
+    bairro, cidade, cod_municipio, uf, cep, crt, natureza_operacao, csosn, cst_pis, cst_cofins)
+  VALUES (1, '61691405000108', 'SITIO LABAREDA POUSADA E HOSPEDAGEM LTDA', 'SITIO LABAREDA', '233156974',
+    'RODOVIA BA 001', 'S/N', 'KM 39,5', 'DISTRITO - SERRA GRANDE', 'Uruçuca', '2932705', 'BA', '45680000', 1,
+    'Venda de mercadoria adquirida ou recebida de terceiros', '102', '08', '08')
   ON CONFLICT (id) DO NOTHING;
 -- So o servidor (service_role) le/escreve.
 ALTER TABLE config_fiscal ENABLE ROW LEVEL SECURITY;

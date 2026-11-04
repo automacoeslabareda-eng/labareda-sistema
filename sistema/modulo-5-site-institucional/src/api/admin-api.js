@@ -35,7 +35,7 @@ const CAMPOS_CONFIG_FISCAL = [
   'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'cod_municipio', 'uf', 'cep', 'telefone',
   'crt', 'serie', 'natureza_operacao', 'cfop_dentro_uf', 'cfop_fora_uf', 'csosn', 'cst_icms',
   'aliquota_icms', 'aliquota_icms_fora_uf', 'aliquota_credito_sn', 'cst_pis', 'aliquota_pis',
-  'cst_cofins', 'aliquota_cofins', 'informacoes_complementares',
+  'cst_cofins', 'aliquota_cofins', 'informacoes_complementares', 'cnpj_autxml',
 ];
 const CAMPOS_NUMERICOS_FISCAIS = ['ambiente', 'crt', 'serie', 'aliquota_icms', 'aliquota_icms_fora_uf',
   'aliquota_credito_sn', 'aliquota_pis', 'aliquota_cofins'];

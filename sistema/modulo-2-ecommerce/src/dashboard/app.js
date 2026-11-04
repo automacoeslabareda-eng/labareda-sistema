@@ -2870,6 +2870,7 @@ async function carregarConfigFiscal() {
       + linhaFiscal(campoFiscal('cfop_dentro_uf', 'CFOP dentro do estado', c.cfop_dentro_uf) + campoFiscal('cfop_fora_uf', 'CFOP para outros estados', c.cfop_fora_uf))
       + linhaFiscal(campoFiscal('csosn', 'CSOSN (Simples)', c.csosn) + campoFiscal('aliquota_credito_sn', '% crédito ICMS (só CSOSN 101)', c.aliquota_credito_sn))
       + linhaFiscal(campoFiscal('cst_icms', 'CST ICMS (regime normal)', c.cst_icms) + campoFiscal('aliquota_icms', '% ICMS dentro do estado', c.aliquota_icms) + campoFiscal('aliquota_icms_fora_uf', '% ICMS interestadual', c.aliquota_icms_fora_uf))
+      + linhaFiscal(campoFiscal('cnpj_autxml', 'CNPJ autorizado a baixar o XML (contador; padrão: SEFAZ-BA)', c.cnpj_autxml, ' inputmode="numeric"'))
       + linhaFiscal(campoFiscal('cst_pis', 'CST PIS', c.cst_pis) + campoFiscal('aliquota_pis', '% PIS', c.aliquota_pis) + campoFiscal('cst_cofins', 'CST COFINS', c.cst_cofins) + campoFiscal('aliquota_cofins', '% COFINS', c.aliquota_cofins))
       + '<div class="form-group"><label for="cf-informacoes_complementares">Informações complementares (saem na nota)</label><textarea id="cf-informacoes_complementares" rows="2">' + escapeHtml(c.informacoes_complementares || '') + '</textarea></div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
@@ -2903,13 +2904,13 @@ async function salvarConfigFiscal() {
     'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'cod_municipio', 'uf', 'cep', 'telefone',
     'crt', 'serie', 'natureza_operacao', 'cfop_dentro_uf', 'cfop_fora_uf', 'csosn', 'cst_icms',
     'aliquota_icms', 'aliquota_icms_fora_uf', 'aliquota_credito_sn', 'cst_pis', 'aliquota_pis',
-    'cst_cofins', 'aliquota_cofins', 'informacoes_complementares'];
+    'cst_cofins', 'aliquota_cofins', 'informacoes_complementares', 'cnpj_autxml'];
   var config = {};
   campos.forEach(function(c) {
     var el = $('#cf-' + c);
     if (el) config[c] = el.value;
   });
-  ['cnpj', 'cep', 'cod_municipio', 'telefone'].forEach(function(c) { if (config[c]) config[c] = config[c].replace(/\D/g, ''); });
+  ['cnpj', 'cep', 'cod_municipio', 'telefone', 'cnpj_autxml'].forEach(function(c) { if (config[c]) config[c] = config[c].replace(/\D/g, ''); });
   if (config.uf) config.uf = config.uf.toUpperCase();
   if (config.modo !== 'desligado' && config.ambiente === '1'
       && !confirm('Ligar a emissão em PRODUÇÃO? As notas passam a ter valor fiscal. Confirme que o contador validou a tributação.')) return;

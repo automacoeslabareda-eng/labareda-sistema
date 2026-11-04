@@ -431,11 +431,24 @@ test('XML: desconto quando o total cobrado e menor, e soma bate com vNF', () => 
   assert.equal(r.chave.length, 44);
 });
 
-test('regime normal vendendo para outro estado: bloqueia (DIFAL nao implementado)', () => {
-  const faltas = nf.validarDadosFiscais(Object.assign({}, CONFIG, { crt: 3 }), {
-    pedido: { endereco_entrega: { rua: 'R', numero: '1', bairro: 'B', cidade: 'SP', estado: 'SP', cep: '01001000' } },
-    cliente: { nome: 'A', cpf: '52998224725' },
-    itens: [{ produto: { ncm: '61091000' } }],
+test('DIFAL: venda para SC calcula a partilha como a nota autorizada do contador (17% - 12% sobre R$ 50)', () => {
+  const itens = [{ quantidade: 1, preco_unitario: 50, nome_produto: 'Toalha', produto: { ncm: '63026000' } }];
+  const r = nf.montarXmlNFe({
+    config: CONFIG, cliente: { nome: 'A', cpf: '52998224725' }, itens, codMunicipioDestino: '4216602',
+    pedido: { numero: 1, frete: 0, total: 50, metodo_pagamento: 'pix', endereco_entrega: { rua: 'R', numero: '1', bairro: 'B', cidade: 'São José', estado: 'SC', cep: '88113250' } },
   });
-  assert.ok(faltas.some((f) => /DIFAL/.test(f)));
+  assert.match(r.xml, /<ICMSUFDest><vBCUFDest>50\.00<\/vBCUFDest><vBCFCPUFDest>50\.00<\/vBCFCPUFDest><pFCPUFDest>0\.00<\/pFCPUFDest><pICMSUFDest>17\.00<\/pICMSUFDest><pICMSInter>12\.00<\/pICMSInter><pICMSInterPart>100\.00<\/pICMSInterPart><vFCPUFDest>0\.00<\/vFCPUFDest><vICMSUFDest>2\.50<\/vICMSUFDest><vICMSUFRemet>0\.00<\/vICMSUFRemet><\/ICMSUFDest>/);
+  assert.match(r.xml, /<vICMSDeson>0\.00<\/vICMSDeson><vFCPUFDest>0\.00<\/vFCPUFDest><vICMSUFDest>2\.50<\/vICMSUFDest>/);
+  assert.match(r.xml, /<infRespTec><CNPJ>04693497000121<\/CNPJ>/);
+  assert.match(r.xml, /<\/dest><autXML><CNPJ>13937073000156<\/CNPJ><\/autXML><det /);
+  assert.match(r.xml, /<vNF>50\.00<\/vNF>/);
+});
+
+test('DIFAL: venda dentro da BA nao leva ICMSUFDest', () => {
+  const itens = [{ quantidade: 1, preco_unitario: 50, nome_produto: 'Toalha', produto: { ncm: '63026000' } }];
+  const r = nf.montarXmlNFe({
+    config: CONFIG, cliente: { nome: 'A', cpf: '52998224725' }, itens, codMunicipioDestino: '2913606',
+    pedido: { numero: 1, frete: 0, total: 50, metodo_pagamento: 'pix', endereco_entrega: { rua: 'R', numero: '1', bairro: 'B', cidade: 'Ilhéus', estado: 'BA', cep: '45650000' } },
+  });
+  assert.doesNotMatch(r.xml, /ICMSUFDest/);
 });

@@ -145,6 +145,31 @@ function ratear(totalCent, pesos) {
 const CSOSN_SUPORTADOS = ['101', '102', '103', '300', '400', '500'];
 const CST_ICMS_SUPORTADOS = ['00', '40', '41', '50'];
 
+/* Aliquota interna (modal) de ICMS de cada UF, usada no DIFAL (grupo
+   ICMSUFDest) das vendas para consumidor final de outro estado. Pode ser
+   sobrescrita em config_fiscal.aliquotas_internas_uf (ex.: {"SP": 18}).
+   Conferir com o contador — os estados mudam essas aliquotas. */
+const ALIQUOTA_INTERNA_UF = {
+  AC: 19, AL: 20, AM: 20, AP: 18, BA: 20.5, CE: 20, DF: 20, ES: 17, GO: 19, MA: 23, MG: 18, MS: 17,
+  MT: 17, PA: 19, PB: 20, PE: 20.5, PI: 22.5, PR: 19.5, RJ: 22, RN: 20, RO: 19.5, RR: 20, RS: 17,
+  SC: 17, SE: 20, SP: 18, TO: 20,
+};
+
+/* Responsavel tecnico (infRespTec): o sistema emissor e o NFe+ (Zipline),
+   o mesmo que sai nas notas emitidas pelo painel deles. */
+const RESP_TECNICO = { CNPJ: '04693497000121', xContato: 'Zipline Tecnologia Ltda', email: 'suporte@zipline.com.br', fone: '5540072536' };
+
+/* autXML: quem pode baixar o XML na SEFAZ. A BA exige (rejeicao 486) o
+   escritorio de contabilidade ou, sem ele, o CNPJ da propria SEFAZ-BA —
+   o mesmo que sai nas notas emitidas pelo painel do NFe+. */
+const CNPJ_AUTXML_PADRAO = '13937073000156';
+
+function aliquotaInternaUf(config, uf) {
+  var extra = config && config.aliquotas_internas_uf;
+  if (extra && typeof extra === 'object' && extra[uf] != null && isFinite(Number(extra[uf]))) return Number(extra[uf]);
+  return ALIQUOTA_INTERNA_UF[uf];
+}
+
 /* Lista do que falta para emitir. [] = pode emitir. */
 function validarDadosFiscais(config, ctx) {
   var faltas = [];
@@ -163,14 +188,16 @@ function validarDadosFiscais(config, ctx) {
   var simples = Number(config.crt) !== 3;
   if (simples && CSOSN_SUPORTADOS.indexOf(String(config.csosn)) < 0) faltas.push('CSOSN ' + config.csosn + ' não suportado (use 101, 102, 103, 300, 400 ou 500)');
   if (!simples && CST_ICMS_SUPORTADOS.indexOf(String(config.cst_icms)) < 0) faltas.push('CST de ICMS ' + config.cst_icms + ' não suportado (use 00, 40, 41 ou 50)');
-  if (!simples && String(config.uf || '').toUpperCase() !== String(end.estado || '').toUpperCase()) {
-    faltas.push('venda para outro estado no regime normal precisa do DIFAL (grupo ICMSUFDest), que ainda não está implementado — emita esta nota pelo painel do NFe+');
+  var ufDestino = String(end.estado || '').toUpperCase();
+  if (UF_CODIGO[ufDestino] && ufDestino !== String(config.uf || '').toUpperCase() && aliquotaInternaUf(config, ufDestino) == null) {
+    faltas.push('alíquota interna de ICMS de ' + ufDestino + ' para o DIFAL');
   }
 
   var doc = digitos(cliente.cpf);
   if (!(doc.length === 11 ? cpfValido(doc) : cnpjValido(doc))) faltas.push('CPF/CNPJ válido do comprador');
   if (!txt(cliente.nome)) faltas.push('nome do comprador');
   if (!txt(end.rua) || !txt(end.numero) || !txt(end.bairro) || !txt(end.cidade)) faltas.push('endereço de entrega completo');
+  else if (txt(end.rua).length < 2 || txt(end.bairro).length < 2 || txt(end.cidade).length < 2) faltas.push('rua, bairro e cidade da entrega com pelo menos 2 letras');
   if (!UF_CODIGO[String(end.estado || '').toUpperCase()]) faltas.push('UF do endereço de entrega');
   if (digitos(end.cep).length !== 8) faltas.push('CEP do endereço de entrega');
 
@@ -204,6 +231,11 @@ function montarXmlNFe(dados) {
   var cfop = digitos(dentroUf ? config.cfop_dentro_uf : config.cfop_fora_uf);
   var simples = Number(config.crt) !== 3;
   var serie = Number(config.serie) || 1;
+  // DIFAL: consumidor final nao contribuinte de outro estado -> partilha do
+  // ICMS com a UF de destino (100% para o destino desde 2019), como o NFe+
+  // faz nas notas emitidas pelo painel.
+  var difal = !dentroUf;
+  var pICMSUFDest = difal ? aliquotaInternaUf(config, ufDest) : 0;
   // Numero provisorio: o NFe+ renumera (usarNumeracaoDoSistema) e recalcula a chave.
   var nNF = Math.max(1, Number(pedido.numero) || 1) % 1000000000;
   var cNF = dados.cNF || String(Math.floor(Math.random() * 1e8)).padStart(8, '0');
@@ -226,7 +258,7 @@ function montarXmlNFe(dados) {
   var freteItens = ratear(vFrete, vProdItens);
   var descItens = ratear(vDesc, vProdItens);
 
-  var tot = { vBC: 0, vICMS: 0, vPIS: 0, vCOFINS: 0 };
+  var tot = { vBC: 0, vICMS: 0, vPIS: 0, vCOFINS: 0, vICMSUFDest: 0 };
 
   var det = itens.map(function (it, i) {
     var prod = it.produto || {};
@@ -302,10 +334,26 @@ function montarXmlNFe(dados) {
         + tag('p' + grupo, num(p, 4)) + tag('v' + grupo, dec(v)) + '</' + grupo + 'Outr></' + grupo + '>';
     };
 
+    var icmsUfDest = '';
+    if (difal) {
+      // Base do DIFAL: valor do item + frete rateado - desconto. Interestadual
+      // saindo da BA: 12% (4% para mercadoria importada, origens 1, 2, 3 e 8).
+      var bcDest = vProdItens[i] + freteItens[i] - descItens[i];
+      var pInter = ['1', '2', '3', '8'].indexOf(orig) >= 0 ? 4 : 12;
+      var vDest = Math.max(0, Math.round(bcDest * (pICMSUFDest - pInter) / 100));
+      tot.vICMSUFDest += vDest;
+      icmsUfDest = '<ICMSUFDest>'
+        + tag('vBCUFDest', dec(bcDest)) + tag('vBCFCPUFDest', dec(bcDest)) + tag('pFCPUFDest', '0.00')
+        + tag('pICMSUFDest', num(pICMSUFDest, 2)) + tag('pICMSInter', num(pInter, 2)) + tag('pICMSInterPart', '100.00')
+        + tag('vFCPUFDest', '0.00') + tag('vICMSUFDest', dec(vDest)) + tag('vICMSUFRemet', '0.00')
+        + '</ICMSUFDest>';
+    }
+
     return '<det nItem="' + (i + 1) + '">' + prodXml
       + '<imposto>' + tag('ICMS', icms)
       + pisCofins('PIS', config.cst_pis, config.aliquota_pis)
       + pisCofins('COFINS', config.cst_cofins, config.aliquota_cofins)
+      + icmsUfDest
       + '</imposto></det>';
   }).join('');
 
@@ -376,8 +424,12 @@ function montarXmlNFe(dados) {
     + (cliente.email ? tagTxt('email', cliente.email, 60) : '')
     + '</dest>';
 
+  var cnpjAut = digitos(config.cnpj_autxml) || CNPJ_AUTXML_PADRAO;
+  var autXML = '<autXML>' + (cnpjAut.length === 11 ? tag('CPF', cnpjAut) : tag('CNPJ', cnpjAut)) + '</autXML>';
+
   var total = '<total><ICMSTot>'
     + tag('vBC', dec(tot.vBC)) + tag('vICMS', dec(tot.vICMS)) + tag('vICMSDeson', '0.00')
+    + (difal ? tag('vFCPUFDest', '0.00') + tag('vICMSUFDest', dec(tot.vICMSUFDest)) + tag('vICMSUFRemet', '0.00') : '')
     + tag('vFCP', '0.00') + tag('vBCST', '0.00') + tag('vST', '0.00') + tag('vFCPST', '0.00')
     + tag('vFCPSTRet', '0.00') + tag('vProd', dec(vProd)) + tag('vFrete', dec(vFrete))
     + tag('vSeg', '0.00') + tag('vDesc', dec(vDesc)) + tag('vII', '0.00') + tag('vIPI', '0.00')
@@ -402,13 +454,16 @@ function montarXmlNFe(dados) {
     obs.push('Permite o aproveitamento do crédito de ICMS no valor de R$ ' + dec(credito).replace('.', ',')
       + ', correspondente à alíquota de ' + num(config.aliquota_credito_sn, 2).replace('.', ',') + '%, nos termos do art. 23 da LC 123/2006.');
   }
+  if (difal && tot.vICMSUFDest > 0) obs.push('Partilha do ICMS para UF destino R$ ' + dec(tot.vICMSUFDest).replace('.', ',') + '.');
   if (txt(config.informacoes_complementares)) obs.push(txt(config.informacoes_complementares));
   var infAdic = '<infAdic>' + tagTxt('infCpl', obs.join(' '), 5000) + '</infAdic>';
+  var infRespTec = '<infRespTec>' + tag('CNPJ', RESP_TECNICO.CNPJ) + tagTxt('xContato', RESP_TECNICO.xContato)
+    + tagTxt('email', RESP_TECNICO.email) + tag('fone', RESP_TECNICO.fone) + '</infRespTec>';
 
   var xml = '<?xml version="1.0" encoding="UTF-8"?>'
     + '<NFe xmlns="http://www.portalfiscal.inf.br/nfe">'
     + '<infNFe versao="4.00" Id="NFe' + chave + '">'
-    + ide + emit + dest + det + total + transp + pag + infAdic
+    + ide + emit + dest + autXML + det + total + transp + pag + infAdic + infRespTec
     + '</infNFe></NFe>';
 
   return { xml: xml, chave: chave, totalCent: vNF };
