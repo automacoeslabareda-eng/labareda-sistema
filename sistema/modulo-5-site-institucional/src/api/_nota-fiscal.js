@@ -653,7 +653,9 @@ async function linksDaNota(db, pedido, segundos) {
    mesmo sem resposta. Procura uma nota recente com o mesmo valor (e o mesmo
    destinatario, em producao) antes de enviar outra. */
 async function procurarNotaExistente(ctx, config, desde) {
-  var hoje = dataHoraBahia(new Date()).slice(0, 10);
+  // A listagem do NFe+ nao inclui o dia de dtFim (notas de hoje so aparecem
+  // com dtFim = amanha) — conferido na API em 04/11/2026.
+  var hoje = dataHoraBahia(new Date(Date.now() + 24 * 3600 * 1000)).slice(0, 10);
   var ini = dataHoraBahia(desde ? new Date(new Date(desde).getTime() - 24 * 3600 * 1000) : new Date(Date.now() - 2 * 24 * 3600 * 1000)).slice(0, 10);
   var lista = await nfemais.listar(ini, hoje);
   var total = centavos(ctx.pedido.total);

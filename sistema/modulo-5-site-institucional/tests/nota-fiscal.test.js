@@ -158,7 +158,12 @@ function criarServicos(opcoes) {
       if (m[2] === '/danfe') return { ok: true, status: 200, arrayBuffer: async () => new TextEncoder().encode('%PDF-danfe').buffer };
       return json(200, { codigo: n.codigo, numero: n.numero, chave: n.chave, situacao: n.situacao });
     }
-    if (url.indexOf('/v1/nfe?') >= 0) return json(200, { data: Object.values(s.notas) });
+    if (url.indexOf('/v1/nfe?') >= 0) {
+      // Como a API real: o dia de dtFim fica de fora — a nota de hoje so vem com dtFim = amanha
+      const dtFim = (url.match(/dtFim=([0-9-]+)/) || [])[1];
+      const hoje = new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
+      return json(200, { data: dtFim > hoje ? Object.values(s.notas) : [] });
+    }
     throw new Error('URL inesperada no teste: ' + url);
   };
   return s;
