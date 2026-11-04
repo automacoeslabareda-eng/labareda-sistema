@@ -166,6 +166,13 @@
         </div>
       </div>
 
+      <!-- Pendencias: falhas de etiqueta, email, aviso, estoque, pagamento -->
+      <div class="section-card escondido" id="alerta-pendencias">
+        <h3 class="section-card__title">Pendências dos pedidos</h3>
+        <p style="font-size:13px;color:#777;margin:0 0 12px">Algo falhou numa venda. Use <strong>Tentar novamente</strong> depois de corrigir a causa (ex: colocar saldo no SuperFrete), ou marque como resolvida se já tratou por fora.</p>
+        <div id="lista-pendencias"></div>
+      </div>
+
       <!-- Alerta estoque baixo -->
       <div class="section-card escondido" id="alerta-estoque">
         <h3 class="section-card__title">Produtos com Estoque Baixo</h3>
@@ -347,6 +354,11 @@
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div class="section-card" id="card-config-fiscal">
+        <h3 class="section-card__title">Nota fiscal (NF-e)</h3>
+        <div id="config-fiscal-form"><p class="placeholder">Carregando...</p></div>
       </div>
 
       <div class="section-card">

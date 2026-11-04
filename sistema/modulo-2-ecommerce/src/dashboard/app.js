@@ -363,15 +363,114 @@ async function carregarVisaoGeral() {
       alertaContainer.classList.add('escondido');
     }
 
+    if (vg.pendencias_abertas) carregarPendencias();
+    else $('#alerta-pendencias').classList.add('escondido');
+
   } catch (err) {
     console.error('Erro ao carregar visao geral:', err);
     mostrarToast('Erro ao carregar dados', 'error');
   }
 }
 
+/* ---- Pendencias (falhas com "Tentar novamente") ---- */
+var NOMES_PENDENCIA = {
+  etiqueta: 'Etiqueta SuperFrete',
+  email_confirmacao: 'Email ao comprador',
+  aviso_equipe: 'Aviso da venda (Telegram/WhatsApp)',
+  estoque: 'Estoque',
+  pagamento: 'Pagamento',
+  nota_fiscal: 'Nota fiscal',
+};
+var PENDENCIA_REPROCESSAVEL = { etiqueta: true, email_confirmacao: true, aviso_equipe: true, nota_fiscal: true };
+
+function formatarDataHora(iso) {
+  if (!iso) return '--';
+  return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+async function carregarPendencias() {
+  var box = $('#alerta-pendencias');
+  var lista = $('#lista-pendencias');
+  try {
+    var resp = await adminApi('pendencias');
+    var pend = resp.pendencias || [];
+    if (!pend.length) { box.classList.add('escondido'); return; }
+    box.classList.remove('escondido');
+    lista.innerHTML = pend.map(function(p) {
+      var ped = p.pedidos || {};
+      var cliente = (ped.clientes && ped.clientes.nome) || '';
+      var botoes = (PENDENCIA_REPROCESSAVEL[p.tipo]
+          ? '<button class="btn btn--small btn--primary" id="btn-pend-' + p.id + '" onclick="reprocessarPendencia(\'' + p.id + '\')">Tentar novamente</button> '
+          : '')
+        + '<button class="btn btn--small btn--secondary" onclick="resolverPendencia(\'' + p.id + '\')">Marcar resolvida</button>';
+      return '<div class="lista-simples__item" style="align-items:flex-start;gap:12px;flex-wrap:wrap">'
+        + '<div style="flex:1;min-width:220px">'
+        + '<span class="badge badge--cancelado">' + escapeHtml(NOMES_PENDENCIA[p.tipo] || p.tipo) + '</span> '
+        + '<strong>Pedido #' + escapeHtml(String(ped.numero || '?')) + '</strong>' + (cliente ? ' — ' + escapeHtml(cliente) : '')
+        + '<div style="font-size:13px;margin-top:6px">' + escapeHtml(p.erro || '') + '</div>'
+        + '<div style="font-size:12px;color:#777;margin-top:4px">' + (p.tentativas || 1) + ' tentativa(s) · última em ' + formatarDataHora(p.ultima_tentativa_at) + '</div>'
+        + '</div>'
+        + '<div style="white-space:nowrap">' + botoes + '</div>'
+        + '</div>';
+    }).join('');
+  } catch (err) {
+    console.error('Erro ao carregar pendencias:', err);
+  }
+}
+
+async function reprocessarPendencia(id) {
+  var btn = $('#btn-pend-' + id);
+  if (btn) { btn.disabled = true; btn.textContent = 'Tentando...'; }
+  try {
+    var r = await adminApi('reprocessar-pendencia', { id: id });
+    if (r.resolvida) mostrarToast('Deu certo! Pendência resolvida.');
+    else mostrarToast('Ainda falhou: ' + ((r.pendencia && r.pendencia.erro) || 'veja o motivo na lista'), 'error');
+  } catch (err) {
+    mostrarToast('Erro: ' + err.message, 'error');
+  }
+  carregarVisaoGeral();
+}
+
+async function resolverPendencia(id) {
+  if (!confirm('Marcar esta pendência como resolvida? Faça isso só se já tratou o problema.')) return;
+  try {
+    await adminApi('resolver-pendencia', { id: id });
+    mostrarToast('Pendência marcada como resolvida');
+  } catch (err) {
+    mostrarToast('Erro: ' + err.message, 'error');
+  }
+  carregarVisaoGeral();
+}
+
+/* ---- Historico do pedido ---- */
+var ORIGEM_EVENTO = { checkout: 'site', webhook: 'Mercado Pago', painel: 'painel', sistema: 'sistema' };
+
+async function carregarHistoricoPedido(pedidoId) {
+  var box = document.getElementById('historico-' + pedidoId);
+  if (!box) return;
+  try {
+    var resp = await adminApi('pedido-eventos', { pedido_id: pedidoId });
+    var ev = resp.eventos || [];
+    if (resp.migration_pendente) { box.innerHTML = '<p style="font-size:13px;color:#777;margin:0">Histórico disponível depois da atualização do banco (etapa 1).</p>'; return; }
+    if (!ev.length) { box.innerHTML = '<p style="font-size:13px;color:#777;margin:0">Sem registros ainda (pedidos anteriores à etapa 1 não têm histórico).</p>'; return; }
+    box.innerHTML = ev.map(function(e) {
+      var falhou = /falhou|cancelado|charged_back|refunded|rejected/.test(e.tipo);
+      return '<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid #eee;font-size:13px">'
+        + '<span style="color:#777;white-space:nowrap;min-width:92px">' + formatarDataHora(e.created_at) + '</span>'
+        + '<span style="flex:1;' + (falhou ? 'color:#AA3424;' : '') + '">' + escapeHtml(e.descricao || e.tipo) + '</span>'
+        + '<span style="color:#999;white-space:nowrap">' + escapeHtml(ORIGEM_EVENTO[e.origem] || e.origem || '') + '</span>'
+        + '</div>';
+    }).join('');
+  } catch (err) {
+    box.innerHTML = '<p style="font-size:13px;color:#AA3424;margin:0">Erro ao carregar histórico</p>';
+  }
+}
+
 /* ================================================================== */
 /*  PRODUTOS                                                          */
 /* ================================================================== */
+var produtoTemCamposFiscais = false;
+
 async function carregarProdutos() {
   try {
     if (cacheCategorias.length === 0) {
@@ -393,6 +492,8 @@ async function carregarProdutos() {
 
     var data = await supaFetch('produtos' + qs);
     var grid = $('#grid-produtos');
+    // Colunas fiscais (NCM...) so existem depois da migration da etapa 2
+    if (data && data.length) produtoTemCamposFiscais = Object.prototype.hasOwnProperty.call(data[0], 'ncm');
 
     if (!data || data.length === 0) {
       grid.innerHTML = '<p class="placeholder">Nenhum produto encontrado</p>';
@@ -489,6 +590,29 @@ function abrirModalProduto(id) {
       '<div class="form-group" style="flex:1"><label>Largura</label><input type="number" id="campo-prod-frete-largura" min="0" step="0.1" placeholder="cm"></div>' +
       '<div class="form-group" style="flex:1"><label>Altura</label><input type="number" id="campo-prod-frete-altura" min="0" step="0.1" placeholder="cm"></div>' +
     '</div>' +
+    '<p style="font-size:12px;font-weight:600;margin:12px 0 6px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">Dados fiscais (nota fiscal)</p>' +
+    (produtoTemCamposFiscais
+      ? '<p style="font-size:11px;color:var(--text-muted);margin:-2px 0 8px">Peça o NCM de cada produto ao contador. Sem NCM a nota deste produto não é emitida.</p>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+          '<div class="form-group" style="flex:1;min-width:120px"><label>NCM</label><input type="text" id="campo-prod-ncm" inputmode="numeric" maxlength="10" placeholder="8 digitos"></div>' +
+          '<div class="form-group" style="flex:1;min-width:120px"><label>Unidade</label><input type="text" id="campo-prod-unidade" maxlength="6" placeholder="UN"></div>' +
+          '<div class="form-group" style="flex:2;min-width:180px"><label>Origem</label><select id="campo-prod-origem">' +
+            '<option value="0">0 - Nacional</option>' +
+            '<option value="1">1 - Estrangeira (importação direta)</option>' +
+            '<option value="2">2 - Estrangeira (mercado interno)</option>' +
+            '<option value="3">3 - Nacional, conteúdo importado 40-70%</option>' +
+            '<option value="4">4 - Nacional, processo produtivo básico</option>' +
+            '<option value="5">5 - Nacional, conteúdo importado até 40%</option>' +
+            '<option value="6">6 - Estrangeira sem similar (importação direta)</option>' +
+            '<option value="7">7 - Estrangeira sem similar (mercado interno)</option>' +
+            '<option value="8">8 - Nacional, conteúdo importado acima de 70%</option>' +
+          '</select></div>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+          '<div class="form-group" style="flex:1;min-width:120px"><label>CEST (se houver)</label><input type="text" id="campo-prod-cest" inputmode="numeric" maxlength="9" placeholder="--"></div>' +
+          '<div class="form-group" style="flex:1;min-width:120px"><label>Código de barras (EAN)</label><input type="text" id="campo-prod-gtin" inputmode="numeric" maxlength="14" placeholder="sem codigo"></div>' +
+        '</div>'
+      : '<p style="font-size:12px;color:var(--text-muted);margin:0 0 8px">Disponível depois da atualização do banco (etapa 2 — nota fiscal).</p>') +
     '<div class="form-group"><label>Imagem do Produto</label>' +
       '<input type="file" id="campo-prod-imagem-file" accept="image/*">' +
       '<div id="campo-prod-imagem-preview" style="margin-top:8px"></div>' +
@@ -569,6 +693,11 @@ async function carregarDadosProdutoModal(id) {
       if (el('#campo-prod-descricao-en')) el('#campo-prod-descricao-en').value = p.descricao_en || '';
       if (el('#campo-prod-destaque')) el('#campo-prod-destaque').checked = !!p.destaque;
       if (el('#campo-prod-slug')) el('#campo-prod-slug').value = p.slug || '';
+      if (el('#campo-prod-ncm')) el('#campo-prod-ncm').value = p.ncm || '';
+      if (el('#campo-prod-unidade')) el('#campo-prod-unidade').value = p.unidade_fiscal || 'UN';
+      if (el('#campo-prod-origem')) el('#campo-prod-origem').value = String(p.origem_fiscal != null ? p.origem_fiscal : 0);
+      if (el('#campo-prod-cest')) el('#campo-prod-cest').value = p.cest || '';
+      if (el('#campo-prod-gtin')) el('#campo-prod-gtin').value = p.gtin || '';
 
       // Estoque por tamanho (P/M/G/GG) — preenche os tamanhos ANTES de disparar o
       // "change" do checkbox, senao o recalculo automatico zera o campo Estoque.
@@ -717,12 +846,91 @@ async function expandirPedido(pedidoId) {
     etiquetaHtml += '</div>';
     container.innerHTML += etiquetaHtml;
 
+    // Nota fiscal (NF-e)
+    container.innerHTML += '<div style="margin-top:12px;padding:14px;border:1px solid #ddd;border-radius:6px;background:#fafaf5">'
+      + '<label style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:8px">Nota fiscal (NF-e)</label>'
+      + '<div id="nota-' + pedidoId + '"><p style="font-size:13px;color:#777;margin:0">Carregando...</p></div>'
+      + '</div>';
+    carregarNotaPedido(pedidoId);
+
+    // Reserva de estoque + historico do pedido
+    var reservaTxt = '';
+    if (ped.estoque_baixado) reservaTxt = 'Estoque baixado (pagamento confirmado).';
+    else if (ped.estoque_reservado) reservaTxt = 'Estoque separado aguardando pagamento até ' + formatarDataHora(ped.reserva_expira_em) + '.';
+    else if (ped.status === 'pendente' && ped.reserva_expira_em) reservaTxt = 'Reserva expirou — os itens voltaram para a loja. Se o pagamento cair, o estoque é baixado na hora.';
+    container.innerHTML += '<div style="margin-top:12px;padding:14px;border:1px solid #ddd;border-radius:6px;background:#fafaf5">'
+      + '<label style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:8px">Histórico do pedido</label>'
+      + (reservaTxt ? '<p style="font-size:13px;margin:0 0 8px">' + escapeHtml(reservaTxt) + '</p>' : '')
+      + '<div id="historico-' + pedidoId + '"><p style="font-size:13px;color:#777;margin:0">Carregando...</p></div>'
+      + '</div>';
+    carregarHistoricoPedido(pedidoId);
+
     detalhe.classList.remove('escondido');
     detalhe.scrollIntoView({ behavior: 'smooth' });
 
   } catch (err) {
     console.error('Erro ao expandir pedido:', err);
   }
+}
+
+/* ---- Nota fiscal do pedido ---- */
+var STATUS_NOTA = {
+  processando: 'Enviada à SEFAZ — aguardando autorização',
+  autorizada: 'Autorizada',
+  rejeitada: 'Rejeitada',
+  erro: 'Não emitida (erro)',
+  cancelada: 'Cancelada',
+};
+
+async function carregarNotaPedido(pedidoId) {
+  var box = document.getElementById('nota-' + pedidoId);
+  if (!box) return;
+  var ped = pedidosCache[pedidoId] || {};
+  try {
+    var r = await adminApi('nota-pedido', { pedido_id: pedidoId });
+    if (r.migration_pendente) { box.innerHTML = '<p style="font-size:13px;color:#777;margin:0">Disponível depois da atualização do banco (etapa 2 — nota fiscal).</p>'; return; }
+    var n = r.pedido || {};
+    var pago = ['pago', 'preparando', 'enviado', 'entregue'].indexOf(n.status || ped.status) >= 0;
+    var html = '';
+    if (n.nfe_status) {
+      html += '<p style="font-size:13px;margin:0 0 8px"><strong>' + escapeHtml(STATUS_NOTA[n.nfe_status] || n.nfe_status) + '</strong>'
+        + (n.nfe_numero ? ' — NF-e nº ' + escapeHtml(String(n.nfe_numero)) + (n.nfe_serie ? ' série ' + escapeHtml(String(n.nfe_serie)) : '') : '')
+        + (Number(n.nfe_ambiente) === 2 ? ' <span class="badge badge--pendente">homologação (sem valor fiscal)</span>' : '')
+        + '</p>';
+      if (n.nfe_chave) html += '<p style="font-size:12px;color:#777;margin:0 0 8px;font-family:monospace;word-break:break-all">Chave: ' + escapeHtml(n.nfe_chave) + '</p>';
+      if (n.nfe_erro && n.nfe_status !== 'autorizada') html += '<p style="font-size:13px;color:#AA3424;margin:0 0 8px">' + escapeHtml(n.nfe_erro) + '</p>';
+      if (n.nfe_status === 'autorizada') html += '<p style="font-size:12px;color:#777;margin:0 0 8px">' + (n.nfe_email_enviado_at ? 'Enviada ao comprador em ' + formatarDataHora(n.nfe_email_enviado_at) + '.' : 'Ainda não enviada ao comprador.') + '</p>';
+    } else {
+      html += '<p style="font-size:13px;color:#777;margin:0 0 8px">' + (pago ? 'Nota ainda não emitida.' : 'Disponível quando o pedido estiver pago.') + '</p>';
+    }
+    var botoes = [];
+    if (r.danfe_url) botoes.push('<a class="btn btn--primary" href="' + escapeHtml(r.danfe_url) + '" target="_blank" rel="noopener">Imprimir DANFE</a>');
+    if (r.xml_url) botoes.push('<a class="btn btn--secondary" href="' + escapeHtml(r.xml_url) + '" target="_blank" rel="noopener">Baixar XML</a>');
+    if (pago && n.nfe_status === 'processando') botoes.push('<button class="btn btn--secondary" id="btn-nota-' + pedidoId + '" onclick="emitirNota(\'' + pedidoId + '\', true)">Consultar situação</button>');
+    else if (pago && n.nfe_status === 'autorizada' && !n.nfe_email_enviado_at) botoes.push('<button class="btn btn--secondary" id="btn-nota-' + pedidoId + '" onclick="emitirNota(\'' + pedidoId + '\', true)">Enviar ao comprador</button>');
+    else if (pago && (!n.nfe_status || n.nfe_status === 'rejeitada' || n.nfe_status === 'erro')) botoes.push('<button class="btn btn--primary" id="btn-nota-' + pedidoId + '" onclick="emitirNota(\'' + pedidoId + '\', false)">' + (n.nfe_status ? 'Emitir de novo' : 'Emitir nota fiscal') + '</button>');
+    if (botoes.length) html += '<div style="display:flex;gap:8px;flex-wrap:wrap">' + botoes.join('') + '</div>';
+    if (n.nfe_status === 'autorizada') html += '<p style="font-size:12px;color:#777;margin:8px 0 0">Para cancelar a nota, use o painel do NFe+ (até 24h depois da autorização).</p>';
+    box.innerHTML = html;
+  } catch (err) {
+    box.innerHTML = '<p style="font-size:13px;color:#AA3424;margin:0">Erro ao carregar a nota: ' + escapeHtml(err.message) + '</p>';
+  }
+}
+
+async function emitirNota(pedidoId, soConsultar) {
+  if (!soConsultar && !confirm('Emitir a nota fiscal deste pedido? Ela é enviada à SEFAZ e, se autorizada, vai por email ao comprador.')) return;
+  var btn = $('#btn-nota-' + pedidoId);
+  if (btn) { btn.disabled = true; btn.textContent = soConsultar ? 'Consultando...' : 'Emitindo...'; }
+  try {
+    var r = await adminApi('emitir-nota', { pedido_id: pedidoId });
+    if (r.status === 'autorizada') mostrarToast('Nota fiscal autorizada!');
+    else if (r.status === 'processando') mostrarToast(r.erro || 'Nota enviada — aguardando a SEFAZ. Consulte de novo em alguns minutos.');
+    else mostrarToast('Nota não emitida: ' + (r.erro || r.status), 'error');
+  } catch (err) {
+    mostrarToast('Erro na nota: ' + err.message, 'error');
+  }
+  carregarNotaPedido(pedidoId);
+  carregarHistoricoPedido(pedidoId);
 }
 
 async function gerarEtiqueta(pedidoId) {
@@ -769,8 +977,9 @@ async function mudarStatusPedido(pedidoId, novoStatus) {
       var codigo = prompt('Codigo de rastreio dos Correios (opcional):');
       if (codigo && codigo.trim()) payload.codigo_rastreio = codigo.trim().toUpperCase();
     }
-    await adminApi('update-pedido-status', payload);
-    mostrarToast('Status atualizado para ' + novoStatus);
+    var r = await adminApi('update-pedido-status', payload);
+    mostrarToast('Status atualizado para ' + novoStatus
+      + (r.estoque === 'reserva_liberada' ? ' — estoque devolvido à loja' : r.estoque === 'baixado' ? ' — estoque baixado' : ''));
     carregarPedidos();
   } catch (err) {
     console.error(err);
@@ -2271,6 +2480,7 @@ async function reordenarImagemGaleria(imagemId, direcao, secaoId, secaoSlug) {
 /*  CONFIGURACOES                                                     */
 /* ================================================================== */
 async function carregarConfiguracoes() {
+  carregarConfigFiscal();
   try {
     var [siteConfig, frete] = await Promise.all([
       supaFetch('site_config?select=*&order=chave.asc'),
@@ -2425,6 +2635,15 @@ async function salvarModal() {
       if (!body.preco_promocional) body.preco_promocional = null;
       if (!body.sku) body.sku = null;
       if (!body.peso_gramas) body.peso_gramas = null;
+      if ($('#campo-prod-ncm')) {
+        var ncm = ($('#campo-prod-ncm').value || '').replace(/\D/g, '');
+        if (ncm && ncm.length !== 8) { mostrarToast('O NCM tem 8 digitos', 'error'); return; }
+        body.ncm = ncm || null;
+        body.unidade_fiscal = (($('#campo-prod-unidade').value || '').trim().toUpperCase()) || 'UN';
+        body.origem_fiscal = parseInt($('#campo-prod-origem').value, 10) || 0;
+        body.cest = ($('#campo-prod-cest').value || '').replace(/\D/g, '') || null;
+        body.gtin = ($('#campo-prod-gtin').value || '').replace(/\D/g, '') || null;
+      }
 
       // Upload de imagem se selecionado
       var fileInput = $('#campo-prod-imagem-file');
@@ -2606,6 +2825,119 @@ function fecharModal(event) {
 /* ================================================================== */
 /*  INICIALIZACAO                                                     */
 /* ================================================================== */
+/* ================================================================== */
+/*  CONFIGURACAO FISCAL (NF-e via NFe+)                               */
+/* ================================================================== */
+function campoFiscal(id, rotulo, valor, extra) {
+  return '<div class="form-group" style="flex:1;min-width:160px"><label for="cf-' + id + '">' + rotulo + '</label>'
+    + '<input type="text" id="cf-' + id + '" value="' + escapeHtml(valor == null ? '' : String(valor)) + '"' + (extra || '') + '></div>';
+}
+function selectFiscal(id, rotulo, valor, opcoes) {
+  return '<div class="form-group" style="flex:1;min-width:160px"><label for="cf-' + id + '">' + rotulo + '</label><select id="cf-' + id + '">'
+    + opcoes.map(function(o) { return '<option value="' + o[0] + '"' + (String(valor) === String(o[0]) ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('')
+    + '</select></div>';
+}
+function linhaFiscal(html) { return '<div style="display:flex;gap:12px;flex-wrap:wrap">' + html + '</div>'; }
+function subtituloFiscal(t) { return '<p style="font-size:12px;font-weight:600;margin:16px 0 8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">' + t + '</p>'; }
+
+async function carregarConfigFiscal() {
+  var box = $('#config-fiscal-form');
+  if (!box) return;
+  try {
+    var r = await adminApi('config-fiscal');
+    if (r.migration_pendente) {
+      box.innerHTML = '<p style="font-size:13px;color:var(--text-muted)">Rode a atualização do banco <code>atualizacoes/migration-etapa2-nota-fiscal.sql</code> no Supabase para ativar a nota fiscal.</p>';
+      return;
+    }
+    var c = r.config || {};
+    box.innerHTML =
+      (r.token_configurado ? '' : '<p style="font-size:13px;color:#AA3424;margin:0 0 12px">O token do NFe+ (NFEMAIS_TOKEN) ainda não está configurado no servidor.</p>')
+      + '<p style="font-size:12px;color:var(--text-muted);margin:0 0 12px">As regras tributárias (CRT, CFOP, CSOSN, PIS/COFINS) precisam ser confirmadas com o contador antes de ligar a produção.</p>'
+      + linhaFiscal(
+          selectFiscal('modo', 'Emissão', c.modo, [['desligado', 'Desligada'], ['manual', 'Manual (botão no pedido)'], ['automatico', 'Automática (ao aprovar o pagamento)']])
+          + selectFiscal('ambiente', 'Ambiente', c.ambiente, [['2', 'Homologação (teste, sem valor fiscal)'], ['1', 'Produção (nota oficial)']]))
+      + subtituloFiscal('Emitente')
+      + linhaFiscal(campoFiscal('cnpj', 'CNPJ', c.cnpj, ' inputmode="numeric"') + campoFiscal('inscricao_estadual', 'Inscrição estadual', c.inscricao_estadual) + campoFiscal('inscricao_municipal', 'Inscrição municipal', c.inscricao_municipal))
+      + linhaFiscal(campoFiscal('razao_social', 'Razão social', c.razao_social) + campoFiscal('nome_fantasia', 'Nome fantasia', c.nome_fantasia))
+      + linhaFiscal(campoFiscal('cep', 'CEP', c.cep, ' inputmode="numeric" onblur="buscarCepEmitente()"') + campoFiscal('logradouro', 'Logradouro', c.logradouro) + campoFiscal('numero', 'Número', c.numero))
+      + linhaFiscal(campoFiscal('complemento', 'Complemento', c.complemento) + campoFiscal('bairro', 'Bairro', c.bairro) + campoFiscal('cidade', 'Cidade', c.cidade))
+      + linhaFiscal(campoFiscal('uf', 'UF', c.uf, ' maxlength="2"') + campoFiscal('cod_municipio', 'Código IBGE do município', c.cod_municipio, ' inputmode="numeric" maxlength="7"') + campoFiscal('telefone', 'Telefone', c.telefone))
+      + subtituloFiscal('Tributação (confirmar com o contador)')
+      + linhaFiscal(
+          selectFiscal('crt', 'Regime (CRT)', c.crt, [['1', '1 - Simples Nacional'], ['2', '2 - Simples Nacional (excesso de sublimite)'], ['3', '3 - Regime normal'], ['4', '4 - MEI']])
+          + campoFiscal('serie', 'Série da NF-e', c.serie, ' inputmode="numeric"')
+          + campoFiscal('natureza_operacao', 'Natureza da operação', c.natureza_operacao))
+      + linhaFiscal(campoFiscal('cfop_dentro_uf', 'CFOP dentro do estado', c.cfop_dentro_uf) + campoFiscal('cfop_fora_uf', 'CFOP para outros estados', c.cfop_fora_uf))
+      + linhaFiscal(campoFiscal('csosn', 'CSOSN (Simples)', c.csosn) + campoFiscal('aliquota_credito_sn', '% crédito ICMS (só CSOSN 101)', c.aliquota_credito_sn))
+      + linhaFiscal(campoFiscal('cst_icms', 'CST ICMS (regime normal)', c.cst_icms) + campoFiscal('aliquota_icms', '% ICMS dentro do estado', c.aliquota_icms) + campoFiscal('aliquota_icms_fora_uf', '% ICMS interestadual', c.aliquota_icms_fora_uf))
+      + linhaFiscal(campoFiscal('cnpj_autxml', 'CNPJ autorizado a baixar o XML (contador; padrão: SEFAZ-BA)', c.cnpj_autxml, ' inputmode="numeric"'))
+      + linhaFiscal(campoFiscal('cst_pis', 'CST PIS', c.cst_pis) + campoFiscal('aliquota_pis', '% PIS', c.aliquota_pis) + campoFiscal('cst_cofins', 'CST COFINS', c.cst_cofins) + campoFiscal('aliquota_cofins', '% COFINS', c.aliquota_cofins))
+      + '<div class="form-group"><label for="cf-informacoes_complementares">Informações complementares (saem na nota)</label><textarea id="cf-informacoes_complementares" rows="2">' + escapeHtml(c.informacoes_complementares || '') + '</textarea></div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+      + '<button class="btn btn--primary" onclick="salvarConfigFiscal()">Salvar</button>'
+      + '<button class="btn btn--secondary" id="btn-testar-nfemais" onclick="testarNfemais()">Testar conexão com o NFe+</button>'
+      + '<span id="resultado-nfemais" style="font-size:13px"></span>'
+      + '</div>'
+      + (c.updated_by ? '<p style="font-size:12px;color:var(--text-muted);margin:10px 0 0">Última alteração: ' + escapeHtml(c.updated_by) + ' em ' + formatarDataHora(c.updated_at) + '</p>' : '');
+  } catch (err) {
+    box.innerHTML = '<p style="font-size:13px;color:#AA3424">Erro ao carregar a configuração fiscal: ' + escapeHtml(err.message) + '</p>';
+  }
+}
+
+async function buscarCepEmitente() {
+  var cep = (($('#cf-cep') || {}).value || '').replace(/\D/g, '');
+  if (cep.length !== 8) return;
+  try {
+    var r = await fetch('https://viacep.com.br/ws/' + cep + '/json/');
+    var j = await r.json();
+    if (j.erro) return;
+    if (!$('#cf-logradouro').value) $('#cf-logradouro').value = j.logradouro || '';
+    if (!$('#cf-bairro').value) $('#cf-bairro').value = j.bairro || '';
+    $('#cf-cidade').value = j.localidade || $('#cf-cidade').value;
+    $('#cf-uf').value = j.uf || $('#cf-uf').value;
+    $('#cf-cod_municipio').value = j.ibge || $('#cf-cod_municipio').value;
+  } catch (e) { /* preenchimento manual */ }
+}
+
+async function salvarConfigFiscal() {
+  var campos = ['modo', 'ambiente', 'cnpj', 'razao_social', 'nome_fantasia', 'inscricao_estadual', 'inscricao_municipal',
+    'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'cod_municipio', 'uf', 'cep', 'telefone',
+    'crt', 'serie', 'natureza_operacao', 'cfop_dentro_uf', 'cfop_fora_uf', 'csosn', 'cst_icms',
+    'aliquota_icms', 'aliquota_icms_fora_uf', 'aliquota_credito_sn', 'cst_pis', 'aliquota_pis',
+    'cst_cofins', 'aliquota_cofins', 'informacoes_complementares', 'cnpj_autxml'];
+  var config = {};
+  campos.forEach(function(c) {
+    var el = $('#cf-' + c);
+    if (el) config[c] = el.value;
+  });
+  ['cnpj', 'cep', 'cod_municipio', 'telefone', 'cnpj_autxml'].forEach(function(c) { if (config[c]) config[c] = config[c].replace(/\D/g, ''); });
+  if (config.uf) config.uf = config.uf.toUpperCase();
+  if (config.modo !== 'desligado' && config.ambiente === '1'
+      && !confirm('Ligar a emissão em PRODUÇÃO? As notas passam a ter valor fiscal. Confirme que o contador validou a tributação.')) return;
+  try {
+    await adminApi('salvar-config-fiscal', { config: config });
+    mostrarToast('Configuração fiscal salva');
+    carregarConfigFiscal();
+  } catch (err) {
+    mostrarToast('Erro: ' + err.message, 'error');
+  }
+}
+
+async function testarNfemais() {
+  var btn = $('#btn-testar-nfemais');
+  var out = $('#resultado-nfemais');
+  if (btn) { btn.disabled = true; btn.textContent = 'Testando...'; }
+  try {
+    var r = await adminApi('testar-nfemais');
+    out.style.color = r.ok ? 'var(--success)' : '#AA3424';
+    out.textContent = r.mensagem;
+  } catch (err) {
+    out.style.color = '#AA3424';
+    out.textContent = err.message;
+  }
+  if (btn) { btn.disabled = false; btn.textContent = 'Testar conexão com o NFe+'; }
+}
+
 async function initDashboard() {
   try {
     navegarPara('visao-geral');

@@ -11,7 +11,7 @@
  *  Variáveis de ambiente:
  *   - SUPERFRETE_TOKEN        (token da API SuperFrete)
  *   - SUPERFRETE_ENV          ('sandbox' | 'producao', default: 'sandbox')
- *   - SUPERFRETE_CEP_ORIGEM   (CEP de origem, default: '45680000' Serra Grande/BA)
+ *   - SUPERFRETE_CEP_ORIGEM   (CEP de origem, default: '45653000' — o mesmo do gerar-etiqueta.js)
  * ============================================================
  */
 

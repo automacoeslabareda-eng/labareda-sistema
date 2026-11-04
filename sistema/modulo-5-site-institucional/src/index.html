@@ -790,8 +790,8 @@
           <input type="tel" id="checkout-telefone" required autocomplete="tel">
         </div>
         <div class="checkout-field">
-          <label for="checkout-cpf">CPF <small data-i18n="checkout_optional">(opcional)</small></label>
-          <input type="text" id="checkout-cpf" autocomplete="off" maxlength="14">
+          <label for="checkout-cpf">CPF <small data-i18n="checkout_cpf_hint">(para a nota fiscal)</small></label>
+          <input type="text" id="checkout-cpf" required autocomplete="off" inputmode="numeric" maxlength="18" placeholder="000.000.000-00">
         </div>
         <button class="btn btn--primary btn--full" id="checkout-next-1" type="button" data-i18n="checkout_next">Continuar</button>
       </div>
