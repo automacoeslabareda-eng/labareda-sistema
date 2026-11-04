@@ -2855,7 +2855,8 @@ async function carregarConfigFiscal() {
       + '<p style="font-size:12px;color:var(--text-muted);margin:0 0 12px">As regras tributárias (CRT, CFOP, CSOSN, PIS/COFINS) precisam ser confirmadas com o contador antes de ligar a produção.</p>'
       + linhaFiscal(
           selectFiscal('modo', 'Emissão', c.modo, [['desligado', 'Desligada'], ['manual', 'Manual (botão no pedido)'], ['automatico', 'Automática (ao aprovar o pagamento)']])
-          + selectFiscal('ambiente', 'Ambiente', c.ambiente, [['2', 'Homologação (teste, sem valor fiscal)'], ['1', 'Produção (nota oficial)']]))
+          + selectFiscal('ambiente', 'Ambiente', c.ambiente, [['1', 'Produção (nota oficial)'], ['2', 'Homologação — não suportada pelo NFe+ (nada é emitido)']]))
+      + '<p style="font-size:12px;color:#AA3424;margin:-6px 0 12px">O NFe+ desta conta emite sempre em produção: não existe nota de teste sem valor fiscal. Para testar, emita uma nota de valor baixo e cancele no painel do NFe+ em até 24h.</p>'
       + subtituloFiscal('Emitente')
       + linhaFiscal(campoFiscal('cnpj', 'CNPJ', c.cnpj, ' inputmode="numeric"') + campoFiscal('inscricao_estadual', 'Inscrição estadual', c.inscricao_estadual) + campoFiscal('inscricao_municipal', 'Inscrição municipal', c.inscricao_municipal))
       + linhaFiscal(campoFiscal('razao_social', 'Razão social', c.razao_social) + campoFiscal('nome_fantasia', 'Nome fantasia', c.nome_fantasia))

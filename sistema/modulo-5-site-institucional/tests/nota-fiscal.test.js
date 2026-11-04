@@ -144,10 +144,10 @@ function criarServicos(opcoes) {
       s.salvar++;
       s.ultimoXml = corpo.xml;
       if (s.atrasoSalvar) await new Promise((r) => setTimeout(r, s.atrasoSalvar));
-      if (s.falharSalvar === 'rede') { s.falharSalvar = null; const codigo = s.proximoCodigo++; s.notas[codigo] = { codigo, numero: 77, chave: '2926' + '1'.repeat(40), situacao: s.situacaoNova, valor: 213.27, cliente: 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL' }; throw new Error('fetch failed'); }
+      if (s.falharSalvar === 'rede') { s.falharSalvar = null; const codigo = s.proximoCodigo++; s.notas[codigo] = { codigo, numero: 77, chave: '2926' + '1'.repeat(40), situacao: s.situacaoNova, valor: 213.27, cliente: 'Maria José' }; throw new Error('fetch failed'); }
       if (s.falharSalvar === 'validacao') { s.falharSalvar = null; return json(400, { errCode: 400, errMsg: 'XML inválido' }); }
       const codigo = s.proximoCodigo++;
-      s.notas[codigo] = { codigo, numero: 77, chave: '2926' + '1'.repeat(40), situacao: s.situacaoNova, valor: 213.27, cliente: 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL' };
+      s.notas[codigo] = { codigo, numero: 77, chave: '2926' + '1'.repeat(40), situacao: s.situacaoNova, valor: 213.27, cliente: 'Maria José' };
       return json(200, { codigo, code: 200, msg: s.situacaoNova === 15 ? 'Retorno: 778 - Rejeição: NCM inexistente' : s.msgSalvar });
     }
     const m = url.match(/\/v1\/nfe\/(\d+)(\/xml|\/danfe)?$/);
@@ -174,7 +174,7 @@ function criarServicos(opcoes) {
 /* ------------------------------------------------------------------ */
 
 const CONFIG = {
-  id: 1, modo: 'manual', ambiente: 2, cnpj: '11222333000181', razao_social: 'Sitio Labareda Pousada e Hospedagem LTDA',
+  id: 1, modo: 'manual', ambiente: 1, cnpj: '11222333000181', razao_social: 'Sitio Labareda Pousada e Hospedagem LTDA',
   inscricao_estadual: '123456789', logradouro: 'Estrada Serra Grande', numero: 'S/N', bairro: 'Zona Rural', cidade: 'Uruçuca',
   cod_municipio: '2932507', uf: 'BA', cep: '45680000', crt: 1, serie: 1, natureza_operacao: 'Venda de mercadoria',
   cfop_dentro_uf: '5102', cfop_fora_uf: '6102', csosn: '102', cst_icms: '00', aliquota_icms: 0, aliquota_icms_fora_uf: 0,
@@ -247,6 +247,15 @@ test('sem migration: pula sem quebrar', async () => {
   assert.match(r.erro, /migration-etapa2/);
 });
 
+test('ambiente homologacao: nada e enviado (o NFe+ ignora o tpAmb e emitiria nota real)', async () => {
+  const { db, servicos } = cenario({ config: { ambiente: 2 } });
+  const r = await nf.etapaNotaFiscal(db, await fluxo.carregarContexto(db, 'ped-1'), { manual: true });
+  assert.equal(r.status, 'erro');
+  assert.match(r.erro, /só emite em PRODUÇÃO/);
+  assert.equal(servicos.salvar, 0);
+  assert.equal(pendenciasAbertas(db).length, 1);
+});
+
 test('falta NCM: pendencia clara e nada enviado ao NFe+', async () => {
   const { db, servicos } = cenario({ semNcm: true });
   const ctx = await fluxo.carregarContexto(db, 'ped-1');
@@ -273,8 +282,9 @@ test('emissao autorizada: guarda XML+DANFE, envia ao comprador com anexos, avisa
   assert.equal(paraComprador.attachments.length, 2);
   assert.ok(servicos.n8n.some((a) => a.evento === 'nota_fiscal_autorizada' && /storage\.test/.test(a.nfe_danfe_url)));
   assert.ok(eventos(db).indexOf('nota_autorizada') >= 0);
-  // XML enviado: renumeracao pelo NFe+ e destinatario de homologacao
-  assert.match(servicos.ultimoXml, /<tpAmb>2<\/tpAmb>/);
+  // XML enviado: producao, com o nome real do comprador
+  assert.match(servicos.ultimoXml, /<tpAmb>1<\/tpAmb>/);
+  assert.match(servicos.ultimoXml, /<xNome>Maria José<\/xNome>/);
   assert.match(servicos.ultimoXml, /<vNF>213\.27<\/vNF>/);
   assert.match(servicos.ultimoXml, /<cMun>3550308<\/cMun>/);
 });

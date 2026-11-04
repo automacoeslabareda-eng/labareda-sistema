@@ -816,6 +816,14 @@ async function etapaNotaFiscal(db, ctx, opcoes) {
       return await aplicarSituacao(db, ctx, det, null, opcoes);
     }
 
+    // O NFe+ ignora o tpAmb do XML importado e grava/transmite no ambiente da
+    // conta (producao) — conferido em 04/11/2026. "Homologacao" aqui sairia
+    // como nota real (ou rejeitada). Nunca transmite nesse modo.
+    if (Number(config.ambiente) !== 1) {
+      return await falhar(db, ctx, 'Ambiente "Homologação" selecionado em Configurações > Nota fiscal: o NFe+ desta conta só emite em PRODUÇÃO '
+        + '(ele ignora a homologação e a nota sairia real). Nada foi enviado. Para testar, use Produção com uma compra de valor baixo e cancele a nota no painel do NFe+ em até 24h.', opcoes, p.nfe_status !== 'processando');
+    }
+
     var itens = await anexarProdutos(db, ctx.itens);
     var faltas = validarDadosFiscais(config, { pedido: p, cliente: ctx.cliente, itens: itens });
     if (faltas.length) {
