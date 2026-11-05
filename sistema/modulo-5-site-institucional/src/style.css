@@ -3259,6 +3259,130 @@ details[open] .faq-question::after {
   border-top: 2px solid var(--preto);
 }
 
+/* Aceite dos termos (passo 3) */
+.checkout-termos {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 4px 0 16px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--preto);
+  cursor: pointer;
+}
+.checkout-termos input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: var(--terracota);
+}
+.checkout-termos a {
+  color: var(--terracota);
+  text-decoration: underline;
+}
+
+/* Pagamento dentro do site (Payment Brick + Pix/boleto) */
+.pagamento,
+.pagamento-resultado {
+  margin-top: 8px;
+}
+.pagamento__titulo {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 400;
+  color: var(--terracota);
+  margin: 0 0 12px;
+}
+.pagamento__carregando,
+.pagamento__seguro {
+  font-size: 0.85rem;
+  color: var(--cinza);
+  margin: 8px 0;
+}
+.pagamento__seguro {
+  text-align: center;
+  font-size: 0.78rem;
+}
+.pix {
+  text-align: center;
+}
+.pix__texto {
+  font-size: 0.92rem;
+  color: var(--preto);
+  line-height: 1.6;
+  margin: 0 0 16px;
+}
+.pix__qr {
+  display: block;
+  width: 220px;
+  max-width: 70vw;
+  height: auto;
+  margin: 0 auto 16px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #e0d5c5;
+  border-radius: 8px;
+}
+.pix__label {
+  font-size: 0.8rem;
+  color: var(--cinza);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 6px;
+}
+.pix__copia {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.pix__copia input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--preto);
+  background: var(--creme);
+  border: 1px solid #d4c9b8;
+  border-radius: 6px;
+}
+.pix__status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 0.88rem;
+  color: var(--verde);
+  margin: 0 0 6px;
+}
+.pix__pulso {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--verde-claro);
+  animation: pix-pulso 1.4s ease-in-out infinite;
+}
+@keyframes pix-pulso {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pix__pulso { animation: none; }
+}
+.pix__validade {
+  font-size: 0.8rem;
+  color: var(--cinza-claro);
+  margin: 0 0 16px;
+}
+.pagamento-outra,
+.pagamento-largo {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  text-align: center;
+}
+
 /* Checkout Success */
 .checkout-success {
   text-align: center;

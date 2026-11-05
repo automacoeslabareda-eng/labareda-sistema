@@ -21,11 +21,10 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { toVercel } = require('./_netlify-adapter');
-const { linkAcompanhar } = require('./_pedido-token');
 const { registrarEvento, resolverPendencia, faltaMigration } = require('./_pedido-registro');
 const {
   liberarReserva, liberarReservasExpiradas, confirmarBaixaEstoque, carregarContexto, etiquetaDoPedido,
-  etapaEtiqueta, etapaNotaFiscal, etapaEmailConfirmacao, etapaAvisoEquipe,
+  etapaEtiqueta, etapaNotaFiscal, etapaEmailConfirmacao, etapaAvisoEquipe, notificarPedidoEnviado,
 } = require('./_pedido-fluxo');
 const { carregarConfigFiscal, linksDaNota, nfemais, cnpjValido } = require('./_nota-fiscal');
 
@@ -181,7 +180,7 @@ const handler = async (event) => {
         const opcoes = { origem: 'painel', por: sessao.email };
         let sucesso = false;
         if (pend.tipo === 'etiqueta') {
-          const r = await etapaEtiqueta(db, ctx, Object.assign({ enviarEmailRastreio: true }, opcoes));
+          const r = await etapaEtiqueta(db, ctx, opcoes);
           sucesso = !!r.etiqueta;
         } else if (pend.tipo === 'email_confirmacao') {
           sucesso = await etapaEmailConfirmacao(db, ctx, etiquetaDoPedido(ctx.pedido) || {}, opcoes);
@@ -219,6 +218,7 @@ const handler = async (event) => {
           patch.rastreio_url = 'https://www.linkcorreios.com.br/?id=' + body.codigo_rastreio;
           patch.enviado_at = new Date().toISOString();
         }
+        if (body.status === 'enviado' && !patch.enviado_at && !atual.enviado_at) patch.enviado_at = new Date().toISOString();
         if (body.status === 'entregue' && !atual.entregue_at) patch.entregue_at = new Date().toISOString();
         const { error } = await db.from('pedidos').update(patch).eq('id', body.pedido_id);
         if (error) throw error;
@@ -235,7 +235,12 @@ const handler = async (event) => {
           await confirmarBaixaEstoque(db, body.pedido_id, itens || []);
           estoque = 'baixado';
         }
-        return resposta(200, { ok: true, estoque: estoque });
+        // Postou: avisa o comprador (e-mail + WhatsApp com o rastreio), uma vez.
+        let aviso = null;
+        if (body.status === 'enviado' && atual.status !== 'enviado') {
+          aviso = await notificarPedidoEnviado(db, body.pedido_id, 'painel');
+        }
+        return resposta(200, { ok: true, estoque: estoque, aviso_cliente: aviso });
       }
       case 'update-pedido-rastreio': {
         if (!body.pedido_id || !body.codigo_rastreio) return resposta(400, { erro: 'pedido_id e codigo_rastreio obrigatorios' });
@@ -249,52 +254,9 @@ const handler = async (event) => {
         if (error) throw error;
         await registrarEvento(db, body.pedido_id, 'rastreio_manual',
           'Rastreio ' + body.codigo_rastreio + ' informado no painel por ' + sessao.email + ' — pedido marcado como enviado', null, 'painel');
-        // Buscar dados do pedido + cliente para notificacao
-        const { data: pedidoData } = await db.from('pedidos').select('*,clientes(nome,email,telefone)').eq('id', body.pedido_id).single();
-        // Envia email de rastreamento ao cliente
-        var emailEnviado = false;
-        if (pedidoData && pedidoData.clientes && pedidoData.clientes.email && process.env.RESEND_API_KEY) {
-          try {
-            var cli = pedidoData.clientes;
-            var sUrl = (process.env.SITE_URL || 'https://sitiolabareda.com').replace(/\/+$/, '');
-            var wpp = process.env.WHATSAPP_PEDIDOS || '5573998150799';
-            var wppLink = 'https://wa.me/' + wpp + '?text=' + encodeURIComponent('Oi! Tenho uma duvida sobre o pedido #' + pedidoData.numero);
-            var acompUrl = linkAcompanhar(sUrl, pedidoData.numero);
-            var emailHtml = '<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;color:#2E2624;">'
-              + '<h2 style="color:#AA3424;text-align:center;margin-bottom:24px;">Sitio Labareda</h2>'
-              + '<p>Ola, ' + (cli.nome || '').split(' ')[0] + '!</p>'
-              + '<p>Seu pedido <strong>#' + pedidoData.numero + '</strong> foi enviado!</p>'
-              + '<div style="background:#f5f0e8;border-radius:8px;padding:20px;margin:20px 0;text-align:center;">'
-              + '<p style="margin:0 0 8px;font-size:.85rem;color:#6b5f56;">Codigo de rastreamento</p>'
-              + '<p style="font-size:1.3rem;font-weight:bold;letter-spacing:.15em;margin:0;">' + body.codigo_rastreio + '</p>'
-              + '</div>'
-              + '<div style="text-align:center;margin:20px 0;">'
-              + '<a href="' + rastreioUrl + '" style="display:inline-block;background:#AA3424;color:#F3E9D2;padding:12px 28px;border-radius:4px;text-decoration:none;font-size:.9rem;">Rastrear meu pedido</a>'
-              + '</div>'
-              + '<p style="font-size:.85rem;color:#6b5f56;">Acompanhe seu pedido em: <a href="' + acompUrl + '">' + acompUrl + '</a></p>'
-              + '<hr style="border:none;border-top:1px solid #e0d5c5;margin:24px 0;">'
-              + '<p style="font-size:.85rem;color:#6b5f56;">Duvidas sobre seu pedido?</p>'
-              + '<p style="font-size:.85rem;"><a href="' + wppLink + '" style="color:#AA3424;">Fale conosco pelo WhatsApp</a> — (73) 99815-0799</p>'
-              + '<p style="font-size:.75rem;color:#9a8b7d;margin-top:20px;text-align:center;">Sitio Labareda — Roca & Arte<br>Serra Grande, Costa do Cacau, Bahia</p>'
-              + '</div>';
-            var emailRes = await fetch('https://api.resend.com/emails', {
-              method: 'POST',
-              headers: { 'Authorization': 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                from: process.env.EMAIL_FROM || 'Sitio Labareda <noreply@sitiolabareda.com>',
-                to: [cli.email],
-                subject: 'Seu pedido #' + pedidoData.numero + ' foi enviado! — Sitio Labareda',
-                html: emailHtml,
-              }),
-            });
-            emailEnviado = emailRes.ok;
-          } catch (emailErr) {
-            console.error('admin-api: erro ao enviar email de rastreio:', emailErr.message);
-          }
-        }
-        await registrarEvento(db, body.pedido_id, emailEnviado ? 'email_rastreio_enviado' : 'email_rastreio_falhou',
-          emailEnviado ? 'Email de rastreio enviado ao comprador' : 'Email de rastreio NÃO foi enviado', null, 'painel');
-        return resposta(200, { ok: true, pedido: pedidoData, rastreio_url: rastreioUrl, email_enviado: emailEnviado });
+        // Avisa o comprador: e-mail + WhatsApp "saiu para entrega" com o rastreio
+        const aviso = await notificarPedidoEnviado(db, body.pedido_id, 'painel');
+        return resposta(200, { ok: true, rastreio_url: rastreioUrl, email_enviado: aviso.email, whatsapp_enviado: aviso.whatsapp });
       }
       /* ---- Nota fiscal (NF-e via NFe+) ---- */
       case 'emitir-nota': {

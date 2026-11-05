@@ -20,6 +20,7 @@
  */
 
 const { linkAcompanhar } = require('./_pedido-token');
+const { termosUrl } = require('./_whatsapp');
 
 function esc(v) {
   return String(v == null ? '' : v)
@@ -139,6 +140,7 @@ function rodape(pedido) {
     + '<p style="font-size:.85rem;color:#6b5f56;">Se precisar falar conosco:</p>'
     + '<p style="font-size:.85rem;margin:4px 0;">E-mail: <a href="mailto:' + esc(c.email) + '" style="color:#AA3424;">' + esc(c.email) + '</a></p>'
     + '<p style="font-size:.85rem;margin:4px 0;">WhatsApp: <a href="' + esc(whatsappLink) + '" style="color:#AA3424;">' + esc(c.whatsappExibicao) + '</a></p>'
+    + '<p style="font-size:.85rem;margin:12px 0 4px;"><a href="' + esc(termosUrl()) + '" style="color:#AA3424;">Termos e condições de compra (PDF)</a> — trocas, devoluções, desistência e avarias.</p>'
     + '<p style="font-size:.75rem;color:#9a8b7d;margin-top:20px;text-align:center;">Sítio Labareda — Roça & Arte<br>Serra Grande, Costa do Cacau, Bahia</p>';
 }
 
@@ -170,8 +172,8 @@ async function emailPedidoCriado(cliente, pedido, itens, linkPagamento, reservaA
 
   var htmlCliente = moldura(
     '<p>Olá, ' + primeiroNome + '!</p>'
-    + '<p>Recebemos seu pedido <strong>#' + esc(pedido.numero) + '</strong>. Para confirmá-lo, conclua o pagamento pelo Mercado Pago:</p>'
-    + (linkPagamento ? botao(linkPagamento, 'Pagar com Mercado Pago') + validade : '')
+    + '<p>Recebemos seu pedido <strong>#' + esc(pedido.numero) + '</strong>. Se ainda não concluiu o pagamento no site, você pode pagar por aqui (cartão, Pix ou boleto):</p>'
+    + (linkPagamento ? botao(linkPagamento, 'Concluir pagamento') + validade : '')
     + resumoHtml(pedido, itens)
     + enderecoHtml(pedido.endereco_entrega)
     + '<p style="font-size:.9rem;">Assim que o pagamento for aprovado, você recebe outro email de confirmação e, quando o pedido for despachado, o código de rastreamento.</p>'
@@ -311,4 +313,50 @@ async function emailNotaFiscal(cliente, pedido, nota) {
   return r[0];
 }
 
-module.exports = { enviarEmail, emailPedidoCriado, emailPagamentoAprovado, emailNotaFiscal };
+/* Instrucoes de pagamento gerado no site (Pix ou boleto) — so ao comprador.
+   dados: { tipo:'pix'|'boleto', link, codigo (copia e cola / linha digitavel), expiraEm } */
+async function emailInstrucoesPagamento(cliente, pedido, dados) {
+  var primeiroNome = esc(((cliente && cliente.nome) || '').split(' ')[0]);
+  var pix = dados.tipo === 'pix';
+  var quando = dados.expiraEm ? new Date(dados.expiraEm).toLocaleString('pt-BR', {
+    timeZone: 'America/Bahia', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+  }) : '';
+  var html = moldura(
+    '<p>Olá, ' + primeiroNome + '!</p>'
+    + '<p>' + (pix ? 'Seu Pix' : 'Seu boleto') + ' do pedido <strong>#' + esc(pedido.numero) + '</strong> (' + brl(pedido.total) + ') está pronto.'
+    + (pix ? ' Pague pelo app do seu banco com o QR Code ou o Pix copia e cola abaixo.' : ' Pague no app do banco, lotérica ou internet banking.') + '</p>'
+    + (dados.link ? botao(dados.link, pix ? 'Abrir QR Code do Pix' : 'Abrir boleto') : '')
+    + (dados.codigo
+      ? '<p style="font-size:.8rem;color:#6b5f56;margin:0 0 4px;">' + (pix ? 'Pix copia e cola:' : 'Linha digitável:') + '</p>'
+        + '<p style="font-size:.75rem;font-family:monospace;word-break:break-all;background:#f5f0e8;padding:10px;border-radius:6px;">' + esc(dados.codigo) + '</p>'
+      : '')
+    + (pix && quando ? '<p style="font-size:.85rem;color:#6b5f56;">O Pix vale até ' + esc(quando) + '.</p>' : '')
+    + (!pix ? '<p style="font-size:.85rem;color:#6b5f56;">O boleto leva até 3 dias úteis para ser compensado. Assim que o pagamento cair, você recebe a confirmação.</p>' : '')
+    + rodape(pedido)
+  );
+  return enviarEmail(cliente && cliente.email, (pix ? 'Seu Pix' : 'Seu boleto') + ' do pedido #' + pedido.numero + ' — Sítio Labareda', html);
+}
+
+/* 4. Pedido postado (marcado como "enviado" no painel): rastreio ao comprador. */
+async function emailPedidoEnviado(cliente, pedido, tracking, rastreioUrl) {
+  var primeiroNome = esc(((cliente && cliente.nome) || '').split(' ')[0]);
+  var html = moldura(
+    '<p>Olá, ' + primeiroNome + '!</p>'
+    + '<p>Seu pedido <strong>#' + esc(pedido.numero) + '</strong> saiu para entrega! 📦</p>'
+    + (tracking
+      ? '<div style="background:#f5f0e8;border-radius:8px;padding:20px;margin:20px 0;text-align:center;">'
+        + '<p style="margin:0 0 8px;font-size:.85rem;color:#6b5f56;">Código de rastreamento</p>'
+        + '<p style="font-size:1.3rem;font-weight:bold;letter-spacing:.15em;margin:0;">' + esc(tracking) + '</p>'
+        + '</div>'
+        + (rastreioUrl ? botao(rastreioUrl, 'Rastrear meu pedido') : '')
+      : '')
+    + (prazoTexto(pedido) ? '<p style="font-size:.9rem;"><strong>Previsão de entrega:</strong> ' + esc(prazoTexto(pedido)) + '</p>' : '')
+    + '<p style="font-size:.85rem;color:#6b5f56;">Se o produto chegar avariado ou diferente do pedido, avise preferencialmente em até 48 horas pelo e-mail de atendimento, com fotos.</p>'
+    + '<p style="font-size:.85rem;color:#6b5f56;">Acompanhe seu pedido em: <a href="' + esc(linkAcompanhar(siteUrl(), pedido.numero)) + '">' + esc(linkAcompanhar(siteUrl(), pedido.numero)) + '</a></p>'
+    + rodape(pedido)
+    + '<p style="font-size:.9rem;margin-top:20px;">Com carinho,<br>Equipe Sítio Labareda</p>'
+  );
+  return enviarEmail(cliente && cliente.email, 'Seu pedido #' + pedido.numero + ' saiu para entrega — Sítio Labareda', html);
+}
+
+module.exports = { enviarEmail, emailPedidoCriado, emailPagamentoAprovado, emailNotaFiscal, emailPedidoEnviado, emailInstrucoesPagamento };

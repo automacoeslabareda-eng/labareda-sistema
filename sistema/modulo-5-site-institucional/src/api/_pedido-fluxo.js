@@ -20,7 +20,8 @@
  */
 
 const { gerarEtiquetaParaPedido } = require('./gerar-etiqueta');
-const { emailPagamentoAprovado } = require('./_emails');
+const { emailPagamentoAprovado, emailPedidoEnviado } = require('./_emails');
+const { enviarWhatsApp, msgCompraConfirmada, msgPedidoEnviado } = require('./_whatsapp');
 const { registrarEvento, abrirPendencia, resolverPendencia, faltaMigration } = require('./_pedido-registro');
 const { etapaNotaFiscal, anexosDaNota, linksDaNota } = require('./_nota-fiscal');
 
@@ -295,6 +296,42 @@ async function etapaAvisoEquipe(db, ctx, etiquetaOuErro, alertas, opcoes) {
   return false;
 }
 
+/* WhatsApp "Compra confirmada" ao comprador: termos + nota (se ja
+   autorizada) + link de acompanhamento. Melhor esforco: so registra. */
+async function etapaWhatsappConfirmacao(db, ctx, opcoes) {
+  const pedido = ctx.pedido;
+  const cliente = ctx.cliente || {};
+  const origem = (opcoes && opcoes.origem) || 'webhook';
+  if (!cliente.telefone) return false;
+  let danfeUrl = null;
+  if (pedido.nfe_status === 'autorizada') {
+    try { danfeUrl = (await linksDaNota(db, pedido, 7 * 24 * 3600)).danfe_url; } catch (e) { /* segue sem link */ }
+  }
+  const ok = await enviarWhatsApp(cliente.telefone, msgCompraConfirmada(cliente, pedido, { danfeUrl: danfeUrl }));
+  await registrarEvento(db, pedido.id, ok ? 'whatsapp_confirmacao_enviado' : 'whatsapp_confirmacao_falhou',
+    ok ? 'WhatsApp "Compra confirmada" (com termos' + (danfeUrl ? ' e nota fiscal' : '') + ') enviado ao comprador'
+      : 'WhatsApp de confirmação não foi enviado ao comprador (Evolution sem configuração ou erro)', null, origem);
+  return ok;
+}
+
+/* Pedido postado: e-mail + WhatsApp "saiu para entrega" com o rastreio.
+   Chamado quando o painel marca o pedido como "enviado". */
+async function notificarPedidoEnviado(db, pedidoId, origem) {
+  const ctx = await carregarContexto(db, pedidoId);
+  const pedido = ctx.pedido;
+  const cliente = ctx.cliente || {};
+  const tracking = pedido.codigo_rastreio || null;
+  const rastreioUrl = pedido.rastreio_url || (tracking ? 'https://www.linkcorreios.com.br/?id=' + tracking : null);
+  let email = false;
+  try { email = await emailPedidoEnviado(cliente, pedido, tracking, rastreioUrl); } catch (e) { console.error('[pedido-fluxo] email enviado:', e.message); }
+  const wpp = cliente.telefone ? await enviarWhatsApp(cliente.telefone, msgPedidoEnviado(cliente, pedido, tracking, rastreioUrl)) : false;
+  await registrarEvento(db, pedido.id, 'cliente_avisado_envio',
+    'Aviso "saiu para entrega"' + (tracking ? ' (rastreio ' + tracking + ')' : ' (sem código de rastreio)')
+      + ' — e-mail: ' + (email ? 'enviado' : 'NÃO enviado') + ', WhatsApp: ' + (wpp ? 'enviado' : 'NÃO enviado'),
+    { email: email, whatsapp: wpp }, origem || 'painel');
+  return { email: email, whatsapp: wpp };
+}
+
 module.exports = {
   horasReserva,
   reservarEstoque,
@@ -307,4 +344,6 @@ module.exports = {
   etapaNotaFiscal,
   etapaEmailConfirmacao,
   etapaAvisoEquipe,
+  etapaWhatsappConfirmacao,
+  notificarPedidoEnviado,
 };

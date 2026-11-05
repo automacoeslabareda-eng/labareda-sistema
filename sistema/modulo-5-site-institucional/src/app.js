@@ -278,6 +278,32 @@
       checkout_mp_redirect_msg: 'Voc\u00ea ser\u00e1 direcionado ao ambiente seguro do Mercado Pago para concluir o pagamento.',
       checkout_mp_redirect_btn: 'Ir para o pagamento',
       checkout_mp_cancel: 'Cancelar',
+      checkout_terms_accept: 'Li e aceito os',
+      checkout_terms_link: 'termos e condições de compra',
+      checkout_terms_required: 'Para finalizar, leia e aceite os termos e condições de compra.',
+      pay_title: 'Como você quer pagar?',
+      pay_loading: 'Carregando as formas de pagamento...',
+      pay_secure: 'Pagamento processado com segurança pelo Mercado Pago. Os dados do cartão não passam pelo nosso site.',
+      pay_error: 'Não foi possível processar o pagamento. Tente novamente.',
+      pay_fallback_msg: 'Não conseguimos carregar o pagamento aqui. Conclua no ambiente seguro do Mercado Pago:',
+      pix_title: 'Pague com Pix',
+      pix_instructions: 'Abra o app do seu banco, escolha pagar com Pix e leia o QR Code — ou use o Pix copia e cola.',
+      pix_copy_label: 'Pix copia e cola',
+      pix_copy_btn: 'Copiar',
+      pix_copied: 'Código Pix copiado!',
+      pix_waiting: 'Aguardando o pagamento — a confirmação aparece aqui sozinha.',
+      pix_valid_until: 'Válido até',
+      pay_other_method: 'Escolher outra forma de pagamento',
+      boleto_title: 'Boleto gerado',
+      boleto_instructions: 'Pague no app do banco, lotérica ou internet banking. A compensação leva até 3 dias úteis — enviamos a confirmação por e-mail e WhatsApp.',
+      boleto_open: 'Abrir boleto',
+      boleto_line_label: 'Linha digitável',
+      boleto_copied: 'Linha digitável copiada!',
+      pay_done_btn: 'Concluir',
+      pay_rejected_title: 'Pagamento não aprovado',
+      pay_retry: 'Tentar de novo',
+      pay_review_title: 'Pagamento em análise',
+      pay_approved_msg: 'Pagamento aprovado! Você vai receber a confirmação, os termos de compra e a nota fiscal por e-mail e WhatsApp.',
       /* Rotulos de acessibilidade (aria-label/title) — nao aparecem visualmente
          pra maioria dos visitantes, mas precisam trocar de idioma tambem
          (leitor de tela e tooltips nativos). */
@@ -477,6 +503,32 @@
       checkout_mp_redirect_msg: 'You will be redirected to Mercado Pago\u2019s secure environment to complete the payment.',
       checkout_mp_redirect_btn: 'Go to payment',
       checkout_mp_cancel: 'Cancel',
+      checkout_terms_accept: 'I have read and accept the',
+      checkout_terms_link: 'terms and conditions of purchase',
+      checkout_terms_required: 'To finish, please read and accept the terms and conditions of purchase.',
+      pay_title: 'How would you like to pay?',
+      pay_loading: 'Loading payment options...',
+      pay_secure: 'Payment securely processed by Mercado Pago. Card details never pass through our site.',
+      pay_error: 'We could not process the payment. Please try again.',
+      pay_fallback_msg: 'We could not load the payment here. Complete it in Mercado Pago’s secure environment:',
+      pix_title: 'Pay with Pix',
+      pix_instructions: 'Open your bank app, choose Pix and scan the QR code — or use Pix copy and paste.',
+      pix_copy_label: 'Pix copy and paste',
+      pix_copy_btn: 'Copy',
+      pix_copied: 'Pix code copied!',
+      pix_waiting: 'Waiting for payment — confirmation will show up here automatically.',
+      pix_valid_until: 'Valid until',
+      pay_other_method: 'Choose another payment method',
+      boleto_title: 'Boleto generated',
+      boleto_instructions: 'Pay it in your bank app or at a lottery outlet. It takes up to 3 business days to clear — we will confirm by email and WhatsApp.',
+      boleto_open: 'Open boleto',
+      boleto_line_label: 'Barcode number',
+      boleto_copied: 'Barcode number copied!',
+      pay_done_btn: 'Done',
+      pay_rejected_title: 'Payment not approved',
+      pay_retry: 'Try again',
+      pay_review_title: 'Payment under review',
+      pay_approved_msg: 'Payment approved! You will receive the confirmation, the terms of purchase and the invoice by email and WhatsApp.',
       aria_menu_principal: 'Main menu',
       aria_abrir_carrinho: 'Open cart',
       aria_mudar_idioma: 'Change language',
@@ -1912,8 +1964,304 @@
   function resetMpWallet() {
     var container = document.getElementById('mp-wallet-container');
     var navRow = document.getElementById('checkout-nav-row-3');
+    var termos = document.getElementById('checkout-termos-row');
     if (container) { container.style.display = 'none'; container.innerHTML = ''; }
     if (navRow) navRow.style.display = '';
+    if (termos) termos.style.display = '';
+    pararPix();
+    desmontarBrick();
+    pagamentoAtual = null;
+    var area = document.getElementById('pagamento-area');
+    var res = document.getElementById('pagamento-resultado');
+    if (area) area.style.display = 'none';
+    if (res) { res.style.display = 'none'; res.innerHTML = ''; }
+  }
+
+  /* ==========================================================================
+     16b. PAGAMENTO DENTRO DO SITE (Payment Brick do Mercado Pago)
+     Cartao, Pix e boleto sem conta Mercado Pago. O formulario e do MP (os
+     dados do cartao viram um token no navegador); o pagamento e criado no
+     servidor (/api/processar-pagamento) com o valor do banco. Se o Brick nao
+     carregar, cai no link do Checkout Pro (fluxo antigo).
+     ========================================================================== */
+  var pagamentoAtual = null; /* { pedido_id, numero, token, total, public_key, preference_id, link, pagador } */
+  var brickController = null;
+  var pixTimer = null;
+  var sdkMpPromise = null;
+
+  function carregarSdkMp() {
+    if (window.MercadoPago) return Promise.resolve();
+    if (sdkMpPromise) return sdkMpPromise;
+    sdkMpPromise = new Promise(function (resolve, reject) {
+      var sc = document.createElement('script');
+      sc.src = 'https://sdk.mercadopago.com/js/v2';
+      sc.onload = function () { resolve(); };
+      sc.onerror = function () { sdkMpPromise = null; reject(new Error('SDK do Mercado Pago nao carregou')); };
+      document.head.appendChild(sc);
+    });
+    return sdkMpPromise;
+  }
+
+  function desmontarBrick() {
+    if (brickController) {
+      try { brickController.unmount(); } catch (e) { /* ja desmontado */ }
+      brickController = null;
+    }
+  }
+
+  function pararPix() {
+    if (pixTimer) { clearInterval(pixTimer); pixTimer = null; }
+  }
+
+  function escAttr(v) {
+    return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /* Fallback: link do Checkout Pro (pagina do Mercado Pago). */
+  function mostrarLinkReserva(msg) {
+    var t = translations[currentLang];
+    var container = document.getElementById('mp-wallet-container');
+    if (!container || !pagamentoAtual || !pagamentoAtual.link) return;
+    container.innerHTML = '<p class="mp-redirect-msg">' + (msg || t.checkout_mp_redirect_msg) + '</p>'
+      + '<a href="' + escAttr(pagamentoAtual.link) + '" class="btn btn--primary btn--large" style="width:100%;text-align:center;">'
+      + (t.checkout_mp_redirect_btn || 'Ir para o pagamento') + '</a>';
+    container.style.display = '';
+  }
+
+  function mostrarResultado(html) {
+    desmontarBrick();
+    var area = document.getElementById('pagamento-area');
+    var res = document.getElementById('pagamento-resultado');
+    if (area) area.style.display = 'none';
+    if (res) { res.innerHTML = html; res.style.display = ''; }
+  }
+
+  function renderPagamento() {
+    var p = pagamentoAtual;
+    var t = translations[currentLang];
+    var area = document.getElementById('pagamento-area');
+    var res = document.getElementById('pagamento-resultado');
+    var carregando = document.getElementById('pagamento-carregando');
+    pararPix();
+    desmontarBrick();
+    if (res) { res.style.display = 'none'; res.innerHTML = ''; }
+    if (!p.public_key) { mostrarLinkReserva(); return; }
+    if (area) area.style.display = '';
+    if (carregando) carregando.style.display = '';
+
+    var metodos = { creditCard: 'all', debitCard: 'all', bankTransfer: 'all', ticket: 'all', maxInstallments: 12 };
+    if (p.preference_id) metodos.mercadoPago = 'all';
+    var pg = p.pagador || {};
+    var ini = { amount: Number(p.total) };
+    if (p.preference_id) ini.preferenceId = p.preference_id;
+    ini.payer = { email: pg.email || '' };
+    if (pg.first_name) ini.payer.firstName = pg.first_name;
+    if (pg.last_name) ini.payer.lastName = pg.last_name;
+    if (pg.identification && pg.identification.number) ini.payer.identification = pg.identification;
+
+    carregarSdkMp().then(function () {
+      var mp = new window.MercadoPago(p.public_key, { locale: currentLang === 'en' ? 'en-US' : 'pt-BR' });
+      return mp.bricks().create('payment', 'payment-brick-container', {
+        initialization: ini,
+        customization: {
+          paymentMethods: metodos,
+          visual: {
+            style: {
+              theme: 'default',
+              customVariables: {
+                baseColor: '#AA3424',
+                baseColorFirstVariant: '#8A2A1B',
+                baseColorSecondVariant: '#C8531E',
+                textPrimaryColor: '#2E2624',
+                textSecondaryColor: '#6b5f56',
+                buttonTextColor: '#F3E9D2',
+                outlinePrimaryColor: '#d4c9b8',
+                borderRadiusSmall: '4px',
+                borderRadiusMedium: '6px',
+                borderRadiusLarge: '8px',
+              },
+            },
+          },
+        },
+        callbacks: {
+          onReady: function () { if (carregando) carregando.style.display = 'none'; },
+          onSubmit: function (dados) {
+            /* "Conta Mercado Pago": o proprio Brick leva o cliente ao MP. */
+            if (dados.selectedPaymentMethod === 'wallet_purchase' || !dados.formData) return Promise.resolve();
+            return enviarPagamento(dados.formData);
+          },
+          onError: function (err) { console.error('Payment Brick:', err); },
+        },
+      });
+    }).then(function (controller) {
+      brickController = controller;
+    }).catch(function (err) {
+      console.error('Falha ao montar o pagamento:', err);
+      if (area) area.style.display = 'none';
+      mostrarLinkReserva(t.pay_fallback_msg);
+    });
+  }
+
+  function enviarPagamento(formData) {
+    var p = pagamentoAtual;
+    var t = translations[currentLang];
+    return new Promise(function (resolve, reject) {
+      fetch('/api/processar-pagamento', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pedido_id: p.pedido_id,
+          t: p.token,
+          tentativa: Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+          formData: formData,
+        }),
+      })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d || {} }; }); })
+        .then(function (res) {
+          var d = res.d;
+          if (d.status === 'approved') { resolve(); mostrarAprovado(); return; }
+          if (!res.ok || !d.ok) {
+            showToast(d.erro || t.pay_error, true);
+            reject();
+            return;
+          }
+          resolve();
+          if (d.metodo === 'pix' && d.pix && d.pix.qr_code) mostrarPix(d.pix);
+          else if (d.metodo === 'boleto' && d.boleto) mostrarBoleto(d.boleto);
+          else if (d.status === 'rejected') mostrarFalha(t.pay_rejected_title, d.mensagem || t.pay_error);
+          else mostrarFalha(t.pay_review_title, d.mensagem || '', true);
+        })
+        .catch(function (err) {
+          console.error('processar-pagamento:', err);
+          showToast(t.pay_error, true);
+          reject();
+        });
+    });
+  }
+
+  function copiarTexto(texto, msgOk) {
+    var ok = function () { showToast(msgOk); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(ok).catch(function () { copiarFallback(texto); ok(); });
+    } else { copiarFallback(texto); ok(); }
+  }
+  function copiarFallback(texto) {
+    var ta = document.createElement('textarea');
+    ta.value = texto; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch (e) { /* sem suporte */ }
+    document.body.removeChild(ta);
+  }
+
+  function botaoOutraForma() {
+    return '<button type="button" class="btn btn--outline pagamento-outra" data-acao="outra-forma">'
+      + translations[currentLang].pay_other_method + '</button>';
+  }
+
+  function mostrarPix(pix) {
+    var t = translations[currentLang];
+    var validade = '';
+    if (pix.expira_em) {
+      var d = new Date(pix.expira_em);
+      if (!isNaN(d.getTime())) {
+        validade = '<p class="pix__validade">' + t.pix_valid_until + ' '
+          + d.toLocaleString(currentLang === 'en' ? 'en-US' : 'pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</p>';
+      }
+    }
+    mostrarResultado(
+      '<div class="pix">'
+      + '<h3 class="pagamento__titulo">' + t.pix_title + '</h3>'
+      + '<p class="pix__texto">' + t.pix_instructions + '</p>'
+      + (pix.qr_code_base64 ? '<img class="pix__qr" alt="QR Code Pix" src="data:image/png;base64,' + escAttr(pix.qr_code_base64) + '">' : '')
+      + '<p class="pix__label">' + t.pix_copy_label + '</p>'
+      + '<div class="pix__copia"><input type="text" readonly value="' + escAttr(pix.qr_code) + '" aria-label="' + escAttr(t.pix_copy_label) + '">'
+      + '<button type="button" class="btn btn--primary" data-acao="copiar-pix">' + t.pix_copy_btn + '</button></div>'
+      + '<p class="pix__status"><span class="pix__pulso" aria-hidden="true"></span>' + t.pix_waiting + '</p>'
+      + validade
+      + botaoOutraForma()
+      + '</div>'
+    );
+    var res = document.getElementById('pagamento-resultado');
+    res.querySelector('[data-acao="copiar-pix"]').addEventListener('click', function () { copiarTexto(pix.qr_code, t.pix_copied); });
+    res.querySelector('[data-acao="outra-forma"]').addEventListener('click', renderPagamento);
+    acompanharPix();
+  }
+
+  /* Confere o pedido a cada 5s ate o Pix cair (no maximo 30 min). */
+  function acompanharPix() {
+    var p = pagamentoAtual;
+    var inicio = Date.now();
+    pararPix();
+    pixTimer = setInterval(function () {
+      if (!pagamentoAtual || Date.now() - inicio > 30 * 60 * 1000) { pararPix(); return; }
+      fetch('/api/consultar-pedido', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ numero: p.numero, t: p.token }),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var st = d && d.pedido && d.pedido.status;
+          if (['pago', 'preparando', 'enviado', 'entregue'].indexOf(st) >= 0) mostrarAprovado();
+        })
+        .catch(function () { /* tenta de novo no proximo ciclo */ });
+    }, 5000);
+  }
+
+  function mostrarBoleto(b) {
+    var t = translations[currentLang];
+    mostrarResultado(
+      '<div class="pix">'
+      + '<h3 class="pagamento__titulo">' + t.boleto_title + '</h3>'
+      + '<p class="pix__texto">' + t.boleto_instructions + '</p>'
+      + (b.url ? '<a class="btn btn--primary btn--large pagamento-largo" href="' + escAttr(b.url) + '" target="_blank" rel="noopener">' + t.boleto_open + '</a>' : '')
+      + (b.codigo
+        ? '<p class="pix__label">' + t.boleto_line_label + '</p>'
+          + '<div class="pix__copia"><input type="text" readonly value="' + escAttr(b.codigo) + '" aria-label="' + escAttr(t.boleto_line_label) + '">'
+          + '<button type="button" class="btn btn--primary" data-acao="copiar-boleto">' + t.pix_copy_btn + '</button></div>'
+        : '')
+      + '<button type="button" class="btn btn--outline pagamento-outra" data-acao="concluir">' + t.pay_done_btn + '</button>'
+      + '</div>'
+    );
+    var res = document.getElementById('pagamento-resultado');
+    var cp = res.querySelector('[data-acao="copiar-boleto"]');
+    if (cp) cp.addEventListener('click', function () { copiarTexto(b.codigo, t.boleto_copied); });
+    res.querySelector('[data-acao="concluir"]').addEventListener('click', closeCheckout);
+  }
+
+  function mostrarFalha(titulo, msg, emAnalise) {
+    var t = translations[currentLang];
+    mostrarResultado(
+      '<div class="pix">'
+      + '<h3 class="pagamento__titulo">' + titulo + '</h3>'
+      + (msg ? '<p class="pix__texto">' + escAttr(msg) + '</p>' : '')
+      + (emAnalise
+        ? '<button type="button" class="btn btn--primary pagamento-outra" data-acao="concluir">' + t.pay_done_btn + '</button>'
+        : '<button type="button" class="btn btn--primary pagamento-outra" data-acao="outra-forma">' + t.pay_retry + '</button>')
+      + '</div>'
+    );
+    var res = document.getElementById('pagamento-resultado');
+    var b1 = res.querySelector('[data-acao="outra-forma"]');
+    if (b1) b1.addEventListener('click', renderPagamento);
+    var b2 = res.querySelector('[data-acao="concluir"]');
+    if (b2) b2.addEventListener('click', closeCheckout);
+  }
+
+  function mostrarAprovado() {
+    var numero = pagamentoAtual && pagamentoAtual.numero;
+    pararPix();
+    desmontarBrick();
+    for (var i = 1; i <= 3; i++) {
+      var el = document.getElementById('checkout-step-' + i);
+      if (el) el.style.display = 'none';
+    }
+    var steps = document.getElementById('checkout-steps');
+    if (steps) steps.style.display = 'none';
+    var num = document.getElementById('checkout-success-number');
+    if (num) num.textContent = numero ? '#' + numero : '';
+    var msg = document.querySelector('#checkout-success .checkout-success__msg');
+    if (msg) msg.textContent = translations[currentLang].pay_approved_msg;
+    document.getElementById('checkout-success').style.display = 'block';
   }
 
   function openCheckout() {
@@ -1931,6 +2279,7 @@
   }
 
   function closeCheckout() {
+    pararPix();
     document.getElementById('checkout-modal').classList.remove('aberto');
     document.body.style.overflow = '';
   }
@@ -2251,11 +2600,18 @@
   document.getElementById('checkout-confirm').addEventListener('click', function () {
     var btn = this;
     var origText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = translations[currentLang].checkout_sending;
-
     var cart = getCart();
     if (cart.length === 0) return;
+
+    var aceite = document.getElementById('checkout-termos');
+    if (aceite && !aceite.checked) {
+      showToast(translations[currentLang].checkout_terms_required, true);
+      aceite.focus();
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = translations[currentLang].checkout_sending;
 
     var nome = document.getElementById('checkout-nome').value.trim();
     var email = document.getElementById('checkout-email').value.trim();
@@ -2286,6 +2642,7 @@
         cliente: { nome: nome, email: email, telefone: telefone, cpf: cpf, endereco: endereco },
         itens: itensCarrinho,
         frete: selectedFrete ? { regiao: selectedFrete.regiao, valor: selectedFrete.valor, service_id: selectedFrete.id, service_name: selectedFrete.nome } : { valor: 0 },
+        aceite_termos: true,
       }),
     })
       .then(function (r) {
@@ -2296,29 +2653,30 @@
             throw errServidor;
           }
 
-          var link = data.init_point || data.sandbox_init_point;
-          if (!link) throw new Error('Link de pagamento não recebido');
+          var link = data.init_point || data.sandbox_init_point || '';
 
+          /* Pedido criado e estoque reservado: o carrinho ja virou pedido. */
           saveCart([]);
           updateCartBadge();
 
-          /* Leva o cliente direto pro Checkout Pro do Mercado Pago (redirect).
-             O Wallet Brick falhava em silencio (chave publica de outro
-             ambiente, bloqueio no Safari etc.) e o cliente ficava preso no
-             passo 3 sem conseguir pagar. O redirect pelo init_point e o
-             fluxo oficial e nao depende do SDK JS. Deixa tambem um botao
-             visivel, caso o navegador nao siga o redirect automatico. */
-          var t = translations[currentLang];
-          var container = document.getElementById('mp-wallet-container');
+          /* Pagamento dentro do site (cartao, Pix, boleto — sem conta MP).
+             Se o formulario do Mercado Pago nao carregar, renderPagamento cai
+             no link do Checkout Pro. */
           var navRow = document.getElementById('checkout-nav-row-3');
+          var termosRow = document.getElementById('checkout-termos-row');
           if (navRow) navRow.style.display = 'none';
-          if (container) {
-            container.innerHTML = '<p class="mp-redirect-msg">' + t.checkout_mp_redirect_msg + '</p>'
-              + '<a href="' + link + '" class="btn btn--primary btn--large" style="width:100%;text-align:center;">'
-              + (t.checkout_mp_redirect_btn || 'Ir para o pagamento') + '</a>';
-            container.style.display = '';
-          }
-          setTimeout(function () { window.location.assign(link); }, 600);
+          if (termosRow) termosRow.style.display = 'none';
+          pagamentoAtual = {
+            pedido_id: data.pedido_id,
+            numero: data.pedido_numero,
+            token: data.pedido_token,
+            total: data.total,
+            public_key: data.mp_public_key,
+            preference_id: data.preference_id,
+            link: link,
+            pagador: data.pagador || { email: email },
+          };
+          renderPagamento();
         });
       })
       .catch(function (err) {

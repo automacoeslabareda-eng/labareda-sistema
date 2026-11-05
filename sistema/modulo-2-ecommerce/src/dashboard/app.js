@@ -837,9 +837,15 @@ async function expandirPedido(pedidoId) {
     if (ped.etiqueta_url) {
       etiquetaHtml += '<a class="btn btn--primary" href="' + escapeHtml(ped.etiqueta_url) + '" target="_blank" rel="noopener">Imprimir etiqueta</a>'
         + (ped.codigo_rastreio ? ' <span style="font-family:monospace;margin-left:8px">' + escapeHtml(ped.codigo_rastreio) + '</span>' : '');
+      if (ped.status === 'pago' || ped.status === 'preparando') {
+        etiquetaHtml += '<div style="margin-top:10px"><button class="btn btn--outline" onclick="marcarPostado(\'' + pedidoId + '\')">Postei — avisar cliente</button>'
+          + '<p style="font-size:12px;color:#777;margin:8px 0 0">Marca como ENVIADO e manda ao cliente, por e-mail e WhatsApp, que o pedido saiu para entrega com o código de rastreio.</p></div>';
+      } else if (ped.status === 'enviado') {
+        etiquetaHtml += '<p style="font-size:12px;color:#3D5A3A;margin:8px 0 0">Postado — cliente avisado com o rastreio.</p>';
+      }
     } else if (ped.status === 'pago' || ped.status === 'preparando') {
       etiquetaHtml += '<button class="btn btn--primary" id="btn-etiqueta-' + pedidoId + '" onclick="gerarEtiqueta(\'' + pedidoId + '\')">Gerar etiqueta SuperFrete</button>'
-        + '<p style="font-size:12px;color:#777;margin:8px 0 0">Paga o frete com o saldo da conta SuperFrete e envia o rastreio por email ao cliente.</p>';
+        + '<p style="font-size:12px;color:#777;margin:8px 0 0">Paga o frete com o saldo da conta SuperFrete. O cliente recebe o rastreio quando você clicar em "Postei — avisar cliente".</p>';
     } else {
       etiquetaHtml += '<p style="font-size:13px;color:#777;margin:0">Disponivel quando o pedido estiver pago.</p>';
     }
@@ -962,11 +968,29 @@ async function salvarRastreio(pedidoId) {
   if (!codigo) { mostrarToast('Informe o codigo de rastreio', 'error'); return; }
   try {
     var resp = await adminApi('update-pedido-rastreio', { pedido_id: pedidoId, codigo_rastreio: codigo });
-    mostrarToast('Rastreio salvo! Status atualizado para ENVIADO');
+    mostrarToast('Rastreio salvo! Pedido ENVIADO'
+      + (resp && (resp.email_enviado || resp.whatsapp_enviado) ? ' — cliente avisado' + (resp.whatsapp_enviado ? ' (e-mail e WhatsApp)' : ' (e-mail)') : ' — aviso ao cliente NÃO saiu, confira o histórico'));
     carregarPedidos();
   } catch (err) {
     console.error(err);
     mostrarToast('Erro ao salvar rastreio', 'error');
+  }
+}
+
+/* Pedido postado: marca "enviado" e o servidor avisa o cliente (e-mail +
+   WhatsApp) com o rastreio da etiqueta. */
+async function marcarPostado(pedidoId) {
+  try {
+    var r = await adminApi('update-pedido-status', { pedido_id: pedidoId, status: 'enviado' });
+    var a = r && r.aviso_cliente;
+    mostrarToast('Pedido ENVIADO' + (a && (a.email || a.whatsapp)
+      ? ' — cliente avisado' + (a.whatsapp ? ' (e-mail e WhatsApp)' : ' (e-mail)')
+      : ' — aviso ao cliente NÃO saiu, confira o histórico'), a && (a.email || a.whatsapp) ? undefined : 'error');
+    await carregarPedidos();
+    expandirPedido(pedidoId);
+  } catch (err) {
+    console.error(err);
+    mostrarToast('Erro ao marcar como postado', 'error');
   }
 }
 

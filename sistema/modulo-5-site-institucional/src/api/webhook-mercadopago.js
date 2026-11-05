@@ -11,7 +11,9 @@
  *   4. Se APROVADO (uma unica vez por pedido): marca "pago", efetiva a
  *      baixa de estoque, gera a etiqueta, emite a nota fiscal (se o modo
  *      automatico estiver ligado), manda o email "Compra confirmada" (com a
- *      nota anexada, se ja autorizada) e avisa a equipe (n8n).
+ *      nota anexada, se ja autorizada), o WhatsApp do comprador (termos +
+ *      nota) e avisa a equipe (n8n). Vale para Checkout Pro e para o Pix
+ *      direto (os dois usam external_reference = id do pedido).
  *      Cada etapa grava historico; falhas viram pendencia no painel.
  *   5. Recusado/em analise: so registra (o cliente pode tentar de novo
  *      com outro cartao no mesmo link).
@@ -37,6 +39,7 @@ const { toVercel } = require('./_netlify-adapter');
 const { registrarEvento, abrirPendencia } = require('./_pedido-registro');
 const {
   confirmarBaixaEstoque, carregarContexto, etapaEtiqueta, etapaNotaFiscal, etapaEmailConfirmacao, etapaAvisoEquipe,
+  etapaWhatsappConfirmacao,
 } = require('./_pedido-fluxo');
 
 // Escolhe o Access Token conforme MP_ENV ('teste' ou 'producao').
@@ -202,6 +205,7 @@ const handler = async (event) => {
     // email de confirmacao e o link entra no aviso da equipe.
     await etapaNotaFiscal(supabase, ctx, { origem: 'webhook', enviarEmail: false, avisarEquipe: false });
     await etapaEmailConfirmacao(supabase, ctx, etiquetaOuErro, { origem: 'webhook' });
+    await etapaWhatsappConfirmacao(supabase, ctx, { origem: 'webhook' });
     await etapaAvisoEquipe(supabase, ctx, etiquetaOuErro, alertas, { origem: 'webhook' });
 
     return ok200;
