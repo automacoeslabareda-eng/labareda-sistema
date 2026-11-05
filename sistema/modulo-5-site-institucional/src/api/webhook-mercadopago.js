@@ -117,7 +117,19 @@ const handler = async (event) => {
 
     // 2. Consulta o pagamento real no Mercado Pago
     const mp = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
-    const info = await new Payment(mp).get({ id: paymentId });
+    let info;
+    try {
+      info = await new Payment(mp).get({ id: paymentId });
+    } catch (e) {
+      // Pagamento inexistente (ex.: "Simular notificacao" do painel do MP, que
+      // manda id 123456): nada a processar. Responde 200 pra o MP nao reenviar.
+      const st = e && (e.status || (e.cause && e.cause.status) || (e.response && e.response.status));
+      if (st === 404 || /not.?found/i.test(String(e && e.message))) {
+        console.warn('webhook: pagamento ' + paymentId + ' nao existe no Mercado Pago — ignorado');
+        return ok200;
+      }
+      throw e;
+    }
     const status = info.status;
     const pedidoId = info.external_reference;
     if (!pedidoId) return ok200;
