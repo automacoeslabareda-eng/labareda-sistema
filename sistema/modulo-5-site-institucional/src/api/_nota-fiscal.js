@@ -29,6 +29,7 @@
 
 const { registrarEvento, abrirPendencia, resolverPendencia, faltaMigration } = require('./_pedido-registro');
 const { emailNotaFiscal } = require('./_emails');
+const { enviarWhatsApp, msgNotaFiscal } = require('./_whatsapp');
 
 const NFEMAIS_URL = 'https://v4.nfemais.com.br/api';
 const BUCKET = 'notas-fiscais';
@@ -718,6 +719,14 @@ async function enviarNotaAoComprador(db, ctx, origem) {
   if (ok) {
     await atualizarPedido(db, ctx, { nfe_email_enviado_at: new Date().toISOString() });
     await registrarEvento(db, p.id, 'email_nota_enviado', 'Nota fiscal ' + (p.nfe_numero || '') + ' enviada por email para ' + cliente.email, null, origem);
+    // Tambem no WhatsApp do comprador (link do DANFE valido por 7 dias)
+    if (cliente.telefone) {
+      var links = {};
+      try { links = await linksDaNota(db, p, 7 * 24 * 3600); } catch (e) { /* segue sem link */ }
+      var wpp = await enviarWhatsApp(cliente.telefone, msgNotaFiscal(cliente, p, links.danfe_url));
+      await registrarEvento(db, p.id, wpp ? 'whatsapp_nota_enviado' : 'whatsapp_nota_falhou',
+        wpp ? 'Nota fiscal enviada no WhatsApp do comprador' : 'WhatsApp com a nota fiscal não foi enviado ao comprador', null, origem);
+    }
   } else {
     await registrarEvento(db, p.id, 'email_nota_falhou', 'Email com a nota fiscal não foi enviado para ' + cliente.email, null, origem);
   }

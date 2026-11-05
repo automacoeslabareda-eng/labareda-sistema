@@ -861,6 +861,11 @@
         <h2 data-i18n="checkout_step3_title">Resumo do Pedido</h2>
         <div class="checkout-summary" id="checkout-summary"></div>
         <div class="checkout-totals" id="checkout-totals"></div>
+        <label class="checkout-termos" id="checkout-termos-row">
+          <input type="checkbox" id="checkout-termos">
+          <span><span data-i18n="checkout_terms_accept">Li e aceito os</span>
+            <a href="termos-e-condicoes.pdf" target="_blank" rel="noopener" data-i18n="checkout_terms_link">termos e condições de compra</a></span>
+        </label>
         <div class="checkout-nav-row" id="checkout-nav-row-3">
           <button class="btn btn--outline" id="checkout-back-3" type="button" data-i18n="checkout_back">Voltar</button>
           <button class="btn btn--primary btn--large" id="checkout-confirm" type="button" data-i18n="checkout_confirm">Confirmar Pedido</button>
@@ -868,6 +873,15 @@
         <!-- Link de pagamento do Mercado Pago -- aparece depois
              que o pedido e criado, no lugar do botao "Confirmar Pedido". -->
         <div id="mp-wallet-container" style="display:none;margin-top:8px;"></div>
+        <!-- Pagamento dentro do site (Payment Brick do Mercado Pago):
+             cartao, Pix e boleto sem precisar de conta Mercado Pago. -->
+        <div class="pagamento" id="pagamento-area" style="display:none;">
+          <h3 class="pagamento__titulo" data-i18n="pay_title">Como você quer pagar?</h3>
+          <p class="pagamento__carregando" id="pagamento-carregando" data-i18n="pay_loading">Carregando as formas de pagamento...</p>
+          <div id="payment-brick-container"></div>
+          <p class="pagamento__seguro" data-i18n="pay_secure">Pagamento processado com segurança pelo Mercado Pago. Os dados do cartão não passam pelo nosso site.</p>
+        </div>
+        <div class="pagamento-resultado" id="pagamento-resultado" style="display:none;" aria-live="polite"></div>
       </div>
 
       <!-- Success -->

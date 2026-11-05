@@ -6,15 +6,20 @@
  *  link de pagamento do Mercado Pago. A loja NAO grava mais nada
  *  direto no banco — tudo passa por aqui, com validacao.
  *
- *  Recebe: { cliente:{nome,email,telefone,cpf,endereco}, itens:[{produto_id,quantidade}], frete:{regiao,valor} }
+ *  Recebe: { cliente:{nome,email,telefone,cpf,endereco}, itens:[{produto_id,quantidade}], frete:{regiao,valor},
+ *           aceite_termos:true }
  *  1. Upsert do cliente (por email).
  *  2. Le os produtos no banco e usa o PRECO DO BANCO (anti-fraude).
  *  3. Frete: recota no SuperFrete o servico escolhido (preco do servidor);
  *     sem servico SuperFrete, valida contra a tabela de frete.
  *  4. Cria pedido "pendente" + itens e RESERVA o estoque (atomico) ate
  *     o prazo da reserva. Antes, devolve as reservas ja vencidas.
- *  5. Cria a preferencia no Mercado Pago (Checkout Pro), com o link
- *     valendo ate o fim da reserva, e devolve o link.
+ *  5. Cria a preferencia no Mercado Pago (link do Checkout Pro valendo ate
+ *     o fim da reserva). Ela serve pra opcao "Conta Mercado Pago" do
+ *     formulario de pagamento e de link reserva no email.
+ *  6. Devolve chave publica + token do pedido: o site monta o formulario de
+ *     pagamento (Payment Brick — cartao, Pix e boleto SEM conta MP) e manda
+ *     os dados para processar-pagamento.js, que cria o pagamento.
  *
  *  Variaveis de ambiente:
  *   - MP_ENV ('teste'|'producao'), MP_ACCESS_TOKEN_TESTE, MP_ACCESS_TOKEN_PROD
@@ -32,6 +37,12 @@ const { cotarFrete, montarPacote } = require('./cotacao-frete');
 const { horasReserva, reservarEstoque, liberarReserva, liberarReservasExpiradas } = require('./_pedido-fluxo');
 const { registrarEvento } = require('./_pedido-registro');
 const { cpfValido, cnpjValido } = require('./_nota-fiscal');
+const { tokenPedido } = require('./_pedido-token');
+const { dadosPagador } = require('./_pagador');
+
+// Versao dos termos aceitos no checkout (muda quando o PDF mudar).
+const VERSAO_TERMOS = '2026-11-05';
+
 
 // Data no formato que o Mercado Pago aceita, no fuso de Brasilia
 // (ex: 2026-11-03T14:30:00.000-03:00).
@@ -90,6 +101,9 @@ const handler = async (event) => {
   }
   cliente.cpf = documento;
   if (itens.length === 0) return resposta(400, { erro: 'Carrinho vazio.' });
+  if (dados.aceite_termos !== true) {
+    return resposta(400, { erro: 'Para finalizar, leia e aceite os termos e condições de compra.' });
+  }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
@@ -242,17 +256,34 @@ const handler = async (event) => {
     }
     await registrarEvento(supabase, pedido.id, 'pedido_criado',
       'Pedido criado no site — aguardando pagamento', { total: total, frete_servico: freteServiceName, prazo: fretePrazo }, 'checkout');
+    await registrarEvento(supabase, pedido.id, 'termos_aceitos',
+      'Comprador aceitou os termos e condições de compra (versão ' + VERSAO_TERMOS + ') no checkout',
+      { versao: VERSAO_TERMOS, ip: (event.headers || {})['x-forwarded-for'] || null }, 'checkout');
 
-    // --- 5. Preferencia Mercado Pago ---
-    if (frete > 0) itensMP.push({ title: 'Frete', quantity: 1, unit_price: frete, currency_id: 'BRL' });
     const mp = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
+    const pagador = dadosPagador(cliente);
+
+    // --- 5. Preferencia Mercado Pago (opcao "Conta Mercado Pago" + link reserva) ---
+    if (frete > 0) itensMP.push({ title: 'Frete', quantity: 1, unit_price: frete, currency_id: 'BRL' });
     let pref;
     try {
       pref = await new Preference(mp).create({
         body: {
           items: itensMP,
           external_reference: pedido.id,
-          payer: { name: cliente.nome || '', email: cliente.email },
+          payer: {
+            name: pagador.first_name,
+            surname: pagador.last_name,
+            email: pagador.email,
+            identification: pagador.identification,
+            phone: pagador.phone,
+            address: pagador.cep ? {
+              zip_code: pagador.cep,
+              street_name: pagador.end.rua || '',
+              street_number: String(pagador.end.numero || ''),
+            } : undefined,
+          },
+          payment_methods: { installments: 12 },
           back_urls: {
             success: `${siteUrl}/?pagamento=sucesso&pedido=${pedido.numero}`,
             failure: `${siteUrl}/?pagamento=falhou`,
@@ -306,6 +337,15 @@ const handler = async (event) => {
       ok: true,
       pedido_id: pedido.id,
       pedido_numero: pedido.numero,
+      // token do pedido: autoriza o processar-pagamento e a consulta do status (Pix)
+      pedido_token: tokenPedido(pedido.numero),
+      // dados ja preenchidos no formulario de pagamento
+      pagador: {
+        email: pagador.email,
+        first_name: pagador.first_name,
+        last_name: pagador.last_name,
+        identification: pagador.identification,
+      },
       preference_id: pref.id,
       mp_public_key: mpPublicKey,
       init_point: pref.init_point,

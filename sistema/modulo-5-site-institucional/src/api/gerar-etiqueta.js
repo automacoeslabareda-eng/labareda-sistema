@@ -355,19 +355,21 @@ async function gerarEtiquetaParaPedido(db, pedidoId, opcoes) {
 
   // 4. Atualiza pedido com tracking e etiqueta
   var rastreioUrl = 'https://www.linkcorreios.com.br/?id=' + (etiqueta.tracking || '');
+  // Etiqueta gerada ainda nao e pedido postado: fica "preparando". O
+  // "enviado" (com aviso ao cliente) e marcado no painel quando postar.
   var updateData = {
-    status: 'enviado',
+    status: 'preparando',
     codigo_rastreio: etiqueta.tracking,
     rastreio_url: rastreioUrl,
-    enviado_at: new Date().toISOString(),
     superfrete_order_id: etiqueta.superfrete_order_id,
     etiqueta_url: etiqueta.label_url,
   };
   await db.from('pedidos').update(updateData).eq('id', pedidoId);
 
-  // 5. Envia email de rastreamento
+  // 5. Email de rastreamento: so quando pedido explicitamente (opcoes.enviarEmail
+  // === true). O aviso normal "saiu para entrega" sai ao marcar "enviado".
   var emailEnviado = false;
-  if (cliente.email && etiqueta.tracking && !(opcoes && opcoes.enviarEmail === false)) {
+  if (cliente.email && etiqueta.tracking && opcoes && opcoes.enviarEmail === true) {
     emailEnviado = await enviarEmailRastreamento(cliente, pedido, etiqueta.tracking, rastreioUrl);
   }
 
