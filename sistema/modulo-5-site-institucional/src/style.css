@@ -3259,6 +3259,20 @@ details[open] .faq-question::after {
   border-top: 2px solid var(--preto);
 }
 
+/* Logo do Labareda no pagamento. O arquivo da logo e creme (feito pra fundo
+   escuro); aqui vira mascara pintada de terracota pra aparecer no modal claro. */
+.checkout-marca {
+  width: 84px;
+  aspect-ratio: 224 / 266;
+  margin: 0 auto 16px;
+  background-color: var(--terracota);
+  -webkit-mask: url('img/logo-labareda.png') center / contain no-repeat;
+  mask: url('img/logo-labareda.png') center / contain no-repeat;
+}
+@media (max-width: 480px) {
+  .checkout-marca { width: 64px; margin-bottom: 12px; }
+}
+
 /* Aceite dos termos (passo 3) */
 .checkout-termos {
   display: flex;
