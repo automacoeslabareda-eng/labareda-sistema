@@ -279,7 +279,9 @@ test('emissao autorizada: guarda XML+DANFE, envia ao comprador com anexos, avisa
   assert.ok(db.arquivos[p.nfe_xml_path] && db.arquivos[p.nfe_danfe_path]);
   assert.ok(p.nfe_email_enviado_at);
   const paraComprador = servicos.emails.find((e) => e.to[0] === 'maria@example.com');
-  assert.equal(paraComprador.attachments.length, 2);
+  // DANFE + XML + termos e condicoes de compra
+  assert.equal(paraComprador.attachments.length, 3);
+  assert.ok(paraComprador.attachments.some((a) => /Termos/.test(a.filename)));
   assert.ok(servicos.n8n.some((a) => a.evento === 'nota_fiscal_autorizada' && /storage\.test/.test(a.nfe_danfe_url)));
   assert.ok(eventos(db).indexOf('nota_autorizada') >= 0);
   // XML enviado: producao, com o nome real do comprador
@@ -386,7 +388,7 @@ test('fluxo do webhook: nota autorizada vai anexada no email "Compra confirmada"
   await fluxo.etapaEmailConfirmacao(db, ctx, {}, { origem: 'webhook' });
   const confirmacao = servicos.emails.find((e) => e.to[0] === 'maria@example.com');
   assert.match(confirmacao.subject, /Compra confirmada/);
-  assert.equal(confirmacao.attachments.length, 2);
+  assert.equal(confirmacao.attachments.length, 3); // DANFE + XML + termos
   assert.match(confirmacao.html, /está disponível neste e-mail/);
   assert.ok(pedido(db).nfe_email_enviado_at);
   // aviso da equipe leva o link do DANFE
@@ -406,7 +408,8 @@ test('fluxo do webhook sem nota pronta: email avisa que a nota vem depois', asyn
   await nf.etapaNotaFiscal(db, ctx, { origem: 'webhook', enviarEmail: false, avisarEquipe: false });
   await fluxo.etapaEmailConfirmacao(db, ctx, {}, { origem: 'webhook' });
   const confirmacao = servicos.emails.find((e) => e.to[0] === 'maria@example.com');
-  assert.equal(confirmacao.attachments, undefined);
+  // sem nota ainda: so os termos e condicoes vao anexados
+  assert.deepEqual(confirmacao.attachments.map((a) => /Termos/.test(a.filename)), [true]);
   assert.match(confirmacao.html, /Enviaremos sua nota fiscal/);
   await fluxo.etapaAvisoEquipe(db, ctx, {}, [], { origem: 'webhook' });
   assert.match(servicos.n8n.find((a) => a.evento === 'compra_aprovada').nfe_erro, /NCM/);
