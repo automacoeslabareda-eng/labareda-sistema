@@ -19,8 +19,31 @@
  * ============================================================
  */
 
+const fs = require('fs');
+const path = require('path');
 const { linkAcompanhar } = require('./_pedido-token');
 const { termosUrl } = require('./_whatsapp');
+
+/* Termos e condicoes de compra: vao ANEXADOS em todo email ao comprador.
+   Le o PDF publicado com o site (src/termos-e-condicoes.pdf); se a funcao
+   nao tiver o arquivo no pacote, o Resend baixa da URL publica. */
+const NOME_TERMOS = 'Termos e condicoes de compra - Sitio Labareda.pdf';
+let termosBase64 = null;
+function anexoTermos() {
+  if (termosBase64 === null) {
+    try {
+      termosBase64 = fs.readFileSync(path.join(__dirname, '..', 'termos-e-condicoes.pdf')).toString('base64');
+    } catch (e) {
+      termosBase64 = '';
+    }
+  }
+  return termosBase64
+    ? { filename: NOME_TERMOS, content: termosBase64 }
+    : { filename: NOME_TERMOS, path: termosUrl() };
+}
+function comTermos(anexos) {
+  return (anexos || []).concat([anexoTermos()]);
+}
 
 function esc(v) {
   return String(v == null ? '' : v)
@@ -33,7 +56,7 @@ function siteUrl() {
   return (process.env.SITE_URL || 'https://sitiolabareda.com').trim().replace(/\/+$/, '').replace(/^http:\/\//i, 'https://');
 }
 
-/* anexos (opcional): [{ filename, content (base64) }] */
+/* anexos (opcional): [{ filename, content (base64) } | { filename, path (URL) }] */
 async function enviarEmail(to, subject, html, anexos) {
   var resendKey = process.env.RESEND_API_KEY;
   if (!resendKey) {
@@ -140,7 +163,7 @@ function rodape(pedido) {
     + '<p style="font-size:.85rem;color:#6b5f56;">Se precisar falar conosco:</p>'
     + '<p style="font-size:.85rem;margin:4px 0;">E-mail: <a href="mailto:' + esc(c.email) + '" style="color:#AA3424;">' + esc(c.email) + '</a></p>'
     + '<p style="font-size:.85rem;margin:4px 0;">WhatsApp: <a href="' + esc(whatsappLink) + '" style="color:#AA3424;">' + esc(c.whatsappExibicao) + '</a></p>'
-    + '<p style="font-size:.85rem;margin:12px 0 4px;"><a href="' + esc(termosUrl()) + '" style="color:#AA3424;">Termos e condições de compra (PDF)</a> — trocas, devoluções, desistência e avarias.</p>'
+    + '<p style="font-size:.85rem;margin:12px 0 4px;"><a href="' + esc(termosUrl()) + '" style="color:#AA3424;">Termos e condições de compra (PDF)</a> — também em anexo neste e-mail: trocas, devoluções, desistência e avarias.</p>'
     + '<p style="font-size:.75rem;color:#9a8b7d;margin-top:20px;text-align:center;">Sítio Labareda — Roça & Arte<br>Serra Grande, Costa do Cacau, Bahia</p>';
 }
 
@@ -190,7 +213,7 @@ async function emailPedidoCriado(cliente, pedido, itens, linkPagamento, reservaA
   );
 
   var r = await Promise.all([
-    enviarEmail(cliente && cliente.email, 'Pedido #' + pedido.numero + ' recebido — finalize o pagamento | Sítio Labareda', htmlCliente),
+    enviarEmail(cliente && cliente.email, 'Pedido #' + pedido.numero + ' recebido — finalize o pagamento | Sítio Labareda', htmlCliente, comTermos()),
     enviarEmail(process.env.EMAIL_LOJA || 'sitiolabareda@gmail.com', '[Loja] Novo pedido #' + pedido.numero + ' (aguardando pagamento)', htmlLoja),
   ]);
   return { cliente: r[0], loja: r[1] };
@@ -285,7 +308,7 @@ async function emailPagamentoAprovado(cliente, pedido, itens, etiqueta, nota) {
 
   var anexos = temNota ? nota.anexos : null;
   var r = await Promise.all([
-    enviarEmail(cliente && cliente.email, 'Compra confirmada — Pedido #' + pedido.numero, htmlCliente, anexos),
+    enviarEmail(cliente && cliente.email, 'Compra confirmada — Pedido #' + pedido.numero, htmlCliente, comTermos(anexos)),
     enviarEmail(process.env.EMAIL_LOJA || 'sitiolabareda@gmail.com', '💰 VENDEU! Pedido #' + pedido.numero + ' pago — etiqueta, nota e contato', htmlLoja, anexos),
   ]);
   return { cliente: r[0], loja: r[1] };
@@ -307,7 +330,7 @@ async function emailNotaFiscal(cliente, pedido, nota) {
     + '<p style="font-size:.9rem;margin-top:20px;">Com carinho,<br>Equipe Sítio Labareda</p>'
   );
   var r = await Promise.all([
-    enviarEmail(cliente && cliente.email, 'Nota fiscal do pedido #' + pedido.numero + ' — Sítio Labareda', html, nota.anexos),
+    enviarEmail(cliente && cliente.email, 'Nota fiscal do pedido #' + pedido.numero + ' — Sítio Labareda', html, comTermos(nota.anexos)),
     enviarEmail(process.env.EMAIL_LOJA || 'sitiolabareda@gmail.com', '[Loja] Nota fiscal do pedido #' + pedido.numero + ' emitida', html, nota.anexos),
   ]);
   return r[0];
@@ -334,7 +357,7 @@ async function emailInstrucoesPagamento(cliente, pedido, dados) {
     + (!pix ? '<p style="font-size:.85rem;color:#6b5f56;">O boleto leva até 3 dias úteis para ser compensado. Assim que o pagamento cair, você recebe a confirmação.</p>' : '')
     + rodape(pedido)
   );
-  return enviarEmail(cliente && cliente.email, (pix ? 'Seu Pix' : 'Seu boleto') + ' do pedido #' + pedido.numero + ' — Sítio Labareda', html);
+  return enviarEmail(cliente && cliente.email, (pix ? 'Seu Pix' : 'Seu boleto') + ' do pedido #' + pedido.numero + ' — Sítio Labareda', html, comTermos());
 }
 
 /* 4. Pedido postado (marcado como "enviado" no painel): rastreio ao comprador. */
@@ -356,7 +379,7 @@ async function emailPedidoEnviado(cliente, pedido, tracking, rastreioUrl) {
     + rodape(pedido)
     + '<p style="font-size:.9rem;margin-top:20px;">Com carinho,<br>Equipe Sítio Labareda</p>'
   );
-  return enviarEmail(cliente && cliente.email, 'Seu pedido #' + pedido.numero + ' saiu para entrega — Sítio Labareda', html);
+  return enviarEmail(cliente && cliente.email, 'Seu pedido #' + pedido.numero + ' saiu para entrega — Sítio Labareda', html, comTermos());
 }
 
 module.exports = { enviarEmail, emailPedidoCriado, emailPagamentoAprovado, emailNotaFiscal, emailPedidoEnviado, emailInstrucoesPagamento };

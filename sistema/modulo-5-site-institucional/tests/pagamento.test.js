@@ -125,7 +125,11 @@ test('Pix: valor vem do banco, devolve QR Code e avisa por email e WhatsApp', as
   assert.ok(body.date_of_expiration, 'Pix expira junto com a reserva');
   assert.equal(mpChamadas[0].requestOptions.idempotencyKey, 'ped-1-a1');
   assert.equal(tabelas.pedidos[0].mercadopago_id, '999');
-  assert.ok(envios.some((e) => e.url.includes('resend') && /Seu Pix/.test(e.body.subject)), 'email do Pix');
+  const emailPix = envios.find((e) => e.url.includes('resend') && /Seu Pix/.test(e.body.subject));
+  assert.ok(emailPix, 'email do Pix');
+  const termos = (emailPix.body.attachments || []).find((a) => /Termos/.test(a.filename));
+  assert.ok(termos, 'termos e condicoes anexados');
+  assert.ok(termos.content && Buffer.from(termos.content, 'base64').slice(0, 4).toString() === '%PDF', 'anexo e o PDF dos termos');
   const zap = envios.find((e) => e.url.endsWith('/send/text'));
   assert.ok(zap, 'WhatsApp do Pix');
   assert.equal(zap.body.number, '5573999991234');
