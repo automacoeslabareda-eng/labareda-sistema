@@ -1017,7 +1017,7 @@ async function marcarPostado(pedidoId) {
     expandirPedido(pedidoId);
   } catch (err) {
     console.error(err);
-    mostrarToast('Erro ao marcar como postado', 'error');
+    mostrarToast(err && err.message ? err.message : 'Erro ao marcar como postado', 'error');
   }
 }
 

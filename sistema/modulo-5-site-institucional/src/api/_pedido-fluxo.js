@@ -19,7 +19,7 @@
  * ============================================================
  */
 
-const { gerarEtiquetaParaPedido } = require('./gerar-etiqueta');
+const { gerarEtiquetaParaPedido, buscarRastreio } = require('./gerar-etiqueta');
 const { emailPagamentoAprovado, emailPedidoEnviado } = require('./_emails');
 const { enviarWhatsApp, msgCompraConfirmada, msgPedidoEnviado } = require('./_whatsapp');
 const { registrarEvento, abrirPendencia, resolverPendencia, faltaMigration } = require('./_pedido-registro');
@@ -314,22 +314,55 @@ async function etapaWhatsappConfirmacao(db, ctx, opcoes) {
   return ok;
 }
 
-/* Pedido postado: e-mail + WhatsApp "saiu para entrega" com o rastreio.
-   Chamado quando o painel marca o pedido como "enviado". */
+/* Pedido postado: e-mail + WhatsApp ao comprador e aviso da equipe (n8n ->
+   Telegram), todos com o codigo de rastreio. Chamado quando o painel marca o
+   pedido como "enviado". */
 async function notificarPedidoEnviado(db, pedidoId, origem) {
   const ctx = await carregarContexto(db, pedidoId);
   const pedido = ctx.pedido;
   const cliente = ctx.cliente || {};
+  if (!pedido.codigo_rastreio) {
+    try { await buscarRastreio(db, pedido); } catch (e) { console.error('[pedido-fluxo] rastreio:', e.message); }
+  }
   const tracking = pedido.codigo_rastreio || null;
   const rastreioUrl = pedido.rastreio_url || (tracking ? 'https://www.linkcorreios.com.br/?id=' + tracking : null);
   let email = false;
   try { email = await emailPedidoEnviado(cliente, pedido, tracking, rastreioUrl); } catch (e) { console.error('[pedido-fluxo] email enviado:', e.message); }
   const wpp = cliente.telefone ? await enviarWhatsApp(cliente.telefone, msgPedidoEnviado(cliente, pedido, tracking, rastreioUrl)) : false;
+  // Aviso da equipe (n8n -> Telegram) com o rastreio
+  let equipe = false;
+  const url = process.env.N8N_WEBHOOK_URL;
+  if (url) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          evento: 'pedido_enviado',
+          propriedade_id: PROPRIEDADE_LABAREDA,
+          pedido_numero: pedido.numero,
+          pedido_id: pedido.id,
+          cliente_nome: cliente.nome || '',
+          cliente_email: cliente.email || '',
+          cliente_telefone: cliente.telefone || '',
+          valor_total: pedido.total,
+          frete_servico: pedido.frete_service_name || null,
+          rastreio_codigo: tracking,
+          rastreio_url: rastreioUrl,
+          endereco: pedido.endereco_entrega || null,
+        }),
+      });
+      equipe = res.ok;
+    } catch (e) {
+      console.error('[pedido-fluxo] aviso de envio (n8n):', e.message);
+    }
+  }
   await registrarEvento(db, pedido.id, 'cliente_avisado_envio',
     'Aviso "saiu para entrega"' + (tracking ? ' (rastreio ' + tracking + ')' : ' (sem código de rastreio)')
-      + ' — e-mail: ' + (email ? 'enviado' : 'NÃO enviado') + ', WhatsApp: ' + (wpp ? 'enviado' : 'NÃO enviado'),
-    { email: email, whatsapp: wpp }, origem || 'painel');
-  return { email: email, whatsapp: wpp };
+      + ' — e-mail: ' + (email ? 'enviado' : 'NÃO enviado') + ', WhatsApp: ' + (wpp ? 'enviado' : 'NÃO enviado')
+      + ', equipe/Telegram: ' + (equipe ? 'enviado' : 'NÃO enviado'),
+    { email: email, whatsapp: wpp, equipe: equipe, rastreio: tracking }, origem || 'painel');
+  return { email: email, whatsapp: wpp, equipe: equipe, rastreio: tracking };
 }
 
 module.exports = {

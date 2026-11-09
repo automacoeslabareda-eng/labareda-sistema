@@ -29,6 +29,7 @@ const {
 const { carregarConfigFiscal, linksDaNota, nfemais, cnpjValido } = require('./_nota-fiscal');
 const { MercadoPagoConfig, Payment } = require('mercadopago');
 const { processarPagamento } = require('./webhook-mercadopago');
+const { buscarRastreio } = require('./gerar-etiqueta');
 
 // Mesmo Access Token do webhook/criar-pagamento (MP_ENV escolhe teste/producao)
 function accessTokenMP(env) {
@@ -265,6 +266,16 @@ const handler = async (event) => {
       case 'update-pedido-status': {
         const { data: atual } = await db.from('pedidos').select('*').eq('id', body.pedido_id).single();
         if (!atual) return resposta(404, { erro: 'Pedido nao encontrado' });
+        // Marcar "enviado" avisa o cliente com o rastreio: sem codigo (nem
+        // manual nem do SuperFrete), nao marca — o cliente receberia aviso vazio.
+        if (body.status === 'enviado' && atual.status !== 'enviado' && !body.codigo_rastreio && !atual.codigo_rastreio) {
+          const codigo = await buscarRastreio(db, atual);
+          if (!codigo) {
+            return resposta(409, { erro: atual.superfrete_order_id
+              ? 'O SuperFrete ainda nao liberou o codigo de rastreio desta etiqueta. Tente de novo em alguns minutos ou cole o codigo impresso na etiqueta em "Salvar Rastreio".'
+              : 'Pedido sem codigo de rastreio. Gere a etiqueta no SuperFrete ou cole o codigo em "Salvar Rastreio".' });
+          }
+        }
         const patch = { status: body.status };
         if (body.status === 'enviado' && body.codigo_rastreio) {
           patch.codigo_rastreio = body.codigo_rastreio;
@@ -309,7 +320,7 @@ const handler = async (event) => {
           'Rastreio ' + body.codigo_rastreio + ' informado no painel por ' + sessao.email + ' — pedido marcado como enviado', null, 'painel');
         // Avisa o comprador: e-mail + WhatsApp "saiu para entrega" com o rastreio
         const aviso = await notificarPedidoEnviado(db, body.pedido_id, 'painel');
-        return resposta(200, { ok: true, rastreio_url: rastreioUrl, email_enviado: aviso.email, whatsapp_enviado: aviso.whatsapp });
+        return resposta(200, { ok: true, rastreio_url: rastreioUrl, email_enviado: aviso.email, whatsapp_enviado: aviso.whatsapp, equipe_avisada: aviso.equipe });
       }
       /* ---- Nota fiscal (NF-e via NFe+) ---- */
       case 'emitir-nota': {
