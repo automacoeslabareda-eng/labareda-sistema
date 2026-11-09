@@ -852,6 +852,16 @@ async function expandirPedido(pedidoId) {
     etiquetaHtml += '</div>';
     container.innerHTML += etiquetaHtml;
 
+    // Pagamento: pedido ainda pendente/cancelado mas o cliente diz que pagou
+    // (aviso do Mercado Pago perdido) -> confere direto no MP e processa.
+    if (ped.status === 'pendente' || ped.status === 'cancelado') {
+      container.innerHTML += '<div style="margin-top:12px;padding:14px;border:1px solid #ddd;border-radius:6px;background:#fafaf5">'
+        + '<label style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:8px">Pagamento</label>'
+        + '<button class="btn btn--outline" id="btn-reprocessar-' + pedidoId + '" onclick="reprocessarPagamento(\'' + pedidoId + '\')">Reprocessar pagamento</button>'
+        + '<p style="font-size:12px;color:#777;margin:8px 0 0">Confere o pagamento direto no Mercado Pago. Se estiver aprovado, processa o pedido como uma venda normal: baixa o estoque, gera a etiqueta, emite a nota, manda e-mail e WhatsApp ao cliente e avisa a equipe. Nunca cobra nem processa duas vezes.</p>'
+        + '</div>';
+    }
+
     // Nota fiscal (NF-e)
     container.innerHTML += '<div style="margin-top:12px;padding:14px;border:1px solid #ddd;border-radius:6px;background:#fafaf5">'
       + '<label style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:8px">Nota fiscal (NF-e)</label>'
@@ -974,6 +984,23 @@ async function salvarRastreio(pedidoId) {
   } catch (err) {
     console.error(err);
     mostrarToast('Erro ao salvar rastreio', 'error');
+  }
+}
+
+/* Confere o pagamento do pedido direto no Mercado Pago e, se aprovado, roda o
+   fluxo de venda (quando o aviso automatico do MP se perdeu). */
+async function reprocessarPagamento(pedidoId) {
+  var btn = $('#btn-reprocessar-' + pedidoId);
+  if (btn) { btn.disabled = true; btn.textContent = 'Conferindo no Mercado Pago...'; }
+  try {
+    var r = await adminApi('reprocessar-pagamento', { pedido_id: pedidoId });
+    mostrarToast(r.mensagem || 'Pagamento conferido.', r.resultado === 'aprovado' || r.resultado === 'ja_pago' || r.resultado === 'ja_processado' ? undefined : 'error');
+    await carregarPedidos();
+    expandirPedido(pedidoId);
+  } catch (err) {
+    console.error(err);
+    mostrarToast('Erro ao reprocessar: ' + err.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Reprocessar pagamento'; }
   }
 }
 

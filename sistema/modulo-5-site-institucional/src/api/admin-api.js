@@ -27,6 +27,31 @@ const {
   etapaEtiqueta, etapaNotaFiscal, etapaEmailConfirmacao, etapaAvisoEquipe, notificarPedidoEnviado,
 } = require('./_pedido-fluxo');
 const { carregarConfigFiscal, linksDaNota, nfemais, cnpjValido } = require('./_nota-fiscal');
+const { MercadoPagoConfig, Payment } = require('mercadopago');
+const { processarPagamento } = require('./webhook-mercadopago');
+
+// Mesmo Access Token do webhook/criar-pagamento (MP_ENV escolhe teste/producao)
+function accessTokenMP(env) {
+  const ambiente = (env.MP_ENV || 'teste').toLowerCase();
+  const prod = ambiente === 'producao' || ambiente === 'production' || ambiente === 'prod';
+  return (prod ? env.MP_ACCESS_TOKEN_PROD : env.MP_ACCESS_TOKEN_TESTE) || env.MP_ACCESS_TOKEN || '';
+}
+
+/* Acha o pagamento do pedido no Mercado Pago: procura pelo external_reference
+   (id do pedido) e prefere um aprovado; sem busca, usa o mercadopago_id
+   numerico salvo no pedido. */
+async function pagamentoDoPedido(mp, pedido) {
+  try {
+    const r = await new Payment(mp).search({ options: { external_reference: pedido.id, sort: 'date_created', criteria: 'desc' } });
+    const lista = (r && r.results) || [];
+    const aprovado = lista.find((p) => p.status === 'approved');
+    if (aprovado) return aprovado.id;
+    if (lista[0]) return lista[0].id;
+  } catch (e) {
+    console.error('admin-api: busca de pagamentos do pedido falhou:', e.message);
+  }
+  return /^\d+$/.test(String(pedido.mercadopago_id || '')) ? pedido.mercadopago_id : null;
+}
 
 // Campos de config_fiscal que o painel pode editar
 const CAMPOS_CONFIG_FISCAL = [
@@ -154,6 +179,34 @@ const handler = async (event) => {
           throw error;
         }
         return resposta(200, { ok: true, pendencias: data || [] });
+      }
+      /* Reprocessa o pagamento de um pedido direto no Mercado Pago — para
+         quando o aviso (webhook) do MP se perdeu e o pedido ficou "pendente"
+         com o pagamento aprovado. Roda o mesmo fluxo do webhook (estoque,
+         etiqueta, nota, e-mail, WhatsApp, Telegram); nunca processa duas vezes. */
+      case 'reprocessar-pagamento': {
+        if (!body.pedido_id) return resposta(400, { erro: 'pedido_id obrigatorio' });
+        const token = accessTokenMP(process.env);
+        if (!token) return resposta(500, { erro: 'Access Token do Mercado Pago nao configurado.' });
+        const { data: ped } = await db.from('pedidos').select('id, numero, status, mercadopago_id').eq('id', body.pedido_id).single();
+        if (!ped) return resposta(404, { erro: 'Pedido nao encontrado' });
+        const mp = new MercadoPagoConfig({ accessToken: token });
+        const paymentId = await pagamentoDoPedido(mp, ped);
+        if (!paymentId) {
+          return resposta(200, { ok: true, resultado: 'sem_pagamento', mensagem: 'Nenhum pagamento encontrado no Mercado Pago para este pedido.' });
+        }
+        await registrarEvento(db, ped.id, 'reprocessamento_pagamento',
+          'Reprocessamento do pagamento ' + paymentId + ' pedido no painel por ' + sessao.email, { pagamento_id: String(paymentId) }, 'painel');
+        const r = await processarPagamento(db, mp, paymentId, 'painel');
+        const mensagens = {
+          aprovado: 'Pagamento aprovado confirmado — pedido processado (estoque, etiqueta, nota, e-mail e avisos).',
+          ja_processado: 'Este pagamento ja tinha sido processado.',
+          ja_pago: 'O pedido ja esta pago.',
+          nao_aprovado: 'O pagamento no Mercado Pago ainda nao esta aprovado (status: ' + (r.status || '?') + ').',
+          pagamento_inexistente: 'O Mercado Pago nao encontrou esse pagamento.',
+          sem_pedido: 'O pagamento nao aponta para este pedido.',
+        };
+        return resposta(200, { ok: true, resultado: r.resultado, status_mp: r.status || null, pagamento_id: String(paymentId), mensagem: mensagens[r.resultado] || r.resultado });
       }
       case 'pedido-eventos': {
         const { data, error } = await db.from('pedido_eventos').select('*')
