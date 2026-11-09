@@ -73,6 +73,60 @@ function getSuperfrete() {
   return { token: token, baseUrl: baseUrl, cepOrigem: cepOrigem };
 }
 
+function headersSuperFrete(sf) {
+  return {
+    'Authorization': 'Bearer ' + sf.token,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'User-Agent': 'SitioLabareda/1.0 (sitiolabareda@gmail.com)',
+  };
+}
+
+function urlRastreio(tracking) {
+  return tracking ? 'https://www.linkcorreios.com.br/?id=' + tracking : null;
+}
+
+/* Consulta um envio no SuperFrete (GET /api/v0/order/info/{id}). O codigo de
+   rastreio so aparece depois que a etiqueta e liberada ("released") — as
+   vezes alguns segundos/minutos depois do pagamento. */
+async function consultarEnvioSuperFrete(sf, orderId) {
+  try {
+    var res = await fetch(sf.baseUrl + '/api/v0/order/info/' + encodeURIComponent(orderId), { headers: headersSuperFrete(sf) });
+    if (!res.ok) {
+      console.error('SuperFrete order/info:', res.status, await res.text().catch(function () { return ''; }));
+      return null;
+    }
+    var j = await res.json();
+    var o = (j && (j.data || j.order)) || j || {};
+    return {
+      tracking: o.tracking || null,
+      status: o.status || null,
+      label_url: (o.print && o.print.url) || null,
+    };
+  } catch (e) {
+    console.error('SuperFrete order/info falhou:', e.message);
+    return null;
+  }
+}
+
+function esperar(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+/* Garante o codigo de rastreio do pedido: se ainda nao tem e ha envio no
+   SuperFrete, consulta e salva (codigo_rastreio + rastreio_url). Retorna o
+   codigo ou null se o SuperFrete ainda nao liberou. */
+async function buscarRastreio(db, pedido) {
+  if (pedido.codigo_rastreio) return pedido.codigo_rastreio;
+  var sf = getSuperfrete();
+  if (!sf || !pedido.superfrete_order_id) return null;
+  var info = await consultarEnvioSuperFrete(sf, pedido.superfrete_order_id);
+  if (!info || !info.tracking) return null;
+  var patch = { codigo_rastreio: info.tracking, rastreio_url: urlRastreio(info.tracking) };
+  if (info.label_url && !pedido.etiqueta_url) patch.etiqueta_url = info.label_url;
+  await db.from('pedidos').update(patch).eq('id', pedido.id);
+  Object.assign(pedido, patch);
+  return info.tracking;
+}
+
 function motivoSuperFrete(texto) {
   try {
     var j = JSON.parse(texto);
@@ -166,12 +220,7 @@ async function criarEnvioSuperFrete(sf, pedido, cliente, itens, db) {
     },
   };
 
-  var headers = {
-    'Authorization': 'Bearer ' + sf.token,
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'User-Agent': 'SitioLabareda/1.0 (sitiolabareda@gmail.com)',
-  };
+  var headers = headersSuperFrete(sf);
 
   // 1. Cria o envio no carrinho SuperFrete (POST /api/v0/cart) e guarda o id
   //    no pedido logo em seguida. Se o pagamento falhar (ex.: sem saldo), a
@@ -255,9 +304,19 @@ async function criarEnvioSuperFrete(sf, pedido, cliente, itens, db) {
     }
   }
 
+  // 4. O rastreio costuma vir vazio no checkout: consulta o envio algumas
+  //    vezes (o SuperFrete libera o codigo logo depois do pagamento).
+  var tracking = order.tracking || cartData.tracking || null;
+  for (var tentativa = 0; !tracking && tentativa < 3; tentativa++) {
+    await esperar(2000);
+    var info = await consultarEnvioSuperFrete(sf, orderId);
+    if (info && info.tracking) tracking = info.tracking;
+    if (info && info.label_url && !labelUrl) labelUrl = info.label_url;
+  }
+
   return {
     superfrete_order_id: orderId,
-    tracking: order.tracking || cartData.tracking || null,
+    tracking: tracking,
     label_url: labelUrl,
     status: compra.status || 'generated',
     service_name: cartData.service_name || '',
@@ -354,7 +413,7 @@ async function gerarEtiquetaParaPedido(db, pedidoId, opcoes) {
   var etiqueta = await criarEnvioSuperFrete(sf, pedido, cliente, itens, db);
 
   // 4. Atualiza pedido com tracking e etiqueta
-  var rastreioUrl = 'https://www.linkcorreios.com.br/?id=' + (etiqueta.tracking || '');
+  var rastreioUrl = urlRastreio(etiqueta.tracking);
   // Etiqueta gerada ainda nao e pedido postado: fica "preparando". O
   // "enviado" (com aviso ao cliente) e marcado no painel quando postar.
   var updateData = {
@@ -424,3 +483,4 @@ const handler = async (event) => {
 
 module.exports = toVercel(handler);
 module.exports.gerarEtiquetaParaPedido = gerarEtiquetaParaPedido;
+module.exports.buscarRastreio = buscarRastreio;

@@ -221,3 +221,42 @@ test('reprocessar: pedido ja pago nao e processado de novo', async () => {
   const r = await processarPagamento(db, {}, 999, 'painel');
   assert.equal(r.resultado, 'ja_pago');
 });
+
+/* ---- Rastreio do SuperFrete (GET /api/v0/order/info/{id}) ---- */
+test('rastreio: busca o codigo no SuperFrete e salva no pedido', async () => {
+  novoBanco('preparando');
+  tabelas.pedidos[0].superfrete_order_id = 'sf-123';
+  process.env.SUPERFRETE_TOKEN = 'sf-token';
+  process.env.SUPERFRETE_ENV = 'producao';
+  const fetchOriginal = global.fetch;
+  let urlChamada = '';
+  global.fetch = async (url) => {
+    urlChamada = String(url);
+    return { ok: true, status: 200, json: async () => ({ id: 'sf-123', status: 'released', tracking: 'AA123456789BR', print: { url: 'https://sf/etiqueta.pdf' } }), text: async () => '' };
+  };
+  try {
+    const { buscarRastreio } = require(path.join(API, 'gerar-etiqueta.js'));
+    const pedido = tabelas.pedidos[0];
+    const codigo = await buscarRastreio(db, pedido);
+    assert.equal(codigo, 'AA123456789BR');
+    assert.equal(urlChamada, 'https://api.superfrete.com/api/v0/order/info/sf-123');
+    assert.equal(tabelas.pedidos[0].codigo_rastreio, 'AA123456789BR');
+    assert.match(tabelas.pedidos[0].rastreio_url, /AA123456789BR/);
+  } finally {
+    global.fetch = fetchOriginal;
+  }
+});
+
+test('rastreio: sem codigo liberado ainda, devolve null e nao grava', async () => {
+  novoBanco('preparando');
+  tabelas.pedidos[0].superfrete_order_id = 'sf-124';
+  const fetchOriginal = global.fetch;
+  global.fetch = async () => ({ ok: true, status: 200, json: async () => ({ id: 'sf-124', status: 'pending', tracking: null }), text: async () => '' });
+  try {
+    const { buscarRastreio } = require(path.join(API, 'gerar-etiqueta.js'));
+    assert.equal(await buscarRastreio(db, tabelas.pedidos[0]), null);
+    assert.equal(tabelas.pedidos[0].codigo_rastreio, undefined);
+  } finally {
+    global.fetch = fetchOriginal;
+  }
+});
