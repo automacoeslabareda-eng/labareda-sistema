@@ -196,3 +196,28 @@ test('pagador: CNPJ e telefone no formato do Mercado Pago', () => {
   assert.deepEqual(p.phone, { area_code: '73', number: '998710452' });
   assert.equal(p.address, undefined);
 });
+
+/* ---- processarPagamento (webhook + "Reprocessar pagamento" do painel) ---- */
+const { processarPagamento } = require(path.join(API, 'webhook-mercadopago.js'));
+
+test('reprocessar: pagamento ainda pendente so registra, nao processa', async () => {
+  novoBanco();
+  Payment.prototype.get = async () => ({ id: 999, status: 'pending', status_detail: 'pending_waiting_transfer', external_reference: 'ped-1', payment_method_id: 'pix' });
+  const r = await processarPagamento(db, {}, 999, 'painel');
+  assert.equal(r.resultado, 'nao_aprovado');
+  assert.equal(tabelas.pedidos[0].status, 'pendente');
+});
+
+test('reprocessar: pagamento inexistente no MP e ignorado', async () => {
+  novoBanco();
+  Payment.prototype.get = async () => { const e = new Error('Payment not found'); e.status = 404; throw e; };
+  const r = await processarPagamento(db, {}, 123456, 'painel');
+  assert.equal(r.resultado, 'pagamento_inexistente');
+});
+
+test('reprocessar: pedido ja pago nao e processado de novo', async () => {
+  novoBanco('pago');
+  Payment.prototype.get = async () => ({ id: 999, status: 'approved', external_reference: 'ped-1', payment_method_id: 'pix' });
+  const r = await processarPagamento(db, {}, 999, 'painel');
+  assert.equal(r.resultado, 'ja_pago');
+});
